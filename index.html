@@ -1,0 +1,3407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LADRAME</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f2f4f7;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    #phone {
+      width: 430px;
+      height: 94vh;
+      max-height: 920px;
+      background: #fff;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(0,0,0,.18);
+      position: relative;
+    }
+    .screen {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+      overflow-y: auto;
+      padding: 16px;
+      background: #fff;
+    }
+    .screen.active { display: flex; }
+    .logo {
+      font-size: 30px;
+      font-weight: 900;
+      text-align: center;
+      color: #2e86de;
+      margin-top: 10px;
+      margin-bottom: 14px;
+    }
+    .logo span {
+      background: #000;
+      color: #d4ff00;
+      padding: 3px 8px;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      margin: 6px 0;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      margin: 4px 0;
+    }
+    textarea {
+      resize: none;
+      min-height: 86px;
+    }
+    button {
+      border: none;
+      background: #2e86de;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #fff;
+      border: 2px solid #2e86de;
+      color: #2e86de;
+    }
+    button.green { background: #27ae60; }
+    button.red { background: #e74c3c; }
+    button.orange { background: #f39c12; }
+    button.gray { background: #677289; }
+
+    .msg {
+      color: #e74c3c;
+      text-align: center;
+      font-size: 12px;
+      min-height: 16px;
+    }
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+    .card {
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      padding: 12px;
+      margin: 4px 0;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .hidden { display: none !important; }
+
+    .preview-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 12px;
+      object-fit: cover;
+      display: block;
+      margin: 8px auto 0;
+      border: 1px solid #eee;
+    }
+    .wide-photo {
+      width: 100%;
+      max-height: 220px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid #eee;
+      margin-top: 8px;
+    }
+    .avatar-small {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #efefef;
+      border: 1px solid #eee;
+    }
+    .profile-mini {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .comment-box {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #eee;
+      background: #fff;
+      margin-top: 6px;
+    }
+    .status-pill, .dog-pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+    .status-pending { background: #fff8e8; color: #8a5a00; }
+    .status-approved { background: #e8fff1; color: #148a4b; }
+    .status-rejected { background: #ffeaea; color: #b33939; }
+    .dog-green { background: #e8fff1; color: #148a4b; }
+    .dog-yellow { background: #fff8e8; color: #8a5a00; }
+    .dog-red { background: #ffeaea; color: #b33939; }
+
+    #ownerHomeMap,
+    #providerHomeMap,
+    #walkerMap,
+    #hotelsMap,
+    #liveMap {
+      width: 100%;
+      height: 310px;
+      border-radius: 16px;
+      background: #eee;
+    }
+
+    .home-map-wrap { width: 100%; }
+    .home-action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .home-action-row button {
+      min-height: 48px;
+      white-space: normal;
+      line-height: 1.2;
+    }
+
+    .emoji-marker {
+      font-size: 24px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
+      user-select: none;
+    }
+
+    .multi-dog-box {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+    }
+    .dog-choice {
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      padding: 8px 0;
+      align-items: flex-start;
+    }
+    .dog-choice:last-child { border-bottom: none; }
+    .dog-choice input[type="checkbox"] {
+      width: auto;
+      margin-top: 6px;
+    }
+
+    .pin-code {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 3px;
+      margin-top: 6px;
+    }
+    .timer-display {
+      font-size: 32px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .timer-over { color: #e74c3c; }
+
+    .chat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 180px;
+    }
+    .bubble {
+      max-width: 84%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .me {
+      align-self: flex-end;
+      background: #2e86de;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .them {
+      align-self: flex-start;
+      background: #f0f3f7;
+      color: #222;
+      border-bottom-left-radius: 4px;
+    }
+
+    .call-sheet {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 10, 16, .92);
+      z-index: 90;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+      gap: 10px;
+    }
+    .call-sheet.active { display: flex; }
+    .call-videos {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      flex: 1;
+    }
+    .call-videos video {
+      width: 100%;
+      height: 250px;
+      border-radius: 16px;
+      object-fit: cover;
+      background: #000;
+    }
+    .call-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .center { text-align: center; }
+
+    @media (max-width: 460px) {
+      #phone { width: 100vw; height: 100vh; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="phone">
+
+    <!-- LOGIN -->
+    <div id="loginScreen" class="screen active">
+      <div class="logo">LADRA<span>ME</span></div>
+      <input id="loginEmail" type="email" placeholder="Correo electrónico">
+      <input id="loginPass" type="password" placeholder="Contraseña">
+      <button onclick="handleLogin()">Entrar</button>
+      <button class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
+      <p id="loginMsg" class="msg"></p>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signupScreen" class="screen">
+      <h2>Crear cuenta</h2>
+
+      <select id="signupLanguage">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="jp">日本語</option>
+        <option value="pe">Perú</option>
+      </select>
+
+      <select id="signupCountry">
+        <option value="">Selecciona país</option>
+        <option value="peru">Perú</option>
+        <option value="spain">España</option>
+        <option value="usa">Estados Unidos</option>
+        <option value="japan">Japón</option>
+      </select>
+
+      <input id="signupName" placeholder="Nombre completo">
+      <input id="signupEmail" type="email" placeholder="Correo electrónico">
+      <input id="signupDNI" inputmode="numeric" placeholder="Número DNI / documento">
+      <input id="signupPass" type="password" placeholder="Contraseña">
+
+      <select id="signupRole">
+        <option value="">Tipo de cuenta</option>
+        <option value="owner">Dueño</option>
+        <option value="walker">Paseador</option>
+      </select>
+
+      <div class="card">
+        <p><b>Selfie de verificación</b></p>
+        <input type="file" accept="image/*" capture="user" id="selfieInput">
+        <img id="selfiePreview" class="preview-img hidden">
+      </div>
+
+      <div class="card">
+        <p><b>Foto del DNI / documento</b></p>
+        <input type="file" accept="image/*" capture="environment" id="dniInput">
+        <img id="dniPreview" class="preview-img hidden">
+      </div>
+
+      <button class="green" onclick="registerUser()">Registrarme</button>
+      <button class="secondary" onclick="go('loginScreen')">Volver</button>
+      <p id="signupMsg" class="msg"></p>
+    </div>
+
+    <!-- VERIFY -->
+    <div id="verifyCodeScreen" class="screen">
+      <h2>Verificar correo</h2>
+      <div class="card">
+        <p>Te enviamos un código a:</p>
+        <p id="verifyEmailText">-</p>
+      </div>
+      <input id="signupCodeInput" placeholder="Escribe el código" style="text-align:center;font-size:22px;font-weight:bold">
+      <button class="green" onclick="verifySignupCode()">Confirmar código</button>
+      <button class="secondary" onclick="resendSignupCode()">Reenviar código</button>
+      <button class="secondary" onclick="go('signupScreen')">Volver</button>
+      <p id="verifyCodeMsg" class="msg"></p>
+    </div>
+
+    <!-- COMPLETE PROFILE -->
+    <div id="completeProfileScreen" class="screen">
+      <h2>Completar perfil</h2>
+      <div id="completeProfileInfo" class="card"></div>
+
+      <div class="card">
+        <p><b>Selfie</b></p>
+        <input type="file" accept="image/*" capture="user" id="completeSelfieInput">
+        <img id="completeSelfiePreview" class="preview-img hidden">
+      </div>
+
+      <div class="card">
+        <p><b>Documento</b></p>
+        <input type="file" accept="image/*" capture="environment" id="completeDniInput">
+        <img id="completeDniPreview" class="preview-img hidden">
+      </div>
+
+      <button class="green" onclick="finalizePendingProfile()">Terminar perfil</button>
+      <button class="secondary" onclick="logout()">Salir</button>
+      <p id="completeProfileMsg" class="msg"></p>
+    </div>
+
+    <!-- OWNER HOME -->
+    <div id="ownerHomeScreen" class="screen">
+      <div class="topbar">
+        <div style="flex:1">
+          <h2 style="margin:0">Dueño</h2>
+          <div class="small" id="ownerWelcome">Hola</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
+      </div>
+
+      <div class="home-map-wrap">
+        <div id="ownerHomeMap"></div>
+      </div>
+
+      <div class="home-action-row">
+        <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
+        <button onclick="openCreateWalkScreen()">Pedir paseo</button>
+        <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
+        <button onclick="loadOwnerRequests()">Solicitudes</button>
+      </div>
+
+      <div class="home-action-row">
+        <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
+        <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
+      </div>
+
+      <div id="ownerDogsList"></div>
+    </div>
+
+    <!-- ADD DOG -->
+    <div id="addDogScreen" class="screen">
+      <h2>Registrar perro</h2>
+
+      <input id="dogNameInput" placeholder="Nombre del perro">
+      <select id="dogSizeInput">
+        <option value="">Tamaño</option>
+        <option>Pequeño</option>
+        <option>Mediano</option>
+        <option>Grande</option>
+      </select>
+      <select id="dogSociableInput">
+        <option value="">¿Sociable?</option>
+        <option>SI</option>
+        <option>NO</option>
+      </select>
+      <select id="dogControllableInput">
+        <option value="">¿Es controlable?</option>
+        <option>SI</option>
+        <option>NO</option>
+      </select>
+      <select id="dogRespondsInput">
+        <option value="">¿Responde a su nombre?</option>
+        <option>SI</option>
+        <option>NO</option>
+      </select>
+      <select id="dogPersonalityInput">
+        <option value="">Personalidad</option>
+        <option value="Tranquilo">Tranquilo</option>
+        <option value="Activo">Activo</option>
+        <option value="Nervioso">Nervioso</option>
+        <option value="Agresivo">Agresivo</option>
+      </select>
+      <textarea id="dogNotesInput" placeholder="Recomendaciones para el paseador"></textarea>
+
+      <div class="card">
+        <p><b>Foto del perro</b></p>
+        <input type="file" accept="image/*" capture="environment" id="dogPhotoInput">
+        <img id="dogPreview" class="preview-img hidden">
+      </div>
+
+      <button class="green" onclick="saveDog()">Guardar perro</button>
+      <button class="secondary" onclick="go('ownerHomeScreen')">Volver</button>
+      <p id="dogMsg" class="msg"></p>
+    </div>
+
+    <!-- CREATE WALK -->
+    <div id="createWalkScreen" class="screen">
+      <h2>Pedir paseo</h2>
+
+      <div class="card">
+        <p><b>Selecciona uno o varios perros</b></p>
+        <div id="walkDogsMultiSelect" class="multi-dog-box"></div>
+      </div>
+
+      <input type="number" id="walkPriceInput" placeholder="Tarifa que propone el dueño">
+
+      <select id="walkTimeInput">
+        <option value="">Tiempo del paseo</option>
+        <option value="15">15 minutos</option>
+        <option value="30">30 minutos</option>
+        <option value="45">45 minutos</option>
+        <option value="60">1 hora</option>
+        <option value="90">1 hora 30 min</option>
+        <option value="120">2 horas</option>
+      </select>
+
+      <textarea id="walkNotesInput" placeholder="Notas para el paseador"></textarea>
+
+      <button class="green" onclick="createWalkRequest()">Publicar solicitud</button>
+      <button class="secondary" onclick="go('ownerHomeScreen')">Volver</button>
+      <p id="walkMsg" class="msg"></p>
+    </div>
+
+    <!-- OWNER REQUESTS -->
+    <div id="ownerRequestsScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Mis solicitudes</h2>
+          <div class="small">Acepta o rechaza ofertas</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="go('ownerHomeScreen')">Volver</button>
+      </div>
+      <div id="ownerRequestsList"></div>
+    </div>
+
+    <!-- HOTEL SEARCH -->
+    <div id="hotelSearchScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Hoteles cercanos</h2>
+          <div class="small">Hasta 8 km</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="go('ownerHomeScreen')">Volver</button>
+      </div>
+
+      <div id="hotelsMap"></div>
+      <div id="hotelsList"></div>
+    </div>
+
+    <!-- CREATE HOTEL REQUEST -->
+    <div id="hotelRequestScreen" class="screen">
+      <h2>Solicitar hotel</h2>
+
+      <select id="hotelDogSelect"></select>
+      <input id="hotelCheckInDate" type="date">
+      <input id="hotelCheckOutDate" type="date">
+      <input id="hotelWalkHoursPerDay" type="number" min="0" placeholder="Horas de paseo por día">
+      <input id="hotelWalkTimesPerDay" type="number" min="0" placeholder="Veces de paseo por día">
+      <textarea id="hotelRequestNotes" placeholder="Notas para el hotel"></textarea>
+
+      <button class="green" onclick="createHotelRequest()">Publicar solicitud de hotel</button>
+      <button class="secondary" onclick="go('hotelSearchScreen')">Volver</button>
+      <p id="hotelRequestMsg" class="msg"></p>
+    </div>
+
+    <!-- OWNER HOTEL REQUESTS -->
+    <div id="ownerHotelRequestsScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Solicitudes de hotel</h2>
+          <div class="small">Acepta o rechaza ofertas</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="go('ownerHomeScreen')">Volver</button>
+      </div>
+      <div id="ownerHotelRequestsList"></div>
+    </div>
+
+    <!-- PROVIDER HOME -->
+    <div id="providerHomeScreen" class="screen">
+      <div class="topbar">
+        <div style="flex:1">
+          <h2 style="margin:0">Paseador</h2>
+          <div class="small" id="providerWelcome">Hola</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
+      </div>
+
+      <div class="home-map-wrap">
+        <div id="providerHomeMap"></div>
+      </div>
+
+      <div class="card">
+        <p><b>Créditos disponibles paseo</b></p>
+        <p id="walkerCredits">0</p>
+        <p class="small" id="maxTariffText">Tarifa máxima: S/0</p>
+      </div>
+
+      <div class="card hidden" id="hotelWalletCard">
+        <p><b>Créditos hotel</b></p>
+        <p id="hotelCredits">0</p>
+      </div>
+
+      <div class="home-action-row">
+        <button onclick="openWalkerMapScreen()">Ver solicitudes</button>
+        <button class="orange" onclick="go('buyCreditsScreen')">Comprar créditos</button>
+        <button class="secondary" onclick="activateHotelMode()" id="activateHotelBtn">Activar hotel</button>
+        <button class="secondary hidden" onclick="openHotelProfileScreen()" id="hotelConfigBtn">Configurar hotel</button>
+      </div>
+
+      <div class="home-action-row">
+        <button class="secondary hidden" id="hotelRequestsBtn" onclick="loadHotelRequestsForProvider()">Solicitudes hotel</button>
+        <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
+      </div>
+    </div>
+
+    <!-- WALKER MAP -->
+    <div id="walkerMapScreen" class="screen">
+      <h2>Solicitudes cercanas</h2>
+      <div id="walkerMap"></div>
+      <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
+      <div id="requestsList"></div>
+      <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
+    </div>
+
+    <!-- SEND OFFER -->
+    <div id="sendOfferScreen" class="screen">
+      <h2>Enviar oferta</h2>
+      <div id="offerRequestInfo" class="card"></div>
+      <input id="offerPriceInput" type="number" placeholder="Tarifa que propone el paseador">
+      <button class="green" onclick="sendOffer()">Enviar oferta</button>
+      <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
+      <p id="offerMsg" class="msg"></p>
+    </div>
+
+    <!-- HOTEL PROFILE -->
+    <div id="hotelProfileScreen" class="screen">
+      <h2>Configurar hotel</h2>
+      <input id="hotelNameInput" placeholder="Nombre del hotel">
+      <textarea id="hotelDescriptionInput" placeholder="Describe tu hotel"></textarea>
+      <input id="hotelAddressInput" placeholder="Dirección o referencia">
+      <input id="hotelPriceInput" type="number" placeholder="Precio base por día">
+      <input id="hotelCheckInFromInput" placeholder="Check-in desde (ej. 08:00)">
+      <input id="hotelCheckOutUntilInput" placeholder="Check-out hasta (ej. 18:00)">
+      <input id="hotelWalkHoursDayInput" type="number" min="0" placeholder="Horas de paseo por día">
+      <input id="hotelWalkTimesDayInput" type="number" min="0" placeholder="Veces de paseo por día">
+      <div class="card">
+        <p><b>Foto principal</b></p>
+        <input type="file" accept="image/*" capture="environment" id="hotelMainPhotoInput">
+        <img id="hotelMainPreview" class="preview-img hidden">
+      </div>
+      <button class="green" onclick="saveHotelProfile()">Guardar hotel</button>
+      <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
+      <p id="hotelProfileMsg" class="msg"></p>
+    </div>
+
+    <!-- HOTEL REQUESTS FOR PROVIDER -->
+    <div id="providerHotelRequestsScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Solicitudes hotel</h2>
+          <div class="small">Responde con tu tarifa</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="go('providerHomeScreen')">Volver</button>
+      </div>
+      <div id="providerHotelRequestsList"></div>
+    </div>
+
+    <!-- SEND HOTEL OFFER -->
+    <div id="sendHotelOfferScreen" class="screen">
+      <h2>Enviar oferta de hotel</h2>
+      <div id="hotelOfferInfo" class="card"></div>
+      <input id="hotelOfferPriceInput" type="number" placeholder="Tarifa por día">
+      <textarea id="hotelOfferMessageInput" placeholder="Mensaje para el dueño"></textarea>
+      <button class="green" onclick="sendHotelOffer()">Enviar oferta</button>
+      <button class="secondary" onclick="go('providerHotelRequestsScreen')">Volver</button>
+      <p id="hotelOfferMsg" class="msg"></p>
+    </div>
+
+    <!-- LIVE WALK -->
+    <div id="liveWalkScreen" class="screen">
+      <h2>Paseo en vivo</h2>
+      <div id="liveWalkInfo" class="card"></div>
+
+      <div class="card center">
+        <div class="small">Tiempo transcurrido</div>
+        <div id="walkTimerDisplay" class="timer-display">00:00</div>
+        <div id="walkTimerStatus" class="small">Esperando inicio</div>
+      </div>
+
+      <div id="liveMap"></div>
+
+      <div id="ownerPinCard" class="card hidden">
+        <div class="small">Comparte este PIN con el paseador</div>
+        <div class="pin-code" id="pickupPinDisplay">------</div>
+      </div>
+
+      <div id="walkerPinCard" class="card hidden">
+        <div class="small">PIN de recojo</div>
+        <input id="pickupPinInput" placeholder="Ingresar PIN">
+        <button class="green" onclick="verifyPickupPin()">Confirmar recojo</button>
+        <hr style="margin:12px 0;border:none;border-top:1px solid #eee">
+        <div class="small">PIN de devolución</div>
+        <input id="dropoffPinInput" placeholder="Ingresar PIN">
+        <button class="green" onclick="verifyDropoffPin()">Confirmar devolución</button>
+      </div>
+
+      <button class="gray" onclick="openChatFromCurrentService()">Abrir chat</button>
+      <button class="red" onclick="finishWalk()">Terminar paseo</button>
+      <button class="secondary" onclick="goBackFromLiveWalk()">Volver</button>
+    </div>
+
+    <!-- CHAT -->
+    <div id="chatScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Chat</h2>
+          <div class="small" id="chatSubtitle">Sala</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="goBackFromChat()">Volver</button>
+      </div>
+
+      <div class="home-action-row">
+        <button class="orange" onclick="startAppCall('audio')">Llamar</button>
+        <button onclick="startAppCall('video')">Videollamada</button>
+      </div>
+
+      <div id="chatMessages" class="chat-list card"></div>
+      <textarea id="chatMessageInput" placeholder="Escribe un mensaje"></textarea>
+      <button class="green" onclick="sendChatMessage()">Enviar mensaje</button>
+    </div>
+
+    <!-- BUY CREDITS -->
+    <div id="buyCreditsScreen" class="screen">
+      <h2>Comprar créditos</h2>
+      <div class="card center">
+        <p><b>Escanea el QR y realiza el pago</b></p>
+        <a href="https://ibb.co/fdYb503M" target="_blank" rel="noopener">Ver QR de pago</a>
+        <p style="margin-top:8px;font-weight:bold">Bruno Du.</p>
+        <p class="small">Luego sube el comprobante.</p>
+      </div>
+      <input type="number" id="creditsAmount" placeholder="Cantidad de créditos (mínimo 5)">
+      <div class="card">
+        <p><b>Subir comprobante</b></p>
+        <input type="file" accept="image/*" capture="environment" id="paymentProof">
+      </div>
+      <button class="green" onclick="sendCreditOrder()">Enviar comprobante</button>
+      <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
+      <p id="buyCreditsMsg" class="msg"></p>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div id="notificationsScreen" class="screen">
+      <div class="topbar">
+        <div>
+          <h2 style="margin:0">Notificaciones</h2>
+          <div class="small">Avisos de tu cuenta</div>
+        </div>
+        <button class="secondary" style="width:auto" onclick="goBackFromNotifications()">Volver</button>
+      </div>
+      <button class="secondary" onclick="markAllNotificationsRead()">Marcar todo como leído</button>
+      <div id="notificationsList"></div>
+    </div>
+
+    <!-- CALL OVERLAY -->
+    <div id="callSheet" class="call-sheet">
+      <h2 style="color:#fff;margin:0">Llamada / Videollamada</h2>
+      <div class="small center" style="color:#c6ccda" id="callStatusText">Conectando...</div>
+
+      <div class="call-videos">
+        <video id="callRemoteVideo" autoplay playsinline></video>
+        <video id="callLocalVideo" autoplay muted playsinline></video>
+      </div>
+
+      <div class="call-controls">
+        <button class="gray" onclick="toggleCallMic()">Mic</button>
+        <button class="gray" onclick="toggleCallCam()">Cam</button>
+        <button class="red" onclick="hangupAppCall()">Colgar</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
+
+    const { createClient } = supabase;
+    const supabaseClient = createClient(
+      "https://dnxiaronekfbbwqzslon.supabase.co",
+      "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+    );
+
+    const TURN_CONFIG = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: [
+            "turn:187.33.147.246:3478?transport=udp",
+            "turn:187.33.147.246:3478?transport=tcp"
+          ],
+          username: "bruno",
+          credential: "ladrame123"
+        }
+      ]
+    };
+
+    let currentUser = null;
+    let currentProfile = null;
+    let pendingVerificationEmail = localStorage.getItem("ladrame_pending_verification_email") || "";
+    let pendingSignupData = null;
+
+    let ownerHomeMap = null;
+    let providerHomeMap = null;
+    let walkerMap = null;
+    let hotelsMap = null;
+    let liveMap = null;
+
+    let ownerHomeMarkers = [];
+    let providerHomeMarkers = [];
+    let walkerRequestMarkers = [];
+    let hotelMarkers = [];
+    let liveOwnerMarker = null;
+    let liveWalkerMarker = null;
+    let liveDogMarker = null;
+
+    let ownerLat = null;
+    let ownerLng = null;
+    let providerLat = null;
+    let providerLng = null;
+
+    let selectedRequest = null;
+    let selectedHotelRequest = null;
+    let selectedWalk = null;
+    let selectedHotelBooking = null;
+    let currentChatRoom = null;
+    let currentChatOrigin = null;
+
+    let notificationsChannel = null;
+    let requestsChannel = null;
+    let offersChannel = null;
+    let chatMessagesChannel = null;
+
+    let providerGpsWatchId = null;
+    let walkTrackWatchId = null;
+    let walkerRefreshInterval = null;
+    let ownerMapRefreshInterval = null;
+    let liveWalkInterval = null;
+    let walkTimerInterval = null;
+    let requestedWalkMinutes = 0;
+    let walkStartedAt = null;
+
+    let callChannel = null;
+    let callPeerId = crypto.randomUUID();
+    let callPc = null;
+    let callLocalStream = null;
+    let callRemoteStream = null;
+    let currentCallType = null;
+    let callMicEnabled = true;
+    let callCamEnabled = true;
+    let barkAudioContext = null;
+    let incomingBarkInterval = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      bindPreview("selfieInput", "selfiePreview");
+      bindPreview("dniInput", "dniPreview");
+      bindPreview("completeSelfieInput", "completeSelfiePreview");
+      bindPreview("completeDniInput", "completeDniPreview");
+      bindPreview("dogPhotoInput", "dogPreview");
+      bindPreview("hotelMainPhotoInput", "hotelMainPreview");
+      boot();
+    });
+
+    function $(id) { return document.getElementById(id); }
+
+    function bindPreview(inputId, imgId) {
+      const input = $(inputId);
+      const img = $(imgId);
+      if (!input || !img) return;
+
+      input.addEventListener("change", () => {
+        const file = input.files?.[0];
+        if (!file) {
+          img.classList.add("hidden");
+          img.removeAttribute("src");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+          img.src = e.target.result;
+          img.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function go(id) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      const target = $(id);
+      if (target) target.classList.add("active");
+      setTimeout(() => {
+        ownerHomeMap?.resize();
+        providerHomeMap?.resize();
+        walkerMap?.resize();
+        hotelsMap?.resize();
+        liveMap?.resize();
+      }, 120);
+    }
+
+    function showMsg(id, text) {
+      const el = $(id);
+      if (el) el.textContent = text || "";
+    }
+
+    function setPendingVerificationEmail(email) {
+      pendingVerificationEmail = email || "";
+      localStorage.setItem("ladrame_pending_verification_email", pendingVerificationEmail);
+    }
+
+    function clearPendingVerificationEmail() {
+      pendingVerificationEmail = "";
+      localStorage.removeItem("ladrame_pending_verification_email");
+    }
+
+    function normalizeDni(value) {
+      return (value || "").replace(/\D/g, "");
+    }
+
+    function getDogRiskClass(personality) {
+      const p = (personality || "").toLowerCase();
+      if (p.includes("agresivo")) return "dog-red";
+      if (p.includes("activo") || p.includes("nervioso")) return "dog-yellow";
+      return "dog-green";
+    }
+
+    function getDogRiskLabel(personality) {
+      const p = (personality || "").toLowerCase();
+      if (p.includes("agresivo")) return "🔴 Riesgo alto";
+      if (p.includes("activo") || p.includes("nervioso")) return "🟡 Riesgo medio";
+      return "🟢 Tranquilo";
+    }
+
+    function createEmojiMarker(emoji) {
+      const el = document.createElement("div");
+      el.className = "emoji-marker";
+      el.textContent = emoji;
+      return new mapboxgl.Marker({ element: el });
+    }
+
+    function getCurrentRoleLabel(role) {
+      if (role === "owner") return "Dueño";
+      if (role === "walker") return "Paseador";
+      if (role === "hotel") return "Hotel";
+      if (role === "admin") return "Administrador";
+      return "-";
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function compressImageIfNeeded(file, maxWidth = 1000, quality = 0.78) {
+      if (!file || !file.type.startsWith("image/")) return file;
+
+      return new Promise(resolve => {
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = e => {
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(blob => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" }));
+            }, "image/jpeg", quality);
+          };
+
+          img.onerror = () => resolve(file);
+          img.src = e.target.result;
+        };
+
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function uniqueFileName(file) {
+      return `${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    }
+
+    async function uploadSelectedFile(file, bucket) {
+      if (!file) return null;
+      let fileToUpload = file;
+      if (file.type.startsWith("image/")) {
+        fileToUpload = await compressImageIfNeeded(file);
+      }
+
+      const fileName = uniqueFileName(fileToUpload);
+      const { error } = await supabaseClient.storage.from(bucket).upload(fileName, fileToUpload, {
+        upsert: false,
+        cacheControl: "3600"
+      });
+
+      if (error) {
+        alert("Error subiendo archivo: " + error.message);
+        return null;
+      }
+
+      const { data } = supabaseClient.storage.from(bucket).getPublicUrl(fileName);
+      return data?.publicUrl || null;
+    }
+
+    async function getCurrentSessionUser() {
+      const { data, error } = await supabaseClient.auth.getUser();
+      if (error) return null;
+      return data.user || null;
+    }
+
+    async function handleLogin() {
+      const email = $("loginEmail").value.trim();
+      const password = $("loginPass").value.trim();
+
+      if (!email || !password) {
+        showMsg("loginMsg", "Completa los campos");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        showMsg("loginMsg", error.message);
+        return;
+      }
+
+      boot();
+    }
+
+    async function registerUser() {
+      const name = $("signupName").value.trim();
+      const email = $("signupEmail").value.trim();
+      const dni = normalizeDni($("signupDNI").value);
+      const password = $("signupPass").value;
+      const role = $("signupRole").value;
+      const language = $("signupLanguage").value;
+      const country = $("signupCountry").value;
+      const selfie = $("selfieInput").files?.[0];
+      const dniPhoto = $("dniInput").files?.[0];
+
+      if (!name || !email || !dni || !password || !role || !country || !language) {
+        showMsg("signupMsg", "Completa todos los campos");
+        return;
+      }
+
+      if (!selfie || !dniPhoto) {
+        showMsg("signupMsg", "Debes subir selfie y documento");
+        return;
+      }
+
+      pendingSignupData = { name, email, dni, role, language, country };
+      localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
+
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            pending_name: name,
+            pending_dni: dni,
+            pending_role: role,
+            pending_language: language,
+            pending_country: country
+          }
+        }
+      });
+
+      if (error) {
+        showMsg("signupMsg", error.message);
+        return;
+      }
+
+      setPendingVerificationEmail(email);
+      $("verifyEmailText").textContent = email;
+      go("verifyCodeScreen");
+    }
+
+    async function verifySignupCode() {
+      const code = $("signupCodeInput").value.trim();
+      if (!code) {
+        showMsg("verifyCodeMsg", "Ingresa el código");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.verifyOtp({
+        email: pendingVerificationEmail,
+        token: code,
+        type: "signup"
+      });
+
+      if (error) {
+        showMsg("verifyCodeMsg", error.message);
+        return;
+      }
+
+      clearPendingVerificationEmail();
+      const raw = localStorage.getItem("ladrame_pending_signup_data");
+      if (raw) pendingSignupData = JSON.parse(raw);
+
+      const current = await getCurrentSessionUser();
+      currentUser = current;
+
+      $("completeProfileInfo").innerHTML = `
+        <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
+        <p><b>Correo:</b> ${pendingSignupData?.email || currentUser?.email || "-"}</p>
+        <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
+        <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+        <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
+      `;
+
+      go("completeProfileScreen");
+    }
+
+    async function resendSignupCode() {
+      if (!pendingVerificationEmail) {
+        showMsg("verifyCodeMsg", "No se encontró el correo");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.resend({
+        type: "signup",
+        email: pendingVerificationEmail
+      });
+
+      if (error) {
+        showMsg("verifyCodeMsg", error.message);
+        return;
+      }
+      showMsg("verifyCodeMsg", "Código reenviado");
+    }
+
+    async function finalizePendingProfile() {
+      const user = await getCurrentSessionUser();
+      if (!user) {
+        showMsg("completeProfileMsg", "Inicia sesión nuevamente");
+        return;
+      }
+
+      const raw = localStorage.getItem("ladrame_pending_signup_data");
+      if (raw) pendingSignupData = JSON.parse(raw);
+
+      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
+
+      if (!pendingSignupData) {
+        showMsg("completeProfileMsg", "No hay datos de registro");
+        return;
+      }
+
+      if (!selfieFile || !dniFile) {
+        showMsg("completeProfileMsg", "Debes subir selfie y documento");
+        return;
+      }
+
+      const selfieUrl = await uploadSelectedFile(selfieFile, "avatars");
+      const dniUrl = await uploadSelectedFile(dniFile, "avatars");
+
+      const { error } = await supabaseClient.from("users").insert({
+        id: user.id,
+        name: pendingSignupData.name,
+        email: user.email,
+        dni: pendingSignupData.dni,
+        role: pendingSignupData.role,
+        selfie_url: selfieUrl,
+        dni_photo_url: dniUrl,
+        country: pendingSignupData.country,
+        language: pendingSignupData.language
+      });
+
+      if (error) {
+        showMsg("completeProfileMsg", error.message);
+        return;
+      }
+
+      localStorage.removeItem("ladrame_pending_signup_data");
+      pendingSignupData = null;
+      boot();
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+
+      currentUser = null;
+      currentProfile = null;
+      selectedRequest = null;
+      selectedHotelRequest = null;
+      selectedWalk = null;
+      selectedHotelBooking = null;
+      currentChatRoom = null;
+
+      if (notificationsChannel) supabaseClient.removeChannel(notificationsChannel);
+      if (requestsChannel) supabaseClient.removeChannel(requestsChannel);
+      if (offersChannel) supabaseClient.removeChannel(offersChannel);
+      if (chatMessagesChannel) supabaseClient.removeChannel(chatMessagesChannel);
+      if (callChannel) supabaseClient.removeChannel(callChannel);
+
+      notificationsChannel = null;
+      requestsChannel = null;
+      offersChannel = null;
+      chatMessagesChannel = null;
+      callChannel = null;
+
+      if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
+      if (walkTrackWatchId) navigator.geolocation.clearWatch(walkTrackWatchId);
+      if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
+      if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
+      if (liveWalkInterval) clearInterval(liveWalkInterval);
+
+      providerGpsWatchId = null;
+      walkTrackWatchId = null;
+      walkerRefreshInterval = null;
+      ownerMapRefreshInterval = null;
+      liveWalkInterval = null;
+
+      stopWalkTimer();
+      hangupAppCall(true);
+      go("loginScreen");
+    }
+
+    async function loadCurrentProfile() {
+      currentUser = await getCurrentSessionUser();
+      if (!currentUser) return null;
+
+      const { data, error } = await supabaseClient
+        .from("users")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (error) return null;
+      currentProfile = data;
+      return data;
+    }
+
+    async function boot() {
+      const user = await getCurrentSessionUser();
+      if (!user) {
+        go("loginScreen");
+        return;
+      }
+
+      currentUser = user;
+      const profile = await loadCurrentProfile();
+
+      if (!profile) {
+        const raw = localStorage.getItem("ladrame_pending_signup_data");
+        if (raw) pendingSignupData = JSON.parse(raw);
+
+        if (pendingSignupData) {
+          $("completeProfileInfo").innerHTML = `
+            <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
+            <p><b>Correo:</b> ${pendingSignupData?.email || user.email || "-"}</p>
+            <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
+            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+            <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
+          `;
+          go("completeProfileScreen");
+          return;
+        }
+
+        go("loginScreen");
+        return;
+      }
+
+      routeUser(profile);
+      subscribeNotifications();
+      subscribeRequestsRealtime();
+      subscribeOffersRealtime();
+    }
+
+    function routeUser(profile) {
+      if (profile.role === "owner") {
+        $("ownerWelcome").textContent = "Hola " + (profile.name || "");
+        loadDogs();
+        updateHotelDogSelect();
+        getOwnerLocation();
+        go("ownerHomeScreen");
+
+        if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
+        ownerMapRefreshInterval = setInterval(renderOwnerHomeMap, 5000);
+        return;
+      }
+
+      if (profile.role === "walker") {
+        $("providerWelcome").textContent = "Hola " + (profile.name || "");
+        renderProviderHome();
+        startProviderLiveGps();
+        go("providerHomeScreen");
+        return;
+      }
+
+      go("loginScreen");
+    }
+
+    async function getOwnerLocation() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          ownerLat = pos.coords.latitude;
+          ownerLng = pos.coords.longitude;
+          renderOwnerHomeMap();
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    async function getProviderLocationOnce() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          resolve(null);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      });
+    }
+
+    function ensureOwnerHomeMap() {
+      if (!ownerHomeMap) {
+        ownerHomeMap = new mapboxgl.Map({
+          container: "ownerHomeMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 13
+        });
+      }
+      ownerHomeMap.resize();
+    }
+
+    async function renderOwnerHomeMap() {
+      ensureOwnerHomeMap();
+      ownerHomeMarkers.forEach(m => m.remove());
+      ownerHomeMarkers = [];
+
+      if (ownerLat != null && ownerLng != null) {
+        ownerHomeMap.setCenter([ownerLng, ownerLat]);
+        ownerHomeMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(ownerHomeMap));
+      }
+
+      const { data: walkers } = await supabaseClient.from("walkers").select("*");
+      (walkers || []).forEach(w => {
+        if (w.lat == null || w.lng == null) return;
+        ownerHomeMarkers.push(createEmojiMarker("🚶").setLngLat([Number(w.lng), Number(w.lat)]).addTo(ownerHomeMap));
+      });
+
+      const { data: hotels } = await supabaseClient
+        .from("hotel_profiles")
+        .select("*")
+        .eq("is_active", true);
+
+      (hotels || []).forEach(h => {
+        if (h.lat == null || h.lng == null) return;
+        ownerHomeMarkers.push(createEmojiMarker("🏨").setLngLat([Number(h.lng), Number(h.lat)]).addTo(ownerHomeMap));
+      });
+
+      const { data: reqs } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .in("status", ["open", "active"])
+        .limit(10);
+
+      (reqs || []).forEach(r => {
+        if (r.lat == null || r.lng == null) return;
+        ownerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(r.lng), Number(r.lat)]).addTo(ownerHomeMap));
+      });
+    }
+
+    function ensureProviderHomeMap() {
+      if (!providerHomeMap) {
+        providerHomeMap = new mapboxgl.Map({
+          container: "providerHomeMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 13
+        });
+      }
+      providerHomeMap.resize();
+    }
+
+    async function renderProviderHome() {
+      await loadWalkerCredits();
+      const activateBtn = $("activateHotelBtn");
+      const hotelConfigBtn = $("hotelConfigBtn");
+      const hotelRequestsBtn = $("hotelRequestsBtn");
+      const hotelWalletCard = $("hotelWalletCard");
+
+      if (currentProfile?.hotel_enabled) {
+        activateBtn.classList.add("hidden");
+        hotelConfigBtn.classList.remove("hidden");
+        hotelRequestsBtn.classList.remove("hidden");
+        hotelWalletCard.classList.remove("hidden");
+        await loadHotelCredits();
+      } else {
+        activateBtn.classList.remove("hidden");
+        hotelConfigBtn.classList.add("hidden");
+        hotelRequestsBtn.classList.add("hidden");
+        hotelWalletCard.classList.add("hidden");
+      }
+
+      renderProviderHomeMap();
+    }
+
+    async function renderProviderHomeMap() {
+      ensureProviderHomeMap();
+      providerHomeMarkers.forEach(m => m.remove());
+      providerHomeMarkers = [];
+
+      if (providerLat == null || providerLng == null) {
+        const loc = await getProviderLocationOnce();
+        if (loc) {
+          providerLat = loc.lat;
+          providerLng = loc.lng;
+          await upsertWalkerLocation(providerLat, providerLng);
+        }
+      }
+
+      if (providerLat != null && providerLng != null) {
+        providerHomeMap.setCenter([providerLng, providerLat]);
+        providerHomeMarkers.push(createEmojiMarker("🚶").setLngLat([providerLng, providerLat]).addTo(providerHomeMap));
+      }
+
+      const { data: requests } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("status", "open")
+        .limit(20);
+
+      (requests || []).forEach(req => {
+        if (req.lat == null || req.lng == null || providerLat == null || providerLng == null) return;
+        const distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
+        if (distance > 3) return;
+        providerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(providerHomeMap));
+      });
+
+      if (currentProfile?.hotel_enabled) {
+        const { data: myHotel } = await supabaseClient
+          .from("hotel_profiles")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (myHotel?.lat != null && myHotel?.lng != null) {
+          providerHomeMarkers.push(createEmojiMarker("🏨").setLngLat([Number(myHotel.lng), Number(myHotel.lat)]).addTo(providerHomeMap));
+        }
+      }
+    }
+
+    async function upsertWalkerLocation(lat, lng) {
+      const { data: row } = await supabaseClient
+        .from("walkers")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (row) {
+        await supabaseClient.from("walkers").update({ lat, lng }).eq("id", row.id);
+      } else {
+        await supabaseClient.from("walkers").insert({ user_id: currentUser.id, lat, lng });
+      }
+    }
+
+    async function startProviderLiveGps() {
+      if (!navigator.geolocation || !currentUser) return;
+
+      if (providerGpsWatchId) {
+        navigator.geolocation.clearWatch(providerGpsWatchId);
+      }
+
+      providerGpsWatchId = navigator.geolocation.watchPosition(async pos => {
+        providerLat = pos.coords.latitude;
+        providerLng = pos.coords.longitude;
+        await upsertWalkerLocation(providerLat, providerLng);
+
+        if ($("providerHomeScreen").classList.contains("active")) renderProviderHomeMap();
+        if ($("walkerMapScreen").classList.contains("active")) {
+          initWalkerMap();
+          loadNearbyRequests();
+        }
+      }, () => {}, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 3000
+      });
+    }
+
+    async function loadDogs() {
+      const { data, error } = await supabaseClient
+        .from("dogs")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+
+      $("ownerDogsList").innerHTML = "";
+      $("walkDogsMultiSelect").innerHTML = "";
+      $("hotelDogSelect").innerHTML = `<option value="">Selecciona perro</option>`;
+
+      if (!data || data.length === 0) {
+        $("ownerDogsList").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
+        $("walkDogsMultiSelect").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
+        return;
+      }
+
+      for (const dog of data) {
+        const photo = await getDogPhoto(currentUser.id, dog.name);
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>${dog.name}</b></p>
+          ${photo ? `<img src="${photo}" class="wide-photo">` : ""}
+          <p class="small">Tamaño: ${dog.size || "-"}</p>
+          <p class="small">Sociable: ${dog.sociable || "-"}</p>
+          <p class="small">Controlable: ${dog.controllable || "-"}</p>
+          <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
+          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+          <p class="small" style="margin-top:8px">${dog.recommendations || ""}</p>
+        `;
+        $("ownerDogsList").appendChild(card);
+
+        const option = document.createElement("div");
+        option.className = "dog-choice";
+        option.innerHTML = `
+          <input type="checkbox" class="walk-dog-checkbox" value="${dog.id}">
+          <div style="flex:1">
+            <p style="margin:0"><b>${dog.name}</b></p>
+            <p class="small" style="margin:4px 0 0">Tamaño: ${dog.size || "-"}</p>
+            <p class="small" style="margin:4px 0 0">Sociable: ${dog.sociable || "-"}</p>
+            <p class="small" style="margin:4px 0 0">Controlable: ${dog.controllable || "-"}</p>
+          </div>
+        `;
+        $("walkDogsMultiSelect").appendChild(option);
+
+        const opt = document.createElement("option");
+        opt.value = dog.id;
+        opt.textContent = dog.name;
+        $("hotelDogSelect").appendChild(opt);
+      }
+    }
+
+    function updateHotelDogSelect() {
+      loadDogs();
+    }
+
+    function getSelectedDogIds() {
+      return Array.from(document.querySelectorAll(".walk-dog-checkbox:checked")).map(el => el.value);
+    }
+
+    async function getDogPhoto(ownerId, dogName) {
+      const { data } = await supabaseClient
+        .from("dog_photos")
+        .select("*")
+        .eq("user_id", ownerId)
+        .eq("dog_name", dogName)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      return data && data.length > 0 ? data[0].photo_url : null;
+    }
+
+    function buildDogsHtml(dogs) {
+      if (!dogs || !dogs.length) return `<p class="small">Sin perros.</p>`;
+
+      return dogs.map(dog => `
+        <div class="card">
+          <p><b>${dog.name || "Perro"}</b></p>
+          ${dog.photo_url ? `<img src="${dog.photo_url}" class="wide-photo">` : ""}
+          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+          <p class="small" style="margin-top:8px">Tamaño: ${dog.size || "-"}</p>
+          <p class="small">Sociable: ${dog.sociable || "-"}</p>
+          <p class="small">Controlable: ${dog.controllable || "-"}</p>
+          <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
+          <p class="small">Recomendaciones: ${dog.recommendations || "-"}</p>
+        </div>
+      `).join("");
+    }
+
+    async function saveDog() {
+      const name = $("dogNameInput").value.trim();
+      const size = $("dogSizeInput").value;
+      const sociable = $("dogSociableInput").value;
+      const controllable = $("dogControllableInput").value;
+      const responds = $("dogRespondsInput").value;
+      const personality = $("dogPersonalityInput").value;
+      const notes = $("dogNotesInput").value.trim();
+      const photoFile = $("dogPhotoInput").files?.[0];
+
+      if (!name) {
+        showMsg("dogMsg", "Escribe el nombre");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("dogs")
+        .insert({
+          owner_id: currentUser.id,
+          name,
+          size,
+          sociable,
+          controllable,
+          responds_to_name: responds,
+          personality,
+          recommendations: notes
+        });
+
+      if (error) {
+        showMsg("dogMsg", error.message);
+        return;
+      }
+
+      if (photoFile) {
+        const photoUrl = await uploadSelectedFile(photoFile, "dog_photos");
+        if (photoUrl) {
+          await supabaseClient.from("dog_photos").insert({
+            user_id: currentUser.id,
+            dog_name: name,
+            photo_url: photoUrl
+          });
+        }
+      }
+
+      showMsg("dogMsg", "Perro guardado");
+      await loadDogs();
+      setTimeout(() => go("ownerHomeScreen"), 700);
+    }
+
+    function openCreateWalkScreen() {
+      loadDogs();
+      getOwnerLocation();
+      go("createWalkScreen");
+    }
+
+    async function createWalkRequest() {
+      const dogIds = getSelectedDogIds();
+      const price = Number($("walkPriceInput").value || 0);
+      const time = Number($("walkTimeInput").value || 0);
+      const notes = $("walkNotesInput").value.trim();
+
+      if (!dogIds.length) {
+        showMsg("walkMsg", "Selecciona al menos un perro");
+        return;
+      }
+
+      if (!price || price <= 0) {
+        showMsg("walkMsg", "Ingresa una tarifa válida");
+        return;
+      }
+
+      if (!time || time <= 0) {
+        showMsg("walkMsg", "Selecciona el tiempo del paseo");
+        return;
+      }
+
+      if (ownerLat == null || ownerLng == null) {
+        showMsg("walkMsg", "Activa tu ubicación primero");
+        getOwnerLocation();
+        return;
+      }
+
+      const { data: requestInserted, error } = await supabaseClient
+        .from("walk_requests")
+        .insert({
+          owner_id: currentUser.id,
+          dog_id: dogIds[0],
+          tariff: price,
+          time: time,
+          comments: notes,
+          status: "open",
+          lat: ownerLat,
+          lng: ownerLng,
+          location: `${ownerLat},${ownerLng}`
+        })
+        .select()
+        .single();
+
+      if (error) {
+        showMsg("walkMsg", error.message);
+        return;
+      }
+
+      const links = dogIds.map(dogId => ({ request_id: requestInserted.id, dog_id: dogId }));
+      const { error: linkError } = await supabaseClient.from("walk_request_dogs").insert(links);
+
+      if (linkError) {
+        showMsg("walkMsg", linkError.message);
+        return;
+      }
+
+      await createNotification(currentUser.id, "Solicitud publicada", `Publicaste una solicitud por S/${price} durante ${time} min.`);
+      showMsg("walkMsg", "Solicitud publicada");
+      setTimeout(() => go("ownerHomeScreen"), 700);
+    }
+
+    async function getRequestDogsWithPhotos(requestId, ownerId) {
+      const { data, error } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .eq("id", requestId)
+        .single();
+
+      if (error || !data) return [];
+
+      const list = Array.isArray(data.dogs_list) ? data.dogs_list : [];
+      const withPhotos = [];
+      for (const dog of list) {
+        const photo = await getDogPhoto(ownerId, dog.name || "");
+        withPhotos.push({ ...dog, photo_url: photo });
+      }
+      return withPhotos;
+    }
+
+    async function getWalkDogsWithPhotos(walkId, ownerId) {
+      const { data } = await supabaseClient
+        .from("walk_dogs")
+        .select("*")
+        .eq("walk_id", walkId);
+
+      const list = [];
+      for (const row of (data || [])) {
+        const { data: dog } = await supabaseClient
+          .from("dogs")
+          .select("*")
+          .eq("id", row.dog_id)
+          .maybeSingle();
+
+        if (dog) {
+          const photo = await getDogPhoto(ownerId, dog.name);
+          list.push({ ...dog, photo_url: photo });
+        }
+      }
+      return list;
+    }
+
+    function ensureWalkerMap() {
+      if (!walkerMap) {
+        walkerMap = new mapboxgl.Map({
+          container: "walkerMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 13
+        });
+      }
+      walkerMap.resize();
+    }
+
+    function openWalkerMapScreen() {
+      go("walkerMapScreen");
+      ensureWalkerMap();
+      loadNearbyRequests();
+
+      if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
+      walkerRefreshInterval = setInterval(() => {
+        loadNearbyRequests();
+        renderProviderHomeMap();
+      }, 5000);
+    }
+
+    function getDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    async function loadNearbyRequests() {
+      ensureWalkerMap();
+      walkerRequestMarkers.forEach(m => m.remove());
+      walkerRequestMarkers = [];
+      $("requestsList").innerHTML = "";
+
+      const { data, error } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+
+      for (const req of (data || [])) {
+        if (req.lat == null || req.lng == null) continue;
+
+        let distance = null;
+        if (providerLat != null && providerLng != null) {
+          distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
+          if (distance > 3) continue;
+        }
+
+        walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
+
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          ${buildDogsHtml(dogs)}
+          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
+        `;
+        $("requestsList").appendChild(div);
+      }
+
+      if (providerLat != null && providerLng != null) {
+        walkerMap.setCenter([providerLng, providerLat]);
+      }
+    }
+
+    async function openOffer(requestId) {
+      selectedRequest = requestId;
+
+      const { data, error } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .eq("id", requestId)
+        .single();
+
+      if (error) {
+        showMsg("offerMsg", error.message);
+        return;
+      }
+
+      const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
+
+      $("offerRequestInfo").innerHTML = `
+        <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+        <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
+        <p><b>Tiempo:</b> ${data.time || 0} min</p>
+        ${buildDogsHtml(dogs)}
+        <p class="small">Debes enviar tu propia tarifa.</p>
+      `;
+
+      $("offerPriceInput").value = "";
+      showMsg("offerMsg", "");
+      go("sendOfferScreen");
+    }
+
+    async function sendOffer() {
+      const price = Number($("offerPriceInput").value || 0);
+      if (!selectedRequest) {
+        showMsg("offerMsg", "Selecciona una solicitud");
+        return;
+      }
+      if (!price || price <= 0) {
+        showMsg("offerMsg", "Tarifa inválida");
+        return;
+      }
+
+      const { data: req, error: reqError } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("id", selectedRequest)
+        .single();
+
+      if (reqError || !req) {
+        showMsg("offerMsg", "No se pudo cargar la solicitud");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("offers")
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
+
+      if (error) {
+        showMsg("offerMsg", error.message);
+        return;
+      }
+
+      await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
+      showMsg("offerMsg", "Oferta enviada");
+      await loadWalkerCredits();
+      setTimeout(() => go("providerHomeScreen"), 700);
+    }
+
+    async function getWalkerProfileSummary(walkerUserId) {
+      const result = { user: null, walker: null, completedWalks: 0, comments: [] };
+
+      const { data: user } = await supabaseClient.from("users").select("*").eq("id", walkerUserId).maybeSingle();
+      result.user = user || null;
+
+      const { data: walker } = await supabaseClient.from("walkers").select("*").eq("user_id", walkerUserId).maybeSingle();
+      result.walker = walker || null;
+
+      const { data: completed } = await supabaseClient
+        .from("walks")
+        .select("id")
+        .eq("walker_id", walkerUserId)
+        .in("status", ["completed", "finished"]);
+
+      result.completedWalks = completed ? completed.length : 0;
+
+      const { data: reviews } = await supabaseClient
+        .from("reviews")
+        .select("*")
+        .eq("reviewee_id", walkerUserId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      result.comments = reviews || [];
+      return result;
+    }
+
+    async function loadOwnerRequests() {
+      const { data, error } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+      $("ownerRequestsList").innerHTML = "";
+
+      if (!data || data.length === 0) {
+        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
+        go("ownerRequestsScreen");
+        return;
+      }
+
+      for (const req of data) {
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Estado: ${req.status || "-"}</p>
+          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          ${buildDogsHtml(dogs)}
+          <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
+        `;
+        $("ownerRequestsList").appendChild(card);
+
+        const { data: offers } = await supabaseClient
+          .from("offers")
+          .select("*")
+          .eq("request_id", req.id)
+          .order("created_at", { ascending: false });
+
+        const offerBox = $(`offers-${req.id}`);
+        offerBox.innerHTML = "";
+
+        if (!offers || offers.length === 0) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
+        } else {
+          for (const ofr of offers) {
+            const profile = await getWalkerProfileSummary(ofr.walker_id);
+
+            const commentsHtml = profile.comments.length
+              ? profile.comments.map(r => `
+                <div class="comment-box">
+                  <div class="small"><b>${r.rating || 0}/5</b></div>
+                  <div class="small">${r.comment || "Sin comentario"}</div>
+                </div>
+              `).join("")
+              : `<p class="small">Sin comentarios todavía.</p>`;
+
+            const offerCard = document.createElement("div");
+            offerCard.className = "card";
+            offerCard.innerHTML = `
+              <div class="profile-mini">
+                ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+                <div style="flex:1">
+                  <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+                  <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
+                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
+                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
+                </div>
+              </div>
+
+              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
+              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
+              <div>${commentsHtml}</div>
+
+              ${ofr.status === "pending" ? `
+                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+              ` : ""}
+            `;
+            offerBox.appendChild(offerCard);
+          }
+        }
+      }
+
+      go("ownerRequestsScreen");
+    }
+
+    async function acceptOffer(offerId) {
+      const { error } = await supabaseClient.rpc("accept_offer", { p_offer_id: offerId });
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const { data: accepted } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("id", offerId)
+        .single();
+
+      if (accepted?.walker_id) {
+        await createNotification(accepted.walker_id, "Oferta aceptada", "Tu oferta fue aceptada. El paseo ya está activo.");
+      }
+
+      const { data: walk } = await supabaseClient
+        .from("walks")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .eq("walker_id", accepted.walker_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (walk?.id) {
+        await openLiveWalk(walk.id, "owner");
+      } else {
+        loadOwnerRequests();
+      }
+    }
+
+    async function rejectOffer(offerId) {
+      const { error } = await supabaseClient.from("offers").update({ status: "rejected" }).eq("id", offerId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      loadOwnerRequests();
+    }
+
+    function ensureHotelsMap() {
+      if (!hotelsMap) {
+        hotelsMap = new mapboxgl.Map({
+          container: "hotelsMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 12
+        });
+      }
+      hotelsMap.resize();
+    }
+
+    async function openHotelSearchScreen() {
+      if (ownerLat == null || ownerLng == null) {
+        getOwnerLocation();
+        await sleep(1000);
+      }
+
+      ensureHotelsMap();
+      go("hotelSearchScreen");
+      await loadNearbyHotels();
+    }
+
+    async function loadNearbyHotels() {
+      ensureHotelsMap();
+      hotelMarkers.forEach(m => m.remove());
+      hotelMarkers = [];
+      $("hotelsList").innerHTML = "";
+
+      if (ownerLat == null || ownerLng == null) {
+        $("hotelsList").innerHTML = `<p class="small">Activa ubicación para buscar hoteles.</p>`;
+        return;
+      }
+
+      hotelsMap.setCenter([ownerLng, ownerLat]);
+      hotelMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(hotelsMap));
+
+      const { data, error } = await supabaseClient.rpc("nearby_hotels", {
+        user_lat: ownerLat,
+        user_lng: ownerLng
+      });
+
+      if (error) {
+        $("hotelsList").innerHTML = `<p class="small">${error.message}</p>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        $("hotelsList").innerHTML = `<p class="small">No hay hoteles hasta 8 km.</p>`;
+        return;
+      }
+
+      for (const hotel of data) {
+        hotelMarkers.push(createEmojiMarker("🏨").setLngLat([Number(hotel.lng), Number(hotel.lat)]).addTo(hotelsMap));
+
+        const { data: photos } = await supabaseClient
+          .from("hotel_photos")
+          .select("*")
+          .eq("hotel_profile_id", hotel.id)
+          .limit(1);
+
+        const photoUrl = photos && photos.length ? photos[0].photo_url : null;
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>${hotel.hotel_name || "Hotel"}</b></p>
+          ${photoUrl ? `<img src="${photoUrl}" class="wide-photo">` : ""}
+          <p class="small">Dirección: ${hotel.address || "-"}</p>
+          <p class="small">Precio base: S/${hotel.base_price_per_day || "-"}</p>
+          <p class="small">Distancia: ${Number(hotel.distance || 0).toFixed(2)} km</p>
+          <button class="orange" onclick="go('hotelRequestScreen')">Pedir estadía</button>
+        `;
+        $("hotelsList").appendChild(div);
+      }
+    }
+
+    async function createHotelRequest() {
+      const dogId = $("hotelDogSelect").value;
+      const checkIn = $("hotelCheckInDate").value;
+      const checkOut = $("hotelCheckOutDate").value;
+      const walkHours = Number($("hotelWalkHoursPerDay").value || 0);
+      const walkTimes = Number($("hotelWalkTimesPerDay").value || 0);
+      const notes = $("hotelRequestNotes").value.trim();
+
+      if (!dogId || !checkIn || !checkOut) {
+        showMsg("hotelRequestMsg", "Completa los campos obligatorios");
+        return;
+      }
+
+      const { error } = await supabaseClient.from("hotel_requests").insert({
+        owner_id: currentUser.id,
+        dog_id: dogId,
+        check_in_date: checkIn,
+        check_out_date: checkOut,
+        notes,
+        walk_hours_per_day: walkHours,
+        walk_times_per_day: walkTimes,
+        status: "open"
+      });
+
+      if (error) {
+        showMsg("hotelRequestMsg", error.message);
+        return;
+      }
+
+      await createNotification(currentUser.id, "Solicitud hotel publicada", "Tu solicitud de hotel fue publicada.");
+      showMsg("hotelRequestMsg", "Solicitud publicada");
+      setTimeout(() => go("hotelSearchScreen"), 700);
+    }
+
+    async function loadOwnerHotelRequests() {
+      const { data, error } = await supabaseClient
+        .from("hotel_requests")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+      $("ownerHotelRequestsList").innerHTML = "";
+
+      if (!data || !data.length) {
+        $("ownerHotelRequestsList").innerHTML = `<p class="small">No tienes solicitudes de hotel.</p>`;
+        go("ownerHotelRequestsScreen");
+        return;
+      }
+
+      for (const req of data) {
+        const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
+        const dogPhoto = dog ? await getDogPhoto(currentUser.id, dog.name) : null;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>${dog?.name || "Perro"}</b></p>
+          ${dogPhoto ? `<img src="${dogPhoto}" class="wide-photo">` : ""}
+          <p class="small">Check-in: ${req.check_in_date}</p>
+          <p class="small">Check-out: ${req.check_out_date}</p>
+          <p class="small">Horas paseo/día: ${req.walk_hours_per_day || 0}</p>
+          <p class="small">Veces paseo/día: ${req.walk_times_per_day || 0}</p>
+          <p class="small">Estado: ${req.status || "-"}</p>
+          <div id="hotel-offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
+        `;
+        $("ownerHotelRequestsList").appendChild(card);
+
+        const { data: offers } = await supabaseClient
+          .from("hotel_offers")
+          .select("*")
+          .eq("request_id", req.id)
+          .order("created_at", { ascending: false });
+
+        const box = $(`hotel-offers-${req.id}`);
+        box.innerHTML = "";
+
+        if (!offers || !offers.length) {
+          box.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
+          continue;
+        }
+
+        for (const offer of offers) {
+          const { data: hotelUser } = await supabaseClient.from("users").select("*").eq("id", offer.hotel_user_id).maybeSingle();
+          const { data: hotelProfile } = await supabaseClient.from("hotel_profiles").select("*").eq("user_id", offer.hotel_user_id).maybeSingle();
+
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <div class="profile-mini">
+              ${hotelUser?.selfie_url ? `<img src="${hotelUser.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+              <div style="flex:1">
+                <p style="margin:0"><b>${hotelProfile?.hotel_name || hotelUser?.name || "Hotel"}</b></p>
+                <p class="small" style="margin:4px 0 0">Dirección: ${hotelProfile?.address || "-"}</p>
+                <p class="small" style="margin:4px 0 0">Check-in: ${hotelProfile?.check_in_from || "-"}</p>
+                <p class="small" style="margin:4px 0 0">Check-out: ${hotelProfile?.check_out_until || "-"}</p>
+              </div>
+            </div>
+            <p style="margin-top:10px"><b>Tarifa por día:</b> S/${offer.offered_price_per_day}</p>
+            <p class="small">${offer.message || ""}</p>
+            ${offer.status === "pending" ? `
+              <button class="green" onclick="acceptHotelOffer('${offer.id}')">Aceptar</button>
+              <button class="red" onclick="rejectHotelOffer('${offer.id}')">Rechazar</button>
+            ` : `<p class="small">Estado: ${offer.status}</p>`}
+          `;
+          box.appendChild(div);
+        }
+      }
+
+      go("ownerHotelRequestsScreen");
+    }
+
+    async function acceptHotelOffer(offerId) {
+      const { error } = await supabaseClient.rpc("accept_hotel_offer", { p_offer_id: offerId });
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const { data: offer } = await supabaseClient.from("hotel_offers").select("*").eq("id", offerId).single();
+      if (offer?.hotel_user_id) {
+        await createNotification(offer.hotel_user_id, "Oferta hotel aceptada", "Tu oferta de hotel fue aceptada.");
+      }
+
+      const { data: booking } = await supabaseClient
+        .from("hotel_bookings")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .eq("hotel_user_id", offer.hotel_user_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (booking?.id) {
+        selectedHotelBooking = booking.id;
+        await openChatForHotelBooking(booking.id);
+      } else {
+        loadOwnerHotelRequests();
+      }
+    }
+
+    async function rejectHotelOffer(offerId) {
+      const { error } = await supabaseClient.from("hotel_offers").update({ status: "rejected" }).eq("id", offerId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      loadOwnerHotelRequests();
+    }
+
+    async function activateHotelMode() {
+      const { error } = await supabaseClient
+        .from("users")
+        .update({ hotel_enabled: true })
+        .eq("id", currentUser.id);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      currentProfile.hotel_enabled = true;
+      renderProviderHome();
+      alert("Perfil de hotel activado");
+    }
+
+    async function openHotelProfileScreen() {
+      const { data } = await supabaseClient
+        .from("hotel_profiles")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (data) {
+        $("hotelNameInput").value = data.hotel_name || "";
+        $("hotelDescriptionInput").value = data.description || "";
+        $("hotelAddressInput").value = data.address || "";
+        $("hotelPriceInput").value = data.base_price_per_day || "";
+        $("hotelCheckInFromInput").value = data.check_in_from || "";
+        $("hotelCheckOutUntilInput").value = data.check_out_until || "";
+        $("hotelWalkHoursDayInput").value = data.walk_hours_per_day || 0;
+        $("hotelWalkTimesDayInput").value = data.walk_times_per_day || 0;
+      } else {
+        $("hotelNameInput").value = "";
+        $("hotelDescriptionInput").value = "";
+        $("hotelAddressInput").value = "";
+        $("hotelPriceInput").value = "";
+        $("hotelCheckInFromInput").value = "";
+        $("hotelCheckOutUntilInput").value = "";
+        $("hotelWalkHoursDayInput").value = "";
+        $("hotelWalkTimesDayInput").value = "";
+      }
+
+      showMsg("hotelProfileMsg", "");
+      go("hotelProfileScreen");
+    }
+
+    async function saveHotelProfile() {
+      const hotelName = $("hotelNameInput").value.trim();
+      const description = $("hotelDescriptionInput").value.trim();
+      const address = $("hotelAddressInput").value.trim();
+      const price = Number($("hotelPriceInput").value || 0);
+      const checkInFrom = $("hotelCheckInFromInput").value.trim();
+      const checkOutUntil = $("hotelCheckOutUntilInput").value.trim();
+      const walkHoursPerDay = Number($("hotelWalkHoursDayInput").value || 0);
+      const walkTimesPerDay = Number($("hotelWalkTimesDayInput").value || 0);
+      const photoFile = $("hotelMainPhotoInput").files?.[0];
+
+      if (!hotelName || !description || !address || !price) {
+        showMsg("hotelProfileMsg", "Completa los campos principales");
+        return;
+      }
+
+      const loc = await getProviderLocationOnce();
+
+      const payload = {
+        user_id: currentUser.id,
+        hotel_name: hotelName,
+        description,
+        address,
+        base_price_per_day: price,
+        check_in_from: checkInFrom,
+        check_out_until: checkOutUntil,
+        walk_hours_per_day: walkHoursPerDay,
+        walk_times_per_day: walkTimesPerDay,
+        is_active: true
+      };
+
+      if (loc) {
+        payload.lat = loc.lat;
+        payload.lng = loc.lng;
+      }
+
+      const { data: existing } = await supabaseClient
+        .from("hotel_profiles")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      let saveError = null;
+      let hotelProfileId = null;
+
+      if (existing) {
+        const res = await supabaseClient
+          .from("hotel_profiles")
+          .update(payload)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        saveError = res.error;
+        hotelProfileId = existing.id;
+      } else {
+        const res = await supabaseClient
+          .from("hotel_profiles")
+          .insert(payload)
+          .select()
+          .single();
+        saveError = res.error;
+        hotelProfileId = res.data?.id;
+      }
+
+      if (saveError) {
+        showMsg("hotelProfileMsg", saveError.message);
+        return;
+      }
+
+      if (photoFile && hotelProfileId) {
+        const photoUrl = await uploadSelectedFile(photoFile, "hotel_photos");
+        if (photoUrl) {
+          await supabaseClient.from("hotel_photos").insert({
+            hotel_profile_id: hotelProfileId,
+            photo_url: photoUrl,
+            photo_type: "main"
+          });
+        }
+      }
+
+      showMsg("hotelProfileMsg", "Hotel guardado");
+      await renderProviderHome();
+      setTimeout(() => go("providerHomeScreen"), 700);
+    }
+
+    async function loadHotelRequestsForProvider() {
+      const { data, error } = await supabaseClient
+        .from("hotel_requests")
+        .select("*")
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+      $("providerHotelRequestsList").innerHTML = "";
+
+      if (!data || !data.length) {
+        $("providerHotelRequestsList").innerHTML = `<p class="small">No hay solicitudes de hotel.</p>`;
+        go("providerHotelRequestsScreen");
+        return;
+      }
+
+      for (const req of data) {
+        const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
+        const { data: owner } = await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle();
+        const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>${dog?.name || "Perro"}</b></p>
+          ${dogPhoto ? `<img src="${dogPhoto}" class="wide-photo">` : ""}
+          <p class="small">Dueño: ${owner?.name || "-"}</p>
+          <p class="small">Check-in: ${req.check_in_date}</p>
+          <p class="small">Check-out: ${req.check_out_date}</p>
+          <p class="small">Horas paseo/día: ${req.walk_hours_per_day || 0}</p>
+          <p class="small">Veces paseo/día: ${req.walk_times_per_day || 0}</p>
+          <p class="small">Notas: ${req.notes || "-"}</p>
+          <button class="green" onclick="openHotelOffer('${req.id}')">Enviar oferta</button>
+        `;
+        $("providerHotelRequestsList").appendChild(card);
+      }
+
+      go("providerHotelRequestsScreen");
+    }
+
+    async function openHotelOffer(requestId) {
+      selectedHotelRequest = requestId;
+
+      const { data: req } = await supabaseClient
+        .from("hotel_requests")
+        .select("*")
+        .eq("id", requestId)
+        .single();
+
+      const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
+      const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
+
+      $("hotelOfferInfo").innerHTML = `
+        <p><b>${dog?.name || "Perro"}</b></p>
+        ${dogPhoto ? `<img src="${dogPhoto}" class="wide-photo">` : ""}
+        <p class="small">Check-in: ${req.check_in_date}</p>
+        <p class="small">Check-out: ${req.check_out_date}</p>
+        <p class="small">Horas paseo/día: ${req.walk_hours_per_day || 0}</p>
+        <p class="small">Veces paseo/día: ${req.walk_times_per_day || 0}</p>
+        <p class="small">Notas: ${req.notes || "-"}</p>
+      `;
+
+      $("hotelOfferPriceInput").value = "";
+      $("hotelOfferMessageInput").value = "";
+      showMsg("hotelOfferMsg", "");
+      go("sendHotelOfferScreen");
+    }
+
+    async function sendHotelOffer() {
+      const price = Number($("hotelOfferPriceInput").value || 0);
+      const message = $("hotelOfferMessageInput").value.trim();
+
+      if (!selectedHotelRequest) {
+        showMsg("hotelOfferMsg", "Selecciona una solicitud");
+        return;
+      }
+
+      if (!price || price <= 0) {
+        showMsg("hotelOfferMsg", "Tarifa inválida");
+        return;
+      }
+
+      const { data: req, error: reqError } = await supabaseClient
+        .from("hotel_requests")
+        .select("*")
+        .eq("id", selectedHotelRequest)
+        .single();
+
+      if (reqError || !req) {
+        showMsg("hotelOfferMsg", "No se pudo cargar la solicitud");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("hotel_offers")
+        .insert({
+          request_id: selectedHotelRequest,
+          hotel_user_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          offered_price_per_day: price,
+          status: "pending",
+          message
+        });
+
+      if (error) {
+        showMsg("hotelOfferMsg", error.message);
+        return;
+      }
+
+      await createNotification(req.owner_id, "Nueva oferta de hotel", `Recibiste una oferta de hotel por S/${price} al día.`);
+      showMsg("hotelOfferMsg", "Oferta enviada");
+      setTimeout(() => go("providerHotelRequestsScreen"), 700);
+    }
+
+    async function loadWalkerCredits() {
+      const { data } = await supabaseClient
+        .from("provider_wallets")
+        .select("balance")
+        .eq("user_id", currentUser.id)
+        .eq("provider_type", "walker")
+        .maybeSingle();
+
+      const balance = data?.balance || 0;
+      $("walkerCredits").textContent = balance;
+      $("maxTariffText").textContent = `Tarifa máxima: S/${balance * 10}`;
+    }
+
+    async function loadHotelCredits() {
+      const { data } = await supabaseClient
+        .from("provider_wallets")
+        .select("balance")
+        .eq("user_id", currentUser.id)
+        .eq("provider_type", "hotel")
+        .maybeSingle();
+
+      $("hotelCredits").textContent = data?.balance || 0;
+    }
+
+    async function sendCreditOrder() {
+      const amount = Number($("creditsAmount").value || 0);
+      const file = $("paymentProof").files?.[0];
+
+      if (!amount || amount < 5) {
+        showMsg("buyCreditsMsg", "La compra mínima es 5");
+        return;
+      }
+
+      if (!file) {
+        showMsg("buyCreditsMsg", "Sube el comprobante");
+        return;
+      }
+
+      const proofUrl = await uploadSelectedFile(file, "payment-proofs");
+      if (!proofUrl) {
+        showMsg("buyCreditsMsg", "No se pudo subir el comprobante");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("credit_orders")
+        .insert({
+          walker_id: currentUser.id,
+          amount,
+          credits: amount,
+          status: "pending",
+          payment_proof_url: proofUrl,
+          provider_type: "walker"
+        });
+
+      if (error) {
+        showMsg("buyCreditsMsg", error.message);
+        return;
+      }
+
+      await sendTelegramAlert(currentProfile?.name || "Usuario", currentProfile?.country || "peru", amount, proofUrl);
+      await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.");
+      showMsg("buyCreditsMsg", "Comprobante enviado");
+      setTimeout(() => go("providerHomeScreen"), 700);
+    }
+
+    async function sendTelegramAlert(name, country, amount, proofUrl) {
+      try {
+        await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-telegram-alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walkerName: name,
+            country,
+            amount,
+            proofUrl
+          })
+        });
+      } catch {}
+    }
+
+    async function createNotification(userId, title, message) {
+      try {
+        await supabaseClient.from("notifications").insert({
+          user_id: userId,
+          title,
+          message,
+          read: false
+        });
+      } catch {}
+    }
+
+    async function loadNotifications() {
+      const { data } = await supabaseClient
+        .from("notifications")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      $("notificationsList").innerHTML = "";
+
+      if (!data || !data.length) {
+        $("notificationsList").innerHTML = `<p class="small">No tienes notificaciones.</p>`;
+        return;
+      }
+
+      data.forEach(n => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>${n.title || "-"}</b></p>
+          <p class="small">${n.message || ""}</p>
+        `;
+        $("notificationsList").appendChild(div);
+      });
+    }
+
+    function openNotificationsScreen() {
+      loadNotifications();
+      go("notificationsScreen");
+    }
+
+    function goBackFromNotifications() {
+      if (currentProfile?.role === "owner") go("ownerHomeScreen");
+      else go("providerHomeScreen");
+    }
+
+    async function markAllNotificationsRead() {
+      await supabaseClient.from("notifications").update({ read: true }).eq("user_id", currentUser.id);
+      loadNotifications();
+    }
+
+    function subscribeNotifications() {
+      if (!currentUser) return;
+      if (notificationsChannel) supabaseClient.removeChannel(notificationsChannel);
+
+      notificationsChannel = supabaseClient
+        .channel("notifications-channel")
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUser.id}`
+        }, () => {
+          if ($("notificationsScreen").classList.contains("active")) loadNotifications();
+        })
+        .subscribe();
+    }
+
+    function subscribeRequestsRealtime() {
+      if (requestsChannel) supabaseClient.removeChannel(requestsChannel);
+
+      requestsChannel = supabaseClient
+        .channel("requests-channel")
+        .on("postgres_changes", { event: "*", schema: "public", table: "walk_requests" }, async () => {
+          if (currentProfile?.role === "owner") renderOwnerHomeMap();
+          if (currentProfile?.role === "walker") {
+            if ($("walkerMapScreen").classList.contains("active")) loadNearbyRequests();
+            renderProviderHomeMap();
+          }
+        })
+        .subscribe();
+    }
+
+    function subscribeOffersRealtime() {
+      if (offersChannel) supabaseClient.removeChannel(offersChannel);
+
+      offersChannel = supabaseClient
+        .channel("offers-channel")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
+          if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
+            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
+          }
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
+          if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
+            await createNotification(currentUser.id, "Nueva oferta de hotel", `Recibiste una oferta por S/${offer.offered_price_per_day} al día.`);
+          }
+        })
+        .subscribe();
+    }
+
+    function formatTimerSeconds(totalSeconds) {
+      const safe = Math.max(0, Number(totalSeconds || 0));
+      const m = Math.floor(safe / 60);
+      const s = safe % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function stopWalkTimer() {
+      if (walkTimerInterval) {
+        clearInterval(walkTimerInterval);
+        walkTimerInterval = null;
+      }
+    }
+
+    function startWalkTimerFromDate(dateValue, requestedMinutesValue = 0) {
+      stopWalkTimer();
+      requestedWalkMinutes = Number(requestedMinutesValue || 0);
+
+      if (!dateValue) {
+        $("walkTimerDisplay").textContent = "00:00";
+        $("walkTimerStatus").textContent = "Esperando inicio";
+        $("walkTimerDisplay").classList.remove("timer-over");
+        return;
+      }
+
+      walkStartedAt = new Date(dateValue);
+
+      const render = () => {
+        const elapsed = Math.floor((new Date() - walkStartedAt) / 1000);
+        const elapsedMin = Math.floor(elapsed / 60);
+
+        $("walkTimerDisplay").textContent = formatTimerSeconds(elapsed);
+
+        if (requestedWalkMinutes > 0) {
+          if (elapsedMin >= requestedWalkMinutes) {
+            $("walkTimerStatus").textContent = `Tiempo excedido. Contratado: ${requestedWalkMinutes} min`;
+            $("walkTimerDisplay").classList.add("timer-over");
+          } else {
+            $("walkTimerStatus").textContent = `Restan aprox. ${requestedWalkMinutes - elapsedMin} min`;
+            $("walkTimerDisplay").classList.remove("timer-over");
+          }
+        } else {
+          $("walkTimerStatus").textContent = "Paseo en curso";
+          $("walkTimerDisplay").classList.remove("timer-over");
+        }
+      };
+
+      render();
+      walkTimerInterval = setInterval(render, 1000);
+    }
+
+    async function ensureLiveMap() {
+      if (!liveMap) {
+        liveMap = new mapboxgl.Map({
+          container: "liveMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 15
+        });
+
+        liveMap.on("load", () => {
+          if (!liveMap.getSource("walk-route")) {
+            liveMap.addSource("walk-route", {
+              type: "geojson",
+              data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
+            });
+
+            liveMap.addLayer({
+              id: "walk-route-line",
+              type: "line",
+              source: "walk-route",
+              paint: { "line-color": "#2e86de", "line-width": 4 },
+              layout: { "line-join": "round", "line-cap": "round" }
+            });
+          }
+        });
+      }
+      liveMap.resize();
+    }
+
+    async function openLiveWalk(walkId, role) {
+      selectedWalk = walkId;
+      selectedHotelBooking = null;
+
+      const { data: walk, error } = await supabaseClient
+        .from("walks")
+        .select("*")
+        .eq("id", walkId)
+        .single();
+
+      if (error || !walk) {
+        alert("No se pudo abrir el paseo");
+        return;
+      }
+
+      const dogs = await getWalkDogsWithPhotos(walkId, walk.owner_id);
+
+      let requestedTime = 0;
+      const { data: req } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("owner_id", walk.owner_id)
+        .eq("walker_id", walk.walker_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      requestedTime = req?.time || 0;
+
+      $("liveWalkInfo").innerHTML = `
+        <p><b>Paseador:</b> ${walk.walker_id}</p>
+        <p><b>Perros:</b> ${dogs.map(d => d.name).join(", ") || "-"}</p>
+        <p><b>Tarifa:</b> S/${walk.price || "-"}</p>
+        <p><b>Tiempo solicitado:</b> ${requestedTime} min</p>
+        <p><b>Estado:</b> ${walk.status || "-"}</p>
+        ${buildDogsHtml(dogs)}
+      `;
+
+      await ensureLiveMap();
+
+      if (!liveOwnerMarker) liveOwnerMarker = createEmojiMarker("📍").addTo(liveMap);
+      if (!liveWalkerMarker) liveWalkerMarker = createEmojiMarker("🚶").addTo(liveMap);
+      if (!liveDogMarker) liveDogMarker = createEmojiMarker("🐕").addTo(liveMap);
+
+      if (ownerLat != null && ownerLng != null) {
+        liveOwnerMarker.setLngLat([ownerLng, ownerLat]);
+      }
+
+      const ownerVisible = role === "owner";
+      $("ownerPinCard").classList.toggle("hidden", !ownerVisible);
+      $("walkerPinCard").classList.toggle("hidden", ownerVisible);
+
+      if (ownerVisible) {
+        $("pickupPinDisplay").textContent = walk.pickup_pin || "------";
+      }
+
+      const { data: latest } = await supabaseClient
+        .from("walk_locations")
+        .select("*")
+        .eq("walk_id", walkId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (latest && latest.length > 0) {
+        liveWalkerMarker.setLngLat([Number(latest[0].lng), Number(latest[0].lat)]);
+        liveDogMarker.setLngLat([Number(latest[0].lng), Number(latest[0].lat)]);
+        liveMap.setCenter([Number(latest[0].lng), Number(latest[0].lat)]);
+      }
+
+      if (walk.dog_received_at) {
+        startWalkTimerFromDate(walk.dog_received_at, requestedTime);
+      } else {
+        stopWalkTimer();
+        $("walkTimerDisplay").textContent = "00:00";
+        $("walkTimerStatus").textContent = "Esperando recojo";
+      }
+
+      if (currentProfile?.role === "walker" && walk.walker_id === currentUser.id) {
+        startLiveWalkTracking();
+      }
+
+      if (liveWalkInterval) clearInterval(liveWalkInterval);
+      liveWalkInterval = setInterval(loadLiveWalkPosition, 4000);
+
+      go("liveWalkScreen");
+    }
+
+    async function loadLiveWalkPosition() {
+      if (!selectedWalk || !liveMap) return;
+
+      const { data } = await supabaseClient
+        .from("walk_locations")
+        .select("*")
+        .eq("walk_id", selectedWalk)
+        .order("created_at", { ascending: true });
+
+      if (!data || !data.length) return;
+
+      const last = data[data.length - 1];
+      liveWalkerMarker?.setLngLat([Number(last.lng), Number(last.lat)]);
+      liveDogMarker?.setLngLat([Number(last.lng), Number(last.lat)]);
+
+      if (liveMap.getSource("walk-route")) {
+        liveMap.getSource("walk-route").setData({
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: data.map(p => [Number(p.lng), Number(p.lat)])
+          }
+        });
+      }
+    }
+
+    function startLiveWalkTracking() {
+      if (!navigator.geolocation) return;
+
+      if (walkTrackWatchId) navigator.geolocation.clearWatch(walkTrackWatchId);
+
+      walkTrackWatchId = navigator.geolocation.watchPosition(async pos => {
+        if (!selectedWalk) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        liveWalkerMarker?.setLngLat([lng, lat]);
+        liveDogMarker?.setLngLat([lng, lat]);
+
+        await supabaseClient.from("walk_locations").insert({
+          walk_id: selectedWalk,
+          walker_id: currentUser.id,
+          lat,
+          lng
+        });
+
+        providerLat = lat;
+        providerLng = lng;
+        await upsertWalkerLocation(lat, lng);
+      }, () => {}, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 3000
+      });
+    }
+
+    async function verifyPickupPin() {
+      const pin = $("pickupPinInput").value.trim();
+      if (!pin || !selectedWalk) return;
+
+      const { data } = await supabaseClient.from("walks").select("*").eq("id", selectedWalk).single();
+      if (!data) return;
+
+      if (data.pickup_pin !== pin) {
+        alert("PIN incorrecto");
+        return;
+      }
+
+      const nowIso = new Date().toISOString();
+
+      await supabaseClient.from("walks").update({
+        dog_received: true,
+        dog_received_at: nowIso
+      }).eq("id", selectedWalk);
+
+      startWalkTimerFromDate(nowIso, requestedWalkMinutes);
+      alert("Recojo confirmado");
+    }
+
+    async function verifyDropoffPin() {
+      const pin = $("dropoffPinInput").value.trim();
+      if (!pin || !selectedWalk) return;
+
+      const { data } = await supabaseClient.from("walks").select("*").eq("id", selectedWalk).single();
+      if (!data) return;
+
+      if (data.dropoff_pin !== pin) {
+        alert("PIN incorrecto");
+        return;
+      }
+
+      await supabaseClient.from("walks").update({
+        dog_returned: true,
+        dog_returned_at: new Date().toISOString(),
+        status: "completed"
+      }).eq("id", selectedWalk);
+
+      stopWalkTimer();
+      $("walkTimerStatus").textContent = "Paseo finalizado";
+      alert("Devolución confirmada");
+      finishWalk();
+    }
+
+    async function finishWalk() {
+      if (!selectedWalk) {
+        alert("No hay paseo activo");
+        return;
+      }
+
+      const { error } = await supabaseClient.rpc("finish_walk", { walk_id: selectedWalk });
+
+      if (error) {
+        await supabaseClient.from("walks").update({
+          status: "completed",
+          end_time: new Date().toISOString()
+        }).eq("id", selectedWalk);
+      }
+
+      if (walkTrackWatchId) {
+        navigator.geolocation.clearWatch(walkTrackWatchId);
+        walkTrackWatchId = null;
+      }
+
+      if (liveWalkInterval) {
+        clearInterval(liveWalkInterval);
+        liveWalkInterval = null;
+      }
+
+      stopWalkTimer();
+      $("walkTimerStatus").textContent = "Paseo finalizado";
+      alert("Paseo finalizado");
+      goBackFromLiveWalk();
+    }
+
+    function goBackFromLiveWalk() {
+      stopWalkTimer();
+      $("walkTimerDisplay").textContent = "00:00";
+      $("walkTimerStatus").textContent = "Esperando inicio";
+      $("walkTimerDisplay").classList.remove("timer-over");
+
+      if (currentProfile?.role === "owner") go("ownerHomeScreen");
+      else go("providerHomeScreen");
+    }
+
+    async function openChatForWalk(walkId) {
+      const { data: room } = await supabaseClient
+        .from("chat_rooms")
+        .select("*")
+        .eq("walk_id", walkId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!room) {
+        alert("No se encontró chat activo");
+        return;
+      }
+
+      currentChatRoom = room;
+      currentChatOrigin = "walk";
+      $("chatSubtitle").textContent = "Chat del paseo";
+      await enterChatRoom(room);
+    }
+
+    async function openChatForHotelBooking(bookingId) {
+      const { data: room } = await supabaseClient
+        .from("chat_rooms")
+        .select("*")
+        .eq("hotel_booking_id", bookingId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!room) {
+        alert("No se encontró chat activo");
+        return;
+      }
+
+      currentChatRoom = room;
+      currentChatOrigin = "hotel";
+      $("chatSubtitle").textContent = "Chat de hotel";
+      await enterChatRoom(room);
+    }
+
+    async function enterChatRoom(room) {
+      if (chatMessagesChannel) {
+        supabaseClient.removeChannel(chatMessagesChannel);
+        chatMessagesChannel = null;
+      }
+
+      currentChatRoom = room;
+      await loadChatMessages();
+
+      chatMessagesChannel = supabaseClient
+        .channel("chat-room-" + room.id)
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `room_id=eq.${room.id}`
+        }, () => {
+          loadChatMessages();
+        })
+        .subscribe();
+
+      go("chatScreen");
+    }
+
+    async function loadChatMessages() {
+      if (!currentChatRoom) return;
+
+      const { data } = await supabaseClient
+        .from("chat_messages")
+        .select("*")
+        .eq("room_id", currentChatRoom.id)
+        .order("created_at", { ascending: true });
+
+      $("chatMessages").innerHTML = "";
+
+      if (!data || !data.length) {
+        $("chatMessages").innerHTML = `<p class="small">No hay mensajes todavía.</p>`;
+        return;
+      }
+
+      data.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = `bubble ${msg.sender_id === currentUser.id ? "me" : "them"}`;
+        div.textContent = msg.message || "";
+        $("chatMessages").appendChild(div);
+      });
+
+      $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      const message = $("chatMessageInput").value.trim();
+      if (!currentChatRoom || !message) return;
+
+      const { error } = await supabaseClient.from("chat_messages").insert({
+        room_id: currentChatRoom.id,
+        sender_id: currentUser.id,
+        message
+      });
+
+      if (!error) $("chatMessageInput").value = "";
+    }
+
+    function goBackFromChat() {
+      if (currentChatOrigin === "walk") go("liveWalkScreen");
+      else if (currentChatOrigin === "hotel") go("ownerHomeScreen");
+      else if (currentProfile?.role === "owner") go("ownerHomeScreen");
+      else go("providerHomeScreen");
+    }
+
+    async function openChatFromCurrentService() {
+      if (selectedWalk) {
+        await openChatForWalk(selectedWalk);
+      } else if (selectedHotelBooking) {
+        await openChatForHotelBooking(selectedHotelBooking);
+      }
+    }
+
+    function ensureBarkAudioContext() {
+      if (!barkAudioContext) {
+        barkAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return barkAudioContext;
+    }
+
+    async function barkOnce(duration = 0.18) {
+      const ctx = ensureBarkAudioContext();
+      if (ctx.state === "suspended") await ctx.resume();
+
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc1.type = "sawtooth";
+      osc2.type = "square";
+      osc1.frequency.setValueAtTime(180, now);
+      osc2.frequency.setValueAtTime(110, now);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(900, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + duration);
+      osc2.stop(now + duration);
+    }
+
+    async function playIncomingBark() {
+      await barkOnce(0.18);
+      await sleep(160);
+      await barkOnce(0.18);
+    }
+
+    async function startIncomingRingtone() {
+      if (incomingBarkInterval) return;
+      await playIncomingBark();
+
+      incomingBarkInterval = setInterval(async () => {
+        await barkOnce(0.18);
+        await sleep(140);
+        await barkOnce(0.18);
+        await sleep(160);
+        await barkOnce(0.20);
+      }, 3000);
+    }
+
+    function stopIncomingRingtone() {
+      if (incomingBarkInterval) {
+        clearInterval(incomingBarkInterval);
+        incomingBarkInterval = null;
+      }
+    }
+
+    async function joinCallChannel(roomId) {
+      if (callChannel) {
+        await supabaseClient.removeChannel(callChannel);
+        callChannel = null;
+      }
+
+      callChannel = supabaseClient.channel("call-" + roomId);
+
+      callChannel
+        .on("broadcast", { event: "signal" }, async ({ payload }) => {
+          if (!payload || payload.senderId === callPeerId) return;
+
+          if (payload.type === "offer") {
+            currentCallType = payload.callType || "video";
+            await startIncomingRingtone();
+            $("callStatusText").textContent = `Llamada entrante (${currentCallType})`;
+            await receiveAppOffer(payload.offer, currentCallType);
+          }
+
+          if (payload.type === "answer") {
+            stopIncomingRingtone();
+            if (callPc) {
+              await callPc.setRemoteDescription(payload.answer);
+              $("callStatusText").textContent = "Conectando...";
+            }
+          }
+
+          if (payload.type === "ice-candidate") {
+            if (callPc && payload.candidate) {
+              await callPc.addIceCandidate(payload.candidate);
+            }
+          }
+
+          if (payload.type === "hangup") {
+            stopIncomingRingtone();
+            cleanupCallPeer(false);
+            $("callStatusText").textContent = "La otra persona colgó";
+            setTimeout(() => {
+              $("callSheet").classList.remove("active");
+            }, 900);
+          }
+        });
+
+      await callChannel.subscribe();
+    }
+
+    async function ensureCallMedia(mode = "video") {
+      if (callLocalStream) {
+        callLocalStream.getTracks().forEach(t => t.stop());
+        callLocalStream = null;
+      }
+
+      callLocalStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: mode === "video"
+      });
+
+      $("callLocalVideo").srcObject = callLocalStream;
+      callMicEnabled = true;
+      callCamEnabled = mode === "video";
+      currentCallType = mode;
+    }
+
+    function createCallPeer() {
+      cleanupCallPeer(false);
+
+      callRemoteStream = new MediaStream();
+      callPc = new RTCPeerConnection(TURN_CONFIG);
+
+      callPc.ontrack = (event) => {
+        event.streams[0].getTracks().forEach(track => callRemoteStream.addTrack(track));
+        $("callRemoteVideo").srcObject = callRemoteStream;
+        $("callStatusText").textContent = "Llamada conectada";
+        stopIncomingRingtone();
+      };
+
+      callPc.onicecandidate = async (event) => {
+        if (!event.candidate || !callChannel) return;
+
+        await callChannel.send({
+          type: "broadcast",
+          event: "signal",
+          payload: {
+            type: "ice-candidate",
+            candidate: event.candidate,
+            senderId: callPeerId
+          }
+        });
+      };
+
+      callPc.oniceconnectionstatechange = () => {
+        console.log("ICE state:", callPc.iceConnectionState);
+      };
+
+      callPc.onconnectionstatechange = () => {
+        console.log("Connection state:", callPc.connectionState);
+        if (callPc.connectionState === "connected") {
+          $("callStatusText").textContent = "Llamada conectada";
+        }
+      };
+
+      callPc.onicecandidateerror = (event) => {
+        console.log("ICE error:", event);
+      };
+
+      if (callLocalStream) {
+        callLocalStream.getTracks().forEach(track => callPc.addTrack(track, callLocalStream));
+      }
+    }
+
+    function cleanupCallPeer(clearRemote = true) {
+      if (callPc) {
+        try { callPc.close(); } catch {}
+        callPc = null;
+      }
+
+      if (clearRemote) {
+        $("callRemoteVideo").srcObject = null;
+        callRemoteStream = null;
+      }
+    }
+
+    async function startAppCall(mode) {
+      if (!currentChatRoom) {
+        alert("Primero abre el chat");
+        return;
+      }
+
+      $("callSheet").classList.add("active");
+      $("callStatusText").textContent = mode === "video" ? "Iniciando videollamada..." : "Iniciando llamada...";
+      await joinCallChannel(currentChatRoom.id);
+      await ensureCallMedia(mode);
+      createCallPeer();
+
+      const offer = await callPc.createOffer();
+      await callPc.setLocalDescription(offer);
+
+      await callChannel.send({
+        type: "broadcast",
+        event: "signal",
+        payload: {
+          type: "offer",
+          offer: callPc.localDescription,
+          callType: mode,
+          senderId: callPeerId
+        }
+      });
+    }
+
+    async function receiveAppOffer(offer, mode = "video") {
+      $("callSheet").classList.add("active");
+      await joinCallChannel(currentChatRoom.id);
+      stopIncomingRingtone();
+      await ensureCallMedia(mode);
+      createCallPeer();
+
+      await callPc.setRemoteDescription(offer);
+      const answer = await callPc.createAnswer();
+      await callPc.setLocalDescription(answer);
+
+      await callChannel.send({
+        type: "broadcast",
+        event: "signal",
+        payload: {
+          type: "answer",
+          answer: callPc.localDescription,
+          senderId: callPeerId
+        }
+      });
+
+      $("callStatusText").textContent = "Conectando...";
+    }
+
+    async function hangupAppCall(silent = false) {
+      stopIncomingRingtone();
+
+      if (!silent && callChannel) {
+        await callChannel.send({
+          type: "broadcast",
+          event: "signal",
+          payload: {
+            type: "hangup",
+            senderId: callPeerId
+          }
+        });
+      }
+
+      cleanupCallPeer(true);
+
+      if (callLocalStream) {
+        callLocalStream.getTracks().forEach(t => t.stop());
+        callLocalStream = null;
+      }
+
+      $("callLocalVideo").srcObject = null;
+      $("callSheet").classList.remove("active");
+      $("callStatusText").textContent = "Conectando...";
+    }
+
+    function toggleCallMic() {
+      if (!callLocalStream) return;
+      callMicEnabled = !callMicEnabled;
+      callLocalStream.getAudioTracks().forEach(t => t.enabled = callMicEnabled);
+    }
+
+    function toggleCallCam() {
+      if (!callLocalStream) return;
+      const tracks = callLocalStream.getVideoTracks();
+      if (!tracks.length) return;
+      callCamEnabled = !callCamEnabled;
+      tracks.forEach(t => t.enabled = callCamEnabled);
+    }
+  </script>
+</body>
+</html>
