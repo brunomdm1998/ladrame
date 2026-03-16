@@ -1,0 +1,25 @@
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyD9L3huvvYNiKbpC1NUwoMpY0D3XhTjqMQ",
+  authDomain: "ladrame-95d90.firebaseapp.com",
+  projectId: "ladrame-95d90",
+  storageBucket: "ladrame-95d90.firebasestorage.app",
+  messagingSenderId: "214404716079",
+  appId: "1:214404716079:web:780f60acdba8b3903518da"
+});
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function(payload) {
+
+  const notificationTitle = payload.notification.title;
+
+  const notificationOptions = {
+    body: payload.notification.body
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+
+});
