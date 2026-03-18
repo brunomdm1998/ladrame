@@ -88,6 +88,7 @@
     }
     .splash-logo{
       width:min(500px,75vw);
+      object-fit:contain;
       filter:drop-shadow(0 24px 28px rgba(0,0,0,.10));
       animation:floatLogo 3s ease-in-out infinite;
     }
@@ -144,7 +145,7 @@
     .brand{
       display:flex;
       align-items:center;
-      gap:14px;
+      gap:8px; /* antes más separado */
       font-size:22px;
       font-weight:900;
       letter-spacing:-.4px;
@@ -154,12 +155,15 @@
       height:110px;
       object-fit:contain;
       filter:drop-shadow(0 8px 14px rgba(0,0,0,.08));
+      flex:0 0 auto;
+      margin-right:-6px; /* acerca más el texto al logo */
     }
     .brand-word{
       display:flex;
       align-items:center;
-      gap:6px;
+      gap:3px; /* antes más separado entre palabras */
       line-height:1;
+      margin-left:-2px;
     }
     nav{
       display:flex;
@@ -298,7 +302,7 @@
       height:44px;
       border-radius:50%;
       background:radial-gradient(circle, rgba(217,165,118,.22) 0%, rgba(217,165,118,0) 72%);
-      bottom:92px;
+      bottom:110px;
       left:50%;
       transform:translateX(-50%);
     }
@@ -308,27 +312,31 @@
       display:flex;
       flex-direction:column;
       align-items:center;
-      gap:16px;
+      gap:8px; /* antes muy separado */
+      margin-top:-6px;
     }
     .hero-logo{
       width:min(600px,95%);
       object-fit:contain;
       filter:drop-shadow(0 28px 36px rgba(0,0,0,.12));
       animation:floatLogo 3.2s ease-in-out infinite;
+      margin-bottom:-4px; /* acerca texto al logo */
     }
     .hero-brand{
-      font-size:34px;
+      font-size:32px;
       font-weight:900;
       letter-spacing:-.8px;
       line-height:1;
       text-align:center;
+      margin-top:0;
     }
     .hero-note{
-      max-width:360px;
+      max-width:320px;
       text-align:center;
       color:var(--muted);
-      line-height:1.65;
-      font-size:15px;
+      line-height:1.6;
+      font-size:14px;
+      margin-top:6px;
     }
 
     /* FEATURE STRIP */
@@ -500,12 +508,17 @@
       .feature-grid,.cards{grid-template-columns:1fr 1fr}
       .steps{grid-template-columns:1fr 1fr}
       .hero-right{min-height:400px}
+      .brand-mark{
+        width:84px;
+        height:84px;
+        margin-right:-2px;
+      }
     }
     @media (max-width:720px){
       .container{width:min(1180px,calc(100% - 24px))}
       nav a.link{display:none}
-      .brand{font-size:20px}
-      .brand-mark{width:42px;height:42px}
+      .brand{font-size:20px;gap:6px}
+      .brand-mark{width:64px;height:64px;margin-right:0}
       .header-inner{min-height:74px}
       .hero{padding-top:30px}
       .hero-left h1{font-size:34px;letter-spacing:-.8px}
@@ -514,11 +527,12 @@
       .section-head h2,.cta h2{font-size:26px}
       .splash-brand{font-size:34px}
       .splash-copy{font-size:14px}
-      .splash-logo{width:min(180px,50vw)}
-      .hero-logo{width:250px}
+      .splash-logo{width:min(320px,82vw)}
+      .hero-logo{width:min(420px,96%)}
       .hero-brand{font-size:28px}
       .hero-note{font-size:13px}
       .hero-right{min-height:340px;padding-bottom:60px}
+      .hero-logo-wrap{gap:6px}
     }
   </style>
 </head>
