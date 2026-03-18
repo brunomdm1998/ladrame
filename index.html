@@ -13,7 +13,6 @@
       --bg:#f7f3ed;
       --bg-soft:#fcfaf7;
       --surface:#ffffff;
-      --surface-2:#fbf7f1;
       --line:#eadccd;
       --text:#171717;
       --muted:#666;
@@ -150,15 +149,15 @@
     .brand{
       display:flex;
       align-items:center;
-      gap:12px;
+      gap:14px;
       font-size:22px;
       font-weight:900;
       letter-spacing:-.4px;
     }
     .brand-mark-wrap{
-      width:58px;
-      height:58px;
-      border-radius:16px;
+      width:78px;
+      height:78px;
+      border-radius:20px;
       background:linear-gradient(180deg,#fff7ef 0%,#fff2e5 100%);
       border:1px solid #f0ddc8;
       box-shadow:var(--shadow-md);
@@ -168,9 +167,16 @@
       flex:0 0 auto;
     }
     .brand-mark{
-      width:40px;
-      height:40px;
+      width:58px;
+      height:58px;
       object-fit:contain;
+      filter:drop-shadow(0 6px 10px rgba(0,0,0,.08));
+    }
+    .brand-text{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      line-height:1;
     }
     .brand .o{color:var(--orange)}
     .brand .d{color:#111}
@@ -569,7 +575,9 @@
         <span class="brand-mark-wrap">
           <img class="brand-mark" src="/logo.png" alt="Logo">
         </span>
-        <span class="o">LADRA</span><span class="d">ME</span>
+        <span class="brand-text">
+          <span class="o">LADRA</span><span class="d">ME</span>
+        </span>
       </a>
 
       <nav class="nav">
