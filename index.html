@@ -5,32 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LADRAME</title>
   <style>
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
     :root{
-      --bg:#fffdf9;
+      --bg:#fcfaf7;
+      --bg-soft:#f7f2ec;
       --surface:#ffffff;
-      --surface-2:#fff6ee;
-      --text:#161616;
+      --surface-2:#fbf6f0;
+      --text:#171717;
       --muted:#666;
-      --line:#f1e2d4;
+      --line:#eadccd;
       --orange:#ff7a00;
-      --orange-dark:#e46600;
-      --shadow:0 18px 50px rgba(0,0,0,.08);
-      --radius:24px;
+      --orange-dark:#e36400;
+      --shadow:0 20px 50px rgba(0,0,0,.08);
+      --radius:26px;
       --max:1180px;
     }
 
     body{
       margin:0;
-      font-family:Inter, Arial, sans-serif;
-      background:linear-gradient(180deg,#fffdf9 0%, #fff8f1 100%);
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, #fff4e8 0%, #fcfaf7 34%),
+        linear-gradient(180deg,#fcfaf7 0%, #f8f3ed 100%);
       color:var(--text);
     }
 
-    a{text-decoration:none;color:inherit}
+    a{ color:inherit; text-decoration:none; }
 
-    /* splash */
+    /* SPLASH */
     #splash{
       position:fixed;
       inset:0;
@@ -39,49 +43,68 @@
       align-items:center;
       justify-content:center;
       background:
-        radial-gradient(circle at top,#ffe4cb 0%,#fff4e9 38%,#fffdf9 80%);
-      transition:.6s ease;
+        radial-gradient(circle at top, #ffe6cf 0%, #fff5eb 38%, #fcfaf7 78%);
+      transition:opacity .6s ease, visibility .6s ease;
     }
+
     #splash.hide{
       opacity:0;
       visibility:hidden;
       pointer-events:none;
     }
-    .splash-box{text-align:center;padding:24px}
+
+    .splash-box{
+      text-align:center;
+      padding:24px;
+    }
+
     .splash-logo{
-      font-size:54px;
+      font-size:56px;
       font-weight:900;
       letter-spacing:.5px;
-      margin-bottom:8px;
+      margin:0 0 8px;
     }
-    .splash-logo .o{color:var(--orange)}
-    .splash-logo .b{color:#111}
+
+    .splash-logo .orange{ color:var(--orange); }
+    .splash-logo .dark{ color:#111; }
+
     .splash-sub{
       color:var(--muted);
       font-weight:700;
       margin-bottom:20px;
+      font-size:15px;
     }
+
     .splash-dog{
-      width:180px;
-      max-width:70vw;
-      animation:floatDog 1.8s ease-in-out infinite;
+      width:190px;
+      max-width:72vw;
+      animation:floatDog 2.2s ease-in-out infinite;
+      filter:drop-shadow(0 18px 28px rgba(0,0,0,.10));
     }
+
+    .loading{
+      margin-top:12px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
     .dots span{
       display:inline-block;
       animation:dots 1.2s infinite;
     }
-    .dots span:nth-child(2){animation-delay:.2s}
-    .dots span:nth-child(3){animation-delay:.4s}
+    .dots span:nth-child(2){ animation-delay:.2s; }
+    .dots span:nth-child(3){ animation-delay:.4s; }
 
-    /* nav */
+    /* NAV */
     .topbar{
       position:sticky;
       top:0;
-      z-index:50;
+      z-index:60;
       backdrop-filter:blur(10px);
-      background:rgba(255,253,249,.88);
+      background:rgba(252,250,247,.90);
       border-bottom:1px solid var(--line);
     }
+
     .topbar-inner{
       max-width:var(--max);
       margin:0 auto;
@@ -91,79 +114,91 @@
       justify-content:space-between;
       gap:20px;
     }
+
     .brand{
-      font-size:28px;
+      font-size:30px;
       font-weight:900;
-      letter-spacing:.3px;
+      letter-spacing:.2px;
     }
-    .brand .o{color:var(--orange)}
-    .brand .b{color:#111}
+
+    .brand .orange{ color:var(--orange); }
+    .brand .dark{ color:#111; }
+
     .nav{
       display:flex;
       align-items:center;
       gap:18px;
       flex-wrap:wrap;
     }
+
     .nav a.link{
       font-size:14px;
-      font-weight:700;
       color:#444;
+      font-weight:700;
     }
 
     .btn{
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      gap:8px;
       min-height:52px;
       padding:0 22px;
       border-radius:16px;
-      font-weight:900;
-      transition:.2s ease;
       border:none;
       cursor:pointer;
+      font-weight:900;
+      transition:.2s ease;
+      text-decoration:none;
     }
-    .btn:hover{transform:translateY(-1px)}
+
+    .btn:hover{
+      transform:translateY(-1px);
+    }
+
     .btn-primary{
       background:var(--orange);
       color:#fff;
-      box-shadow:0 14px 30px rgba(255,122,0,.22);
+      box-shadow:0 14px 28px rgba(255,122,0,.23);
     }
+
     .btn-secondary{
       background:#fff;
       color:var(--orange);
-      border:2px solid #ffd2ae;
+      border:2px solid #ffd2ad;
     }
 
-    /* hero */
+    /* HERO */
     .hero{
       max-width:var(--max);
       margin:0 auto;
-      padding:64px 20px 36px;
+      padding:66px 20px 38px;
       display:grid;
-      grid-template-columns:1.05fr .95fr;
+      grid-template-columns:1.04fr .96fr;
       gap:34px;
       align-items:center;
     }
+
     .eyebrow{
       display:inline-flex;
       align-items:center;
       gap:8px;
       background:#fff3e7;
-      border:1px solid #ffd8b8;
+      border:1px solid #ffd7b8;
       color:var(--orange-dark);
-      font-weight:800;
       border-radius:999px;
       padding:10px 14px;
       font-size:13px;
+      font-weight:800;
       margin-bottom:18px;
     }
+
     .hero h1{
       margin:0 0 16px;
-      font-size:64px;
+      font-size:66px;
       line-height:1.02;
-      letter-spacing:-1.6px;
+      letter-spacing:-1.7px;
     }
+
     .hero p{
       margin:0 0 26px;
       max-width:650px;
@@ -171,17 +206,20 @@
       line-height:1.65;
       font-size:20px;
     }
+
     .hero-actions{
       display:flex;
-      flex-wrap:wrap;
       gap:14px;
+      flex-wrap:wrap;
       margin-bottom:24px;
     }
+
     .hero-badges{
       display:flex;
       flex-wrap:wrap;
       gap:10px;
     }
+
     .badge{
       background:#fff;
       border:1px solid var(--line);
@@ -194,107 +232,145 @@
 
     .hero-visual{
       position:relative;
-      background:linear-gradient(180deg,#fffaf5 0%,#fff2e6 100%);
+      min-height:570px;
+      background:linear-gradient(180deg,#fffaf4 0%, #fff2e7 100%);
       border:1px solid var(--line);
-      border-radius:32px;
+      border-radius:34px;
       padding:22px;
       box-shadow:var(--shadow);
       overflow:hidden;
-      min-height:560px;
     }
-    .hero-glow{
+
+    .orb{
       position:absolute;
-      width:260px;
-      height:260px;
-      right:-40px;
-      top:-40px;
       border-radius:50%;
-      background:radial-gradient(circle,#ffd1a6 0%, rgba(255,209,166,0) 70%);
-      opacity:.55;
       pointer-events:none;
+      opacity:.7;
+      filter:blur(2px);
     }
+
+    .orb1{
+      width:180px;
+      height:180px;
+      top:-30px;
+      right:-20px;
+      background:radial-gradient(circle,#ffd6b0 0%, rgba(255,214,176,0) 72%);
+    }
+
+    .orb2{
+      width:120px;
+      height:120px;
+      left:-10px;
+      bottom:40px;
+      background:radial-gradient(circle,#ffe8d2 0%, rgba(255,232,210,0) 72%);
+    }
+
     .hero-card{
       position:relative;
       z-index:2;
-      background:#fff;
+      background:linear-gradient(180deg,#fff 0%, #fffaf5 100%);
       border:1px solid var(--line);
-      border-radius:26px;
+      border-radius:28px;
       padding:22px;
     }
-    .dog-wrap{
+
+    .dog-stage{
+      position:relative;
       display:flex;
-      justify-content:center;
       align-items:center;
-      padding:12px 0 8px;
+      justify-content:center;
+      min-height:330px;
+      padding:4px 0 10px;
     }
-    .dog-hero{
+
+    .hero-dog{
       width:100%;
-      max-width:360px;
-      filter:drop-shadow(0 16px 28px rgba(0,0,0,.08));
+      max-width:390px;
       animation:floatDog 3s ease-in-out infinite;
+      filter:drop-shadow(0 24px 30px rgba(0,0,0,.10));
     }
+
+    .glow-floor{
+      position:absolute;
+      bottom:18px;
+      width:220px;
+      height:26px;
+      border-radius:50%;
+      background:radial-gradient(circle,#ffdcbf 0%, rgba(255,220,191,0) 74%);
+      opacity:.9;
+    }
+
     .mini-grid{
-      margin-top:16px;
+      margin-top:14px;
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:12px;
     }
+
     .mini-box{
       background:var(--surface-2);
       border:1px solid var(--line);
       border-radius:18px;
       padding:16px;
+      min-height:92px;
+      color:#393939;
       font-size:15px;
       font-weight:800;
-      color:#383838;
-      min-height:92px;
+      line-height:1.4;
     }
 
-    /* sections */
+    /* SECTIONS */
     section{
       max-width:var(--max);
       margin:0 auto;
       padding:28px 20px 36px;
     }
+
     .section-title{
       margin:0 0 10px;
       font-size:38px;
-      letter-spacing:-.6px;
+      letter-spacing:-.7px;
     }
+
     .section-text{
       margin:0 0 24px;
       color:var(--muted);
       line-height:1.65;
-      max-width:760px;
       font-size:17px;
+      max-width:760px;
     }
+
     .cards{
       display:grid;
       grid-template-columns:repeat(3,1fr);
       gap:18px;
     }
+
     .card{
       background:#fff;
       border:1px solid var(--line);
-      border-radius:22px;
+      border-radius:24px;
       padding:22px;
-      box-shadow:0 12px 28px rgba(0,0,0,.035);
+      box-shadow:0 12px 26px rgba(0,0,0,.035);
     }
+
     .icon{
       width:52px;
       height:52px;
+      border-radius:16px;
       display:flex;
       align-items:center;
       justify-content:center;
-      border-radius:16px;
       background:#fff3e7;
-      font-size:24px;
       margin-bottom:14px;
+      font-size:24px;
     }
+
     .card h3{
       margin:0 0 10px;
       font-size:21px;
     }
+
     .card p{
       margin:0;
       color:var(--muted);
@@ -306,12 +382,14 @@
       grid-template-columns:repeat(4,1fr);
       gap:16px;
     }
+
     .step{
       background:#fff;
       border:1px solid var(--line);
       border-radius:22px;
       padding:22px;
     }
+
     .step-number{
       width:40px;
       height:40px;
@@ -324,23 +402,34 @@
       font-weight:900;
       margin-bottom:14px;
     }
-    .step h3{margin:0 0 10px;font-size:20px}
-    .step p{margin:0;color:var(--muted);line-height:1.6}
+
+    .step h3{
+      margin:0 0 10px;
+      font-size:20px;
+    }
+
+    .step p{
+      margin:0;
+      color:var(--muted);
+      line-height:1.6;
+    }
 
     .cta{
       margin-top:10px;
-      background:linear-gradient(180deg,#fff4e9 0%,#ffe7d2 100%);
-      border:1px solid #ffd6b3;
+      background:linear-gradient(180deg,#fff4e8 0%, #ffe7d3 100%);
+      border:1px solid #ffd6b2;
       border-radius:30px;
       padding:34px 24px;
       text-align:center;
       box-shadow:var(--shadow);
     }
+
     .cta h2{
       margin:0 0 10px;
       font-size:42px;
       letter-spacing:-.8px;
     }
+
     .cta p{
       margin:0 auto 22px;
       max-width:760px;
@@ -348,6 +437,7 @@
       line-height:1.65;
       font-size:17px;
     }
+
     .cta-actions{
       display:flex;
       gap:12px;
@@ -364,76 +454,139 @@
     }
 
     @keyframes floatDog{
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-8px)}
+      0%,100%{ transform:translateY(0); }
+      50%{ transform:translateY(-8px); }
     }
+
     @keyframes dots{
-      0%,80%,100%{opacity:.2;transform:translateY(0)}
-      40%{opacity:1;transform:translateY(-3px)}
+      0%,80%,100%{ opacity:.2; transform:translateY(0); }
+      40%{ opacity:1; transform:translateY(-3px); }
     }
 
     @media (max-width:1024px){
-      .hero{grid-template-columns:1fr}
-      .cards{grid-template-columns:1fr 1fr}
-      .how{grid-template-columns:1fr 1fr}
-      .hero h1{font-size:50px}
-      .hero-visual{min-height:auto}
+      .hero{
+        grid-template-columns:1fr;
+      }
+      .cards{
+        grid-template-columns:1fr 1fr;
+      }
+      .how{
+        grid-template-columns:1fr 1fr;
+      }
+      .hero h1{
+        font-size:50px;
+      }
+      .hero-visual{
+        min-height:auto;
+      }
     }
+
     @media (max-width:720px){
-      .nav .link{display:none}
-      .hero{padding-top:40px}
-      .hero h1{font-size:38px;letter-spacing:-1px}
-      .hero p{font-size:17px}
-      .cards,.how,.mini-grid{grid-template-columns:1fr}
-      .section-title{font-size:30px}
-      .cta h2{font-size:30px}
-      .topbar-inner{padding:14px 16px}
-      .brand{font-size:24px}
-      .splash-logo{font-size:42px}
+      .nav .link{
+        display:none;
+      }
+      .hero{
+        padding-top:40px;
+      }
+      .hero h1{
+        font-size:40px;
+        letter-spacing:-1px;
+      }
+      .hero p{
+        font-size:17px;
+      }
+      .cards,
+      .how,
+      .mini-grid{
+        grid-template-columns:1fr;
+      }
+      .section-title{
+        font-size:30px;
+      }
+      .cta h2{
+        font-size:30px;
+      }
+      .brand{
+        font-size:24px;
+      }
+      .topbar-inner{
+        padding:14px 16px;
+      }
+      .splash-logo{
+        font-size:42px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- SPLASH -->
   <div id="splash">
     <div class="splash-box">
-      <div class="splash-logo"><span class="o">LADRA</span><span class="b">ME</span></div>
+      <div class="splash-logo">
+        <span class="orange">LADRA</span><span class="dark">ME</span>
+      </div>
       <div class="splash-sub">Paseos y cuidado con seguimiento en vivo</div>
 
-      <svg class="splash-dog" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <ellipse cx="160" cy="282" rx="78" ry="16" fill="#ffe2c5"/>
+      <svg class="splash-dog" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="furA" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff9831"/>
+            <stop offset="100%" stop-color="#f17400"/>
+          </linearGradient>
+          <linearGradient id="furB" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fffaf5"/>
+            <stop offset="100%" stop-color="#f7efe8"/>
+          </linearGradient>
+          <linearGradient id="collar" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff8a12"/>
+            <stop offset="100%" stop-color="#e96500"/>
+          </linearGradient>
+        </defs>
+
+        <ellipse cx="190" cy="330" rx="86" ry="18" fill="#ffe3c8"/>
         <g>
-          <path d="M95 122 C78 88, 82 58, 112 48 C130 42, 148 56, 150 78 L138 132 Z" fill="#ff8d1f" stroke="#222" stroke-width="8" stroke-linejoin="round"/>
-          <path d="M225 122 C242 88, 238 58, 208 48 C190 42, 172 56, 170 78 L182 132 Z" fill="#ff8d1f" stroke="#222" stroke-width="8" stroke-linejoin="round"/>
-          <path d="M82 114 C82 68, 114 38, 160 38 C206 38, 238 68, 238 114 C238 162, 206 194, 160 194 C114 194, 82 162, 82 114 Z" fill="#fff9f3" stroke="#222" stroke-width="8"/>
-          <path d="M84 82 C108 58, 138 64, 144 92 C144 120, 126 136, 100 136 C90 136, 84 114, 84 82 Z" fill="#ff8d1f"/>
-          <ellipse cx="132" cy="116" rx="8" ry="11" fill="#202020"/>
-          <ellipse cx="188" cy="116" rx="8" ry="11" fill="#202020"/>
-          <ellipse cx="160" cy="142" rx="17" ry="13" fill="#1f1f1f"/>
-          <path d="M138 164 Q160 182 182 164" fill="none" stroke="#1f1f1f" stroke-width="8" stroke-linecap="round"/>
-          <path d="M149 165 Q160 186 171 165" fill="#ff7f96" stroke="#1f1f1f" stroke-width="4" stroke-linejoin="round"/>
-          <rect x="116" y="194" width="88" height="18" rx="9" fill="#ff7a00" stroke="#222" stroke-width="6"/>
-          <circle cx="160" cy="217" r="11" fill="#ffd45d" stroke="#222" stroke-width="5"/>
-          <path d="M108 206 C88 222, 84 244, 88 268 L110 268 C110 252, 110 230, 108 206 Z" fill="#fff9f3" stroke="#222" stroke-width="8"/>
-          <path d="M212 206 C232 222, 236 244, 232 268 L210 268 C210 252, 210 230, 212 206 Z" fill="#fff9f3" stroke="#222" stroke-width="8"/>
-          <path d="M132 204 C124 224, 124 244, 128 272 L148 272 C148 248, 148 226, 148 204 Z" fill="#fff9f3" stroke="#222" stroke-width="8"/>
-          <path d="M172 204 C180 224, 180 244, 192 272 L172 272 C172 248, 172 226, 172 204 Z" fill="#fff9f3" stroke="#222" stroke-width="8"/>
+          <path d="M108 130 C94 96, 104 70, 134 60 C158 52, 180 72, 180 101 L167 140 Z" fill="url(#furA)" stroke="#202020" stroke-width="8" stroke-linejoin="round"/>
+          <path d="M272 130 C286 96, 276 70, 246 60 C222 52, 200 72, 200 101 L213 140 Z" fill="url(#furA)" stroke="#202020" stroke-width="8" stroke-linejoin="round"/>
+          <path d="M102 136 C102 82, 140 48, 190 48 C240 48, 278 82, 278 136 C278 196, 238 238, 190 238 C142 238, 102 196, 102 136 Z" fill="url(#furB)" stroke="#202020" stroke-width="8"/>
+          <path d="M104 102 C134 72, 172 78, 178 110 C180 146, 154 170, 122 170 C110 170, 104 144, 104 102 Z" fill="url(#furA)"/>
+          <ellipse cx="160" cy="148" rx="9" ry="12" fill="#1f1f1f"/>
+          <ellipse cx="220" cy="148" rx="9" ry="12" fill="#1f1f1f"/>
+          <ellipse cx="190" cy="178" rx="22" ry="16" fill="#1e1e1e"/>
+          <path d="M160 202 Q190 226 220 202" fill="none" stroke="#1f1f1f" stroke-width="8" stroke-linecap="round"/>
+          <path d="M176 203 Q190 226 204 203" fill="#ff7d99" stroke="#1f1f1f" stroke-width="4" stroke-linejoin="round"/>
+          <rect x="140" y="238" width="100" height="20" rx="10" fill="url(#collar)" stroke="#202020" stroke-width="7"/>
+          <circle cx="190" cy="266" r="13" fill="#ffd35f" stroke="#202020" stroke-width="5"/>
+          <path d="M134 252 C112 270, 106 298, 112 322 L138 322 C138 302, 138 274, 134 252 Z" fill="url(#furB)" stroke="#202020" stroke-width="8"/>
+          <path d="M246 252 C268 270, 274 298, 268 322 L242 322 C242 302, 242 274, 246 252 Z" fill="url(#furB)" stroke="#202020" stroke-width="8"/>
+          <path d="M164 248 C156 274, 156 300, 162 328 L186 328 C186 300, 186 274, 186 248 Z" fill="url(#furB)" stroke="#202020" stroke-width="8"/>
+          <path d="M214 248 C222 274, 222 300, 234 328 L214 328 C214 300, 214 274, 214 248 Z" fill="url(#furB)" stroke="#202020" stroke-width="8"/>
         </g>
       </svg>
 
-      <div class="splash-sub">Cargando<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+      <div class="loading">
+        Cargando<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+      </div>
     </div>
   </div>
 
+  <!-- AUDIO -->
+  <audio id="barkAudio" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- NAV -->
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="#" class="brand"><span class="o">LADRA</span><span class="b">ME</span></a>
+      <a href="#" class="brand">
+        <span class="orange">LADRA</span><span class="dark">ME</span>
+      </a>
 
       <nav class="nav">
         <a class="link" href="#servicios">Servicios</a>
         <a class="link" href="#como-funciona">Cómo funciona</a>
         <a class="link" href="#confianza">Confianza</a>
-        <a class="link" href="#contacto">Experiencia</a>
+        <a class="link" href="#experiencia">Experiencia</a>
         <a href="/app/" class="btn btn-primary">Abrir app</a>
       </nav>
     </div>
@@ -443,7 +596,9 @@
     <section class="hero">
       <div>
         <div class="eyebrow">🐾 Plataforma para paseos y hospedaje canino</div>
+
         <h1>Tu perro cuidado con una experiencia más segura, moderna y en tiempo real.</h1>
+
         <p>
           LADRAME conecta dueños, paseadores y hoteles para perros con seguimiento en vivo, chat, llamadas, videollamadas, fotos y servicios más confiables.
         </p>
@@ -462,28 +617,72 @@
       </div>
 
       <div class="hero-visual">
-        <div class="hero-glow"></div>
+        <div class="orb orb1"></div>
+        <div class="orb orb2"></div>
 
         <div class="hero-card">
-          <div class="dog-wrap">
-            <svg class="dog-hero" viewBox="0 0 480 430" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <ellipse cx="240" cy="372" rx="120" ry="24" fill="#ffe7cf"/>
+          <div class="dog-stage">
+            <div class="glow-floor"></div>
+
+            <svg class="hero-dog" viewBox="0 0 520 470" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="gFur1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ff9d3a"/>
+                  <stop offset="100%" stop-color="#eb6f00"/>
+                </linearGradient>
+                <linearGradient id="gFur2" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#fffaf5"/>
+                  <stop offset="100%" stop-color="#f2e8de"/>
+                </linearGradient>
+                <linearGradient id="gEar" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ffa548"/>
+                  <stop offset="100%" stop-color="#e06a00"/>
+                </linearGradient>
+                <linearGradient id="gCollar" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ff8e1c"/>
+                  <stop offset="100%" stop-color="#df6200"/>
+                </linearGradient>
+                <radialGradient id="gFaceLight" cx="50%" cy="35%" r="60%">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="100%" stop-color="#f3ebe2"/>
+                </radialGradient>
+              </defs>
+
+              <ellipse cx="260" cy="410" rx="120" ry="24" fill="#ffe5ca"/>
+
               <g>
-                <path d="M148 160 C124 118, 128 82, 168 68 C194 58, 218 78, 220 104 L206 170 Z" fill="#ff9228" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
-                <path d="M332 160 C356 118, 352 82, 312 68 C286 58, 262 78, 260 104 L274 170 Z" fill="#ff9228" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
-                <path d="M128 148 C128 90, 170 54, 240 54 C310 54, 352 90, 352 148 C352 218, 308 262, 240 262 C172 262, 128 218, 128 148 Z" fill="#fffaf5" stroke="#1f1f1f" stroke-width="10"/>
-                <path d="M132 108 C164 76, 204 84, 212 122 C214 158, 188 182, 154 182 C140 182, 132 152, 132 108 Z" fill="#ff9228"/>
-                <ellipse cx="198" cy="156" rx="10" ry="14" fill="#1d1d1d"/>
-                <ellipse cx="282" cy="156" rx="10" ry="14" fill="#1d1d1d"/>
-                <ellipse cx="240" cy="192" rx="24" ry="18" fill="#1d1d1d"/>
-                <path d="M206 222 Q240 250 274 222" fill="none" stroke="#1d1d1d" stroke-width="10" stroke-linecap="round"/>
-                <path d="M224 224 Q240 252 256 224" fill="#ff8098" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
-                <rect x="174" y="264" width="132" height="24" rx="12" fill="#ff7a00" stroke="#1f1f1f" stroke-width="8"/>
-                <circle cx="240" cy="294" r="16" fill="#ffd45d" stroke="#1f1f1f" stroke-width="6"/>
-                <path d="M162 278 C136 300, 130 330, 136 360 L164 360 C164 338, 164 308, 162 278 Z" fill="#fffaf5" stroke="#1f1f1f" stroke-width="10"/>
-                <path d="M318 278 C344 300, 350 330, 344 360 L316 360 C316 338, 316 308, 318 278 Z" fill="#fffaf5" stroke="#1f1f1f" stroke-width="10"/>
-                <path d="M194 276 C184 304, 184 332, 190 366 L216 366 C216 334, 216 306, 216 276 Z" fill="#fffaf5" stroke="#1f1f1f" stroke-width="10"/>
-                <path d="M266 276 C276 304, 276 332, 292 366 L266 366 C266 334, 266 306, 266 276 Z" fill="#fffaf5" stroke="#1f1f1f" stroke-width="10"/>
+                <path d="M165 156 C140 110, 148 76, 188 62 C220 50, 248 76, 248 112 L230 176 Z" fill="url(#gEar)" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
+                <path d="M355 156 C380 110, 372 76, 332 62 C300 50, 272 76, 272 112 L290 176 Z" fill="url(#gEar)" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
+
+                <path d="M148 150 C148 90, 192 52, 260 52 C328 52, 372 90, 372 150 C372 226, 322 274, 260 274 C198 274, 148 226, 148 150 Z"
+                      fill="url(#gFaceLight)" stroke="#1f1f1f" stroke-width="10"/>
+
+                <path d="M152 108 C184 76, 224 82, 232 122 C234 164, 206 190, 170 190 C158 190, 152 158, 152 108 Z"
+                      fill="url(#gFur1)"/>
+
+                <ellipse cx="216" cy="166" rx="10" ry="14" fill="#1d1d1d"/>
+                <ellipse cx="302" cy="166" rx="10" ry="14" fill="#1d1d1d"/>
+
+                <ellipse cx="260" cy="206" rx="25" ry="19" fill="#1c1c1c"/>
+
+                <path d="M224 236 Q260 266 296 236" fill="none" stroke="#1d1d1d" stroke-width="10" stroke-linecap="round"/>
+                <path d="M243 238 Q260 266 277 238" fill="#ff8097" stroke="#1d1d1d" stroke-width="5" stroke-linejoin="round"/>
+
+                <path d="M196 262 C188 284, 188 302, 194 324 L326 324 C332 302, 332 284, 324 262 Z"
+                      fill="url(#gFur2)" stroke="#1f1f1f" stroke-width="8"/>
+
+                <rect x="184" y="274" width="152" height="26" rx="13" fill="url(#gCollar)" stroke="#1f1f1f" stroke-width="8"/>
+                <circle cx="260" cy="309" r="17" fill="#ffd45d" stroke="#1f1f1f" stroke-width="6"/>
+
+                <path d="M174 294 C146 318, 140 350, 146 394 L176 394 C176 366, 176 328, 174 294 Z"
+                      fill="url(#gFur2)" stroke="#1f1f1f" stroke-width="10"/>
+                <path d="M346 294 C374 318, 380 350, 374 394 L344 394 C344 366, 344 328, 346 294 Z"
+                      fill="url(#gFur2)" stroke="#1f1f1f" stroke-width="10"/>
+
+                <path d="M212 292 C202 324, 202 356, 210 402 L238 402 C238 362, 238 326, 238 292 Z"
+                      fill="url(#gFur2)" stroke="#1f1f1f" stroke-width="10"/>
+                <path d="M282 292 C292 324, 292 356, 310 402 L282 402 C282 362, 282 326, 282 292 Z"
+                      fill="url(#gFur2)" stroke="#1f1f1f" stroke-width="10"/>
               </g>
             </svg>
           </div>
@@ -510,26 +709,31 @@
           <h3>Paseos</h3>
           <p>Solicita paseos y recibe ofertas de paseadores cercanos para elegir la mejor opción.</p>
         </div>
+
         <div class="card">
           <div class="icon">🏨</div>
           <h3>Hospedaje</h3>
           <p>Encuentra hoteles caninos y reserva estadías por horas, días o semanas.</p>
         </div>
+
         <div class="card">
           <div class="icon">📍</div>
           <h3>Seguimiento</h3>
           <p>Consulta la ubicación del servicio en tiempo real para sentir más tranquilidad.</p>
         </div>
+
         <div class="card">
           <div class="icon">💬</div>
           <h3>Comunicación</h3>
           <p>Habla con el paseador u hotel desde la app con chat, llamadas y videollamadas.</p>
         </div>
+
         <div class="card">
           <div class="icon">📸</div>
           <h3>Actualizaciones</h3>
           <p>Recibe fotos y novedades del servicio para sentirte más cerca de tu perro.</p>
         </div>
+
         <div class="card">
           <div class="icon">🪪</div>
           <h3>Confianza</h3>
@@ -550,16 +754,19 @@
           <h3>Crea tu cuenta</h3>
           <p>Regístrate como dueño, paseador o proveedor de hospedaje.</p>
         </div>
+
         <div class="step">
           <div class="step-number">2</div>
           <h3>Publica o responde</h3>
           <p>Solicita un servicio o envía tu oferta si eres paseador u hotel.</p>
         </div>
+
         <div class="step">
           <div class="step-number">3</div>
           <h3>Confirma</h3>
           <p>Elige con más seguridad según perfil, comentarios y condiciones.</p>
         </div>
+
         <div class="step">
           <div class="step-number">4</div>
           <h3>Sigue todo en vivo</h3>
@@ -580,11 +787,13 @@
           <h3>Calificaciones</h3>
           <p>Consulta valoraciones y comentarios antes de tomar una decisión.</p>
         </div>
+
         <div class="card">
           <div class="icon">🐶</div>
           <h3>Perfil del perro</h3>
           <p>Guarda personalidad, tamaño, comportamiento y recomendaciones importantes.</p>
         </div>
+
         <div class="card">
           <div class="icon">🔐</div>
           <h3>Experiencia más segura</h3>
@@ -593,7 +802,7 @@
       </div>
     </section>
 
-    <section id="contacto">
+    <section id="experiencia">
       <div class="cta">
         <h2>Empieza hoy con LADRAME</h2>
         <p>
@@ -612,9 +821,31 @@
   </footer>
 
   <script>
-    setTimeout(() => {
-      document.getElementById("splash").classList.add("hide");
-    }, 1800);
+    const splash = document.getElementById("splash");
+    const barkAudio = document.getElementById("barkAudio");
+    let barkPlayed = false;
+
+    function playBarkOnce() {
+      if (barkPlayed || !barkAudio) return;
+      barkPlayed = true;
+      barkAudio.volume = 0.35;
+      barkAudio.play().catch(() => {
+        barkPlayed = false;
+      });
+    }
+
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        playBarkOnce();
+      }, 500);
+
+      setTimeout(() => {
+        splash.classList.add("hide");
+      }, 1800);
+    });
+
+    document.addEventListener("click", playBarkOnce, { once: true });
+    document.addEventListener("touchstart", playBarkOnce, { once: true });
   </script>
 </body>
 </html>
