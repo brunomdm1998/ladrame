@@ -8,16 +8,16 @@
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     :root{
-      --bg:#f7f4ef;
+      --bg:#f8f5f0;
       --bg2:#fcfaf7;
       --surface:#ffffff;
-      --surface-soft:#fbf8f4;
-      --line:#e9ddd0;
-      --text:#171717;
+      --surface-soft:#fbf7f1;
+      --line:#eadccd;
+      --text:#161616;
       --muted:#666;
       --orange:#ff7a00;
-      --orange-dark:#e56400;
-      --shadow-xl:0 30px 80px rgba(0,0,0,.12);
+      --orange-dark:#e46400;
+      --shadow-xl:0 32px 80px rgba(0,0,0,.12);
       --shadow-lg:0 18px 45px rgba(0,0,0,.08);
       --shadow-md:0 10px 24px rgba(0,0,0,.05);
       --radius-xl:34px;
@@ -31,8 +31,8 @@
       font-family:Inter, Arial, sans-serif;
       color:var(--text);
       background:
-        radial-gradient(circle at top left, #fff3e6 0%, rgba(255,243,230,0) 25%),
-        radial-gradient(circle at top right, #ffe8d1 0%, rgba(255,232,209,0) 22%),
+        radial-gradient(circle at top left, #fff3e6 0%, rgba(255,243,230,0) 24%),
+        radial-gradient(circle at top right, #ffe8d0 0%, rgba(255,232,208,0) 22%),
         linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
     }
 
@@ -43,7 +43,7 @@
       margin:0 auto;
     }
 
-    /* splash */
+    /* SPLASH */
     #splash{
       position:fixed;
       inset:0;
@@ -52,45 +52,51 @@
       align-items:center;
       justify-content:center;
       background:
-        radial-gradient(circle at 50% 30%, #fff0df 0%, #fdf7f0 35%, #f7f4ef 100%);
+        radial-gradient(circle at 50% 28%, #fff0df 0%, #fdf7f0 34%, #f8f5f0 100%);
       transition:opacity .65s ease, visibility .65s ease;
     }
+
     #splash.hide{
       opacity:0;
       visibility:hidden;
       pointer-events:none;
     }
+
     .splash-shell{
       position:relative;
-      width:min(720px, 92vw);
-      min-height:360px;
+      width:min(760px, 92vw);
+      min-height:390px;
       border:1px solid rgba(233,221,208,.75);
       background:rgba(255,255,255,.72);
       backdrop-filter:blur(16px);
-      border-radius:36px;
+      border-radius:38px;
       box-shadow:var(--shadow-xl);
       overflow:hidden;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:40px 28px;
+      padding:42px 30px;
     }
+
     .splash-orb{
       position:absolute;
       border-radius:50%;
       filter:blur(12px);
       opacity:.9;
     }
+
     .splash-orb.one{
       width:180px;height:180px;
       background:radial-gradient(circle,#ffd2aa 0%, rgba(255,210,170,0) 70%);
       top:-30px;left:-20px;
     }
+
     .splash-orb.two{
       width:220px;height:220px;
       background:radial-gradient(circle,#ffe6cb 0%, rgba(255,230,203,0) 70%);
       right:-60px;bottom:-60px;
     }
+
     .splash-grid{
       position:absolute;
       inset:0;
@@ -101,30 +107,35 @@
       mask-image:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.08));
       pointer-events:none;
     }
+
     .splash-content{
       position:relative;
       z-index:2;
       width:100%;
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:26px;
+      gap:30px;
       align-items:center;
     }
+
     .splash-copy h1{
       margin:0 0 10px;
-      font-size:58px;
+      font-size:60px;
       line-height:.95;
-      letter-spacing:-1.8px;
+      letter-spacing:-1.9px;
       font-weight:900;
     }
+
     .splash-copy h1 span:first-child{color:var(--orange)}
+
     .splash-copy p{
       margin:0 0 18px;
       color:var(--muted);
       font-size:16px;
       line-height:1.6;
-      max-width:320px;
+      max-width:340px;
     }
+
     .splash-status{
       display:inline-flex;
       align-items:center;
@@ -137,6 +148,7 @@
       color:#444;
       box-shadow:var(--shadow-md);
     }
+
     .pulse{
       width:10px;height:10px;border-radius:50%;
       background:var(--orange);
@@ -146,27 +158,29 @@
 
     .splash-dog-wrap{
       position:relative;
-      height:280px;
+      height:300px;
       display:flex;
       align-items:center;
       justify-content:center;
     }
+
     .dog-platform{
       position:absolute;
-      bottom:14px;
-      width:220px;
-      height:28px;
+      bottom:8px;
+      width:240px;
+      height:30px;
       border-radius:50%;
       background:radial-gradient(circle,#ffd8b8 0%, rgba(255,216,184,0) 72%);
-      filter:blur(1px);
-    }
-    .splash-dog{
-      width:min(320px, 100%);
-      filter:drop-shadow(0 26px 32px rgba(0,0,0,.12));
-      animation:floatDog 2.6s ease-in-out infinite;
     }
 
-    /* nav */
+    .splash-logo-img{
+      width:min(320px, 100%);
+      filter:drop-shadow(0 24px 30px rgba(0,0,0,.12));
+      animation:floatDog 2.6s ease-in-out infinite;
+      border-radius:22px;
+    }
+
+    /* NAV */
     .topbar{
       position:sticky;
       top:0;
@@ -175,6 +189,7 @@
       background:rgba(252,250,247,.84);
       border-bottom:1px solid rgba(233,221,208,.85);
     }
+
     .topbar-inner{
       display:flex;
       align-items:center;
@@ -182,24 +197,29 @@
       gap:20px;
       padding:16px 0;
     }
+
     .brand{
       font-size:32px;
       font-weight:900;
       letter-spacing:-.6px;
     }
+
     .brand .o{color:var(--orange)}
     .brand .d{color:#111}
+
     .nav{
       display:flex;
       align-items:center;
       gap:22px;
       flex-wrap:wrap;
     }
+
     .nav a.link{
       color:#444;
       font-size:14px;
       font-weight:800;
     }
+
     .btn{
       display:inline-flex;
       align-items:center;
@@ -212,12 +232,15 @@
       cursor:pointer;
       transition:.2s ease;
     }
+
     .btn:hover{transform:translateY(-1px)}
+
     .btn-primary{
       background:linear-gradient(180deg, #ff8c1f 0%, var(--orange) 100%);
       color:#fff;
       box-shadow:0 16px 28px rgba(255,122,0,.22);
     }
+
     .btn-secondary{
       background:#fff;
       color:var(--orange);
@@ -225,16 +248,18 @@
       box-shadow:var(--shadow-md);
     }
 
-    /* hero */
+    /* HERO */
     .hero{
-      padding:54px 0 28px;
+      padding:56px 0 30px;
     }
+
     .hero-grid{
       display:grid;
       grid-template-columns:1.02fr .98fr;
       gap:34px;
       align-items:center;
     }
+
     .eyebrow{
       display:inline-flex;
       align-items:center;
@@ -249,6 +274,7 @@
       margin-bottom:20px;
       box-shadow:var(--shadow-md);
     }
+
     .hero h1{
       margin:0 0 18px;
       font-size:74px;
@@ -256,6 +282,7 @@
       letter-spacing:-2.6px;
       max-width:760px;
     }
+
     .hero p{
       margin:0 0 28px;
       max-width:650px;
@@ -263,17 +290,20 @@
       line-height:1.7;
       color:var(--muted);
     }
+
     .hero-actions{
       display:flex;
       gap:14px;
       flex-wrap:wrap;
       margin-bottom:24px;
     }
+
     .hero-badges{
       display:flex;
       flex-wrap:wrap;
       gap:10px;
     }
+
     .badge{
       padding:10px 14px;
       border-radius:999px;
@@ -287,7 +317,7 @@
 
     .hero-visual{
       position:relative;
-      min-height:680px;
+      min-height:690px;
       border-radius:38px;
       padding:22px;
       background:
@@ -297,6 +327,7 @@
       box-shadow:var(--shadow-xl);
       overflow:hidden;
     }
+
     .hero-noise{
       position:absolute;
       inset:0;
@@ -308,6 +339,7 @@
       background-size:120px 120px;
       pointer-events:none;
     }
+
     .glass-card{
       position:relative;
       z-index:2;
@@ -318,6 +350,7 @@
       box-shadow:0 20px 40px rgba(0,0,0,.07);
       padding:22px;
     }
+
     .visual-top{
       display:grid;
       grid-template-columns:1fr auto;
@@ -325,11 +358,13 @@
       gap:14px;
       margin-bottom:14px;
     }
+
     .visual-title{
       font-size:14px;
       font-weight:800;
       color:#4b4b4b;
     }
+
     .status-chip{
       display:inline-flex;
       align-items:center;
@@ -342,6 +377,7 @@
       font-weight:800;
       box-shadow:var(--shadow-md);
     }
+
     .status-dot{
       width:9px;height:9px;border-radius:50%;
       background:#18b35b;
@@ -351,7 +387,7 @@
 
     .dog-hero-zone{
       position:relative;
-      min-height:390px;
+      min-height:410px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -360,27 +396,31 @@
         radial-gradient(circle at top, #fffefe 0%, #fdf6ef 60%, #fbf0e4 100%);
       border:1px solid #eee1d4;
       overflow:hidden;
+      padding:20px;
     }
+
     .halo{
       position:absolute;
-      width:300px;height:300px;border-radius:50%;
+      width:320px;height:320px;border-radius:50%;
       background:radial-gradient(circle, rgba(255,207,166,.55) 0%, rgba(255,207,166,0) 72%);
-      top:44px;
+      top:30px;
       filter:blur(2px);
     }
+
     .shadow-floor{
       position:absolute;
-      width:260px;height:34px;border-radius:50%;
+      width:280px;height:34px;border-radius:50%;
       bottom:44px;
       background:radial-gradient(circle, rgba(217,165,118,.32) 0%, rgba(217,165,118,0) 72%);
-      filter:blur(1px);
     }
-    .hero-dog{
+
+    .hero-logo-img{
       position:relative;
-      width:min(400px, 95%);
       z-index:2;
+      width:min(430px, 95%);
       filter:drop-shadow(0 28px 34px rgba(0,0,0,.12));
       animation:floatDog 3s ease-in-out infinite;
+      border-radius:24px;
     }
 
     .info-grid{
@@ -389,6 +429,7 @@
       grid-template-columns:1fr 1fr;
       gap:12px;
     }
+
     .info-mini{
       min-height:110px;
       padding:16px;
@@ -397,30 +438,35 @@
       border:1px solid var(--line);
       box-shadow:var(--shadow-md);
     }
+
     .info-mini strong{
       display:block;
       font-size:15px;
       margin-bottom:6px;
     }
+
     .info-mini span{
       color:var(--muted);
       font-size:14px;
       line-height:1.55;
     }
 
-    /* sections */
+    /* SECTIONS */
     section.block{
       padding:30px 0;
     }
+
     .section-head{
       margin-bottom:24px;
     }
+
     .section-head h2{
       margin:0 0 10px;
       font-size:42px;
       line-height:1.02;
       letter-spacing:-1.2px;
     }
+
     .section-head p{
       margin:0;
       max-width:760px;
@@ -428,11 +474,13 @@
       font-size:17px;
       line-height:1.7;
     }
+
     .cards{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
       gap:18px;
     }
+
     .card{
       padding:24px;
       border-radius:26px;
@@ -441,6 +489,7 @@
       border:1px solid rgba(233,221,208,.95);
       box-shadow:var(--shadow-lg);
     }
+
     .icon-box{
       width:56px;height:56px;border-radius:18px;
       display:flex;align-items:center;justify-content:center;
@@ -449,11 +498,13 @@
       font-size:25px;
       margin-bottom:16px;
     }
+
     .card h3{
       margin:0 0 10px;
       font-size:22px;
       letter-spacing:-.3px;
     }
+
     .card p{
       margin:0;
       color:var(--muted);
@@ -466,6 +517,7 @@
       grid-template-columns:repeat(4,1fr);
       gap:16px;
     }
+
     .step{
       padding:24px;
       border-radius:24px;
@@ -473,6 +525,7 @@
       border:1px solid var(--line);
       box-shadow:var(--shadow-lg);
     }
+
     .step-num{
       width:42px;height:42px;border-radius:50%;
       display:flex;align-items:center;justify-content:center;
@@ -481,10 +534,12 @@
       margin-bottom:14px;
       box-shadow:0 10px 18px rgba(255,122,0,.22);
     }
+
     .step h3{
       margin:0 0 10px;
       font-size:20px;
     }
+
     .step p{
       margin:0;
       color:var(--muted);
@@ -503,11 +558,13 @@
       box-shadow:var(--shadow-xl);
       text-align:center;
     }
+
     .cta h2{
       margin:0 0 10px;
       font-size:44px;
       letter-spacing:-1px;
     }
+
     .cta p{
       margin:0 auto 22px;
       max-width:720px;
@@ -515,6 +572,7 @@
       font-size:17px;
       line-height:1.7;
     }
+
     .cta-actions{
       display:flex;
       justify-content:center;
@@ -532,11 +590,13 @@
       0%,100%{transform:translateY(0)}
       50%{transform:translateY(-9px)}
     }
+
     @keyframes pulse{
       0%{box-shadow:0 0 0 0 rgba(255,122,0,.42)}
       70%{box-shadow:0 0 0 12px rgba(255,122,0,0)}
       100%{box-shadow:0 0 0 0 rgba(255,122,0,0)}
     }
+
     @keyframes pulseGreen{
       0%{box-shadow:0 0 0 0 rgba(24,179,91,.35)}
       70%{box-shadow:0 0 0 10px rgba(24,179,91,0)}
@@ -553,6 +613,7 @@
       .splash-copy{text-align:center}
       .splash-copy p{max-width:none}
     }
+
     @media (max-width:720px){
       .container{width:min(var(--max), calc(100% - 24px))}
       .nav a.link{display:none}
@@ -565,7 +626,8 @@
       .cta h2{font-size:32px}
       .splash-shell{padding:28px 20px}
       .splash-copy h1{font-size:42px}
-      .splash-dog-wrap{height:220px}
+      .splash-dog-wrap{height:230px}
+      .hero-logo-img,.splash-logo-img{width:100%}
     }
   </style>
 </head>
@@ -589,65 +651,11 @@
 
         <div class="splash-dog-wrap">
           <div class="dog-platform"></div>
-
-          <svg class="splash-dog" viewBox="0 0 480 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="furOrangeS" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffad58"/>
-                <stop offset="100%" stop-color="#ea7000"/>
-              </linearGradient>
-              <linearGradient id="furCreamS" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="100%" stop-color="#f1e7dd"/>
-              </linearGradient>
-              <linearGradient id="collarS" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ff972d"/>
-                <stop offset="100%" stop-color="#e26400"/>
-              </linearGradient>
-              <radialGradient id="faceGlowS" cx="50%" cy="30%" r="70%">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="100%" stop-color="#f0e7dc"/>
-              </radialGradient>
-            </defs>
-
-            <ellipse cx="240" cy="410" rx="112" ry="22" fill="#ffdcbf"/>
-
-            <g>
-              <path d="M155 152 C126 112, 130 74, 170 60 C201 49, 230 72, 232 106 L216 170 Z"
-                    fill="url(#furOrangeS)" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
-              <path d="M325 152 C354 112, 350 74, 310 60 C279 49, 250 72, 248 106 L264 170 Z"
-                    fill="url(#furOrangeS)" stroke="#1f1f1f" stroke-width="10" stroke-linejoin="round"/>
-
-              <path d="M144 146 C144 88, 188 52, 240 52 C292 52, 336 88, 336 146 C336 222, 287 274, 240 274 C193 274, 144 222, 144 146 Z"
-                    fill="url(#faceGlowS)" stroke="#1f1f1f" stroke-width="10"/>
-
-              <path d="M150 106 C180 76, 218 82, 224 120 C226 160, 200 186, 164 186 C154 186, 150 152, 150 106 Z"
-                    fill="url(#furOrangeS)"/>
-
-              <ellipse cx="205" cy="166" rx="10" ry="14" fill="#1f1f1f"/>
-              <ellipse cx="275" cy="166" rx="10" ry="14" fill="#1f1f1f"/>
-
-              <ellipse cx="240" cy="204" rx="23" ry="18" fill="#191919"/>
-              <path d="M208 232 Q240 260 272 232" fill="none" stroke="#1f1f1f" stroke-width="10" stroke-linecap="round"/>
-              <path d="M224 234 Q240 258 256 234" fill="#ff7d95" stroke="#1f1f1f" stroke-width="5" stroke-linejoin="round"/>
-
-              <path d="M190 264 C182 286, 182 304, 188 326 L292 326 C298 304, 298 286, 290 264 Z"
-                    fill="url(#furCreamS)" stroke="#1f1f1f" stroke-width="8"/>
-
-              <rect x="178" y="278" width="124" height="24" rx="12" fill="url(#collarS)" stroke="#1f1f1f" stroke-width="8"/>
-              <circle cx="240" cy="313" r="16" fill="#ffd35a" stroke="#1f1f1f" stroke-width="6"/>
-
-              <path d="M176 296 C150 320, 146 350, 152 394 L182 394 C182 364, 182 326, 176 296 Z"
-                    fill="url(#furCreamS)" stroke="#1f1f1f" stroke-width="10"/>
-              <path d="M304 296 C330 320, 334 350, 328 394 L298 394 C298 364, 298 326, 304 296 Z"
-                    fill="url(#furCreamS)" stroke="#1f1f1f" stroke-width="10"/>
-
-              <path d="M212 294 C204 324, 204 356, 212 402 L238 402 C238 362, 238 326, 238 294 Z"
-                    fill="url(#furCreamS)" stroke="#1f1f1f" stroke-width="10"/>
-              <path d="M268 294 C276 324, 276 356, 290 402 L268 402 C268 362, 268 326, 268 294 Z"
-                    fill="url(#furCreamS)" stroke="#1f1f1f" stroke-width="10"/>
-            </g>
-          </svg>
+          <img
+            class="splash-logo-img"
+            src="sandbox:/mnt/data/a_vector_style_digital_illustration_logo_for_ladra.png"
+            alt="Logo LADRAME"
+          />
         </div>
       </div>
     </div>
@@ -712,64 +720,11 @@
               <div class="halo"></div>
               <div class="shadow-floor"></div>
 
-              <svg class="hero-dog" viewBox="0 0 560 520" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <defs>
-                  <linearGradient id="furOrange" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stop-color="#ffb15e"/>
-                    <stop offset="100%" stop-color="#ea6f00"/>
-                  </linearGradient>
-                  <linearGradient id="furCream" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stop-color="#ffffff"/>
-                    <stop offset="100%" stop-color="#efe5db"/>
-                  </linearGradient>
-                  <linearGradient id="collar" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stop-color="#ff992f"/>
-                    <stop offset="100%" stop-color="#de6200"/>
-                  </linearGradient>
-                  <radialGradient id="faceGlow" cx="50%" cy="28%" r="70%">
-                    <stop offset="0%" stop-color="#ffffff"/>
-                    <stop offset="100%" stop-color="#f1e8de"/>
-                  </radialGradient>
-                </defs>
-
-                <ellipse cx="280" cy="458" rx="138" ry="26" fill="#ffdfc0"/>
-
-                <g>
-                  <path d="M176 168 C146 122, 150 82, 194 66 C226 54, 258 80, 260 118 L242 188 Z"
-                        fill="url(#furOrange)" stroke="#1e1e1e" stroke-width="12" stroke-linejoin="round"/>
-                  <path d="M384 168 C414 122, 410 82, 366 66 C334 54, 302 80, 300 118 L318 188 Z"
-                        fill="url(#furOrange)" stroke="#1e1e1e" stroke-width="12" stroke-linejoin="round"/>
-
-                  <path d="M164 160 C164 94, 214 54, 280 54 C346 54, 396 94, 396 160 C396 246, 338 300, 280 300 C222 300, 164 246, 164 160 Z"
-                        fill="url(#faceGlow)" stroke="#1e1e1e" stroke-width="12"/>
-
-                  <path d="M170 116 C204 82, 246 88, 254 130 C256 176, 226 204, 184 204 C174 204, 170 164, 170 116 Z"
-                        fill="url(#furOrange)"/>
-
-                  <ellipse cx="234" cy="182" rx="11" ry="15" fill="#1a1a1a"/>
-                  <ellipse cx="326" cy="182" rx="11" ry="15" fill="#1a1a1a"/>
-
-                  <ellipse cx="280" cy="224" rx="27" ry="20" fill="#181818"/>
-                  <path d="M242 258 Q280 290 318 258" fill="none" stroke="#1b1b1b" stroke-width="11" stroke-linecap="round"/>
-                  <path d="M261 260 Q280 289 299 260" fill="#ff8098" stroke="#1b1b1b" stroke-width="5" stroke-linejoin="round"/>
-
-                  <path d="M220 292 C210 318, 210 338, 218 364 L342 364 C350 338, 350 318, 340 292 Z"
-                        fill="url(#furCream)" stroke="#1e1e1e" stroke-width="9"/>
-
-                  <rect x="206" y="308" width="148" height="28" rx="14" fill="url(#collar)" stroke="#1e1e1e" stroke-width="9"/>
-                  <circle cx="280" cy="346" r="18" fill="#ffd55c" stroke="#1e1e1e" stroke-width="7"/>
-
-                  <path d="M202 330 C172 360, 168 394, 176 440 L208 440 C208 402, 208 360, 202 330 Z"
-                        fill="url(#furCream)" stroke="#1e1e1e" stroke-width="11"/>
-                  <path d="M358 330 C388 360, 392 394, 384 440 L352 440 C352 402, 352 360, 358 330 Z"
-                        fill="url(#furCream)" stroke="#1e1e1e" stroke-width="11"/>
-
-                  <path d="M244 328 C234 364, 236 396, 246 448 L274 448 C274 398, 274 364, 274 328 Z"
-                        fill="url(#furCream)" stroke="#1e1e1e" stroke-width="11"/>
-                  <path d="M310 328 C320 364, 320 396, 338 448 L310 448 C310 398, 310 364, 310 328 Z"
-                        fill="url(#furCream)" stroke="#1e1e1e" stroke-width="11"/>
-                </g>
-              </svg>
+              <img
+                class="hero-logo-img"
+                src="sandbox:/mnt/data/a_vector_style_digital_illustration_logo_for_ladra.png"
+                alt="Logo LADRAME perro"
+              />
             </div>
 
             <div class="info-grid">
@@ -799,7 +754,7 @@
       <div class="container">
         <div class="section-head">
           <h2>Servicios pensados para una marca seria</h2>
-          <p>LADRAME no debe verse como un juguete. Debe sentirse como una plataforma real para cuidado canino, con identidad, claridad y confianza.</p>
+          <p>LADRAME debe sentirse como una plataforma real para cuidado canino, con identidad, claridad y confianza.</p>
         </div>
 
         <div class="cards">
