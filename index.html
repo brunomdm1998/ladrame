@@ -5,589 +5,740 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LADRAME</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-
-    html,body{
-      width:100%;
-      height:100%;
-      overflow:hidden;
-      font-family:Arial,sans-serif;
-      background:linear-gradient(180deg,#fff7ef 0%,#fff 100%);
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fffaf6;
+      color: #222;
     }
 
-    body{
-      display:flex;
-      justify-content:center;
-      align-items:center;
+    :root{
+      --orange:#ff7a00;
+      --orange-dark:#e46200;
+      --cream:#fff6ee;
+      --soft:#fff1e3;
+      --text:#222;
+      --muted:#666;
+      --card:#ffffff;
+      --line:#f1dfcf;
     }
 
-    #splash{
-      position:fixed;
-      inset:0;
-      display:flex;
-      justify-content:center;
-      align-items:center;
+    /* SPLASH */
+    #splashScreen{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background:
-        radial-gradient(circle at top,#ffd7b5 0%,#fff1e4 35%,#ffffff 80%);
+        radial-gradient(circle at top, #ffd9b9 0%, #fff1e4 35%, #fffaf6 80%);
+      transition: opacity .6s ease, visibility .6s ease;
     }
 
-    .wrap{
-      width:100%;
-      max-width:1000px;
-      text-align:center;
-      padding:24px;
-      position:relative;
+    #splashScreen.hide{
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
 
-    .logo{
-      font-size:70px;
-      font-weight:900;
-      letter-spacing:1px;
-      line-height:1;
-      margin-bottom:12px;
-      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 58%,#cf5800 100%);
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
-      text-shadow:0 8px 20px rgba(255,122,0,.16);
+    .splash-box{
+      text-align: center;
+      padding: 20px;
     }
 
-    .logo .me{
-      background:linear-gradient(180deg,#333 0%,#111 100%);
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
+    .splash-logo{
+      font-size: 54px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      color: var(--orange);
     }
 
-    .subtitle{
-      color:#666;
-      font-size:20px;
-      font-weight:700;
-      margin-bottom:22px;
+    .splash-logo span{
+      color: #111;
     }
 
-    .scene{
-      position:relative;
-      width:100%;
-      height:380px;
-      display:flex;
-      align-items:flex-end;
-      justify-content:center;
+    .splash-sub{
+      color: var(--muted);
+      font-weight: bold;
+      margin-bottom: 26px;
     }
 
-    .ground{
-      position:absolute;
-      bottom:24px;
-      width:470px;
-      height:24px;
-      background:rgba(255,122,0,.12);
-      border-radius:999px;
-      filter:blur(1px);
+    .dog-stage{
+      position: relative;
+      width: 260px;
+      height: 220px;
+      margin: 0 auto 16px;
     }
 
-    .dog-wrap{
-      position:relative;
-      width:320px;
-      height:300px;
-      animation:dogBounce 1.15s ease-in-out infinite;
-      transform-origin:center bottom;
+    .dog-cartoon{
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      width: 170px;
+      height: 170px;
+      animation: dogBounce 1.2s ease-in-out infinite;
+      transform-origin: center bottom;
     }
 
-    .dog{
-      position:absolute;
-      inset:0;
+    .bark-text{
+      position: absolute;
+      right: 12px;
+      top: 22px;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--orange);
+      opacity: 0;
+      animation: barkPop 1.2s ease-in-out infinite;
     }
 
-    .ear-left,.ear-right{
-      position:absolute;
-      width:40px;
-      height:54px;
-      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
-      border:6px solid #2c2c2c;
-      border-radius:20px 20px 14px 14px;
-      z-index:4;
-      top:30px;
+    .bark-ring,
+    .bark-ring2{
+      position: absolute;
+      border: 4px solid #ffb06b;
+      border-left: none;
+      border-bottom: none;
+      border-radius: 50%;
+      transform: rotate(45deg);
+      opacity: 0;
+      animation: barkWave 1.2s ease-in-out infinite;
     }
 
-    .ear-left{
-      left:92px;
-      transform:rotate(-18deg);
-      animation:earLeft 1.15s ease-in-out infinite;
+    .bark-ring{
+      width: 24px;
+      height: 24px;
+      right: 52px;
+      top: 38px;
     }
 
-    .ear-right{
-      right:92px;
-      transform:rotate(18deg);
-      animation:earRight 1.15s ease-in-out infinite;
+    .bark-ring2{
+      width: 38px;
+      height: 38px;
+      right: 40px;
+      top: 30px;
+      animation-delay: .12s;
     }
 
-    .head{
-      position:absolute;
-      left:50%;
-      top:42px;
-      transform:translateX(-50%);
-      width:150px;
-      height:126px;
-      background:linear-gradient(180deg,#fffdfa 0%,#f3ece3 100%);
-      border:6px solid #2c2c2c;
-      border-radius:42% 42% 40% 40%;
-      overflow:hidden;
-      z-index:5;
-      box-shadow:
-        inset -8px -10px 0 rgba(0,0,0,.04),
-        inset 6px 6px 0 rgba(255,255,255,.75);
+    .loading-line{
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: bold;
     }
 
-    .patch{
-      position:absolute;
-      left:8px;
-      top:14px;
-      width:56px;
-      height:62px;
-      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
-      border-radius:48% 44% 50% 40%;
-      opacity:.95;
+    .loading-dots span{
+      display: inline-block;
+      animation: dots 1.2s infinite;
     }
 
-    .eye-left,.eye-right{
-      position:absolute;
-      width:12px;
-      height:16px;
-      background:#1f1f1f;
-      border-radius:50%;
-      top:44px;
-      z-index:7;
-      animation:blink 4s infinite;
+    .loading-dots span:nth-child(2){ animation-delay: .2s; }
+    .loading-dots span:nth-child(3){ animation-delay: .4s; }
+
+    /* WEBSITE */
+    .topbar{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(255,250,246,.88);
+      border-bottom: 1px solid var(--line);
     }
 
-    .eye-left{left:42px}
-    .eye-right{right:42px}
-
-    .muzzle{
-      position:absolute;
-      left:50%;
-      top:58px;
-      transform:translateX(-50%);
-      width:68px;
-      height:44px;
-      background:linear-gradient(180deg,#fffdfb 0%,#efe7de 100%);
-      border-radius:26px;
-      z-index:6;
+    .topbar-inner{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
     }
 
-    .nose{
-      position:absolute;
-      left:50%;
-      top:66px;
-      transform:translateX(-50%);
-      width:24px;
-      height:16px;
-      background:#1f1f1f;
-      border-radius:50% 50% 60% 60%;
-      z-index:8;
+    .brand{
+      font-size: 30px;
+      font-weight: 900;
+      color: var(--orange);
+      text-decoration: none;
     }
 
-    .mouth{
-      position:absolute;
-      left:50%;
-      top:84px;
-      transform:translateX(-50%);
-      width:52px;
-      height:24px;
-      border-bottom:5px solid #1f1f1f;
-      border-radius:0 0 40px 40px;
-      z-index:8;
-      animation:mouthBark 1.15s ease-in-out infinite;
+    .brand span{ color:#111; }
+
+    .nav{
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
-    .tongue{
-      position:absolute;
-      left:50%;
-      top:100px;
-      transform:translateX(-50%);
-      width:22px;
-      height:16px;
-      background:#ff6d86;
-      border:4px solid #2c2c2c;
-      border-top:none;
-      border-radius:0 0 14px 14px;
-      z-index:7;
+    .nav a{
+      color: #444;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
     }
 
-    .body{
-      position:absolute;
-      left:50%;
-      top:142px;
-      transform:translateX(-50%);
-      width:144px;
-      height:112px;
-      background:linear-gradient(180deg,#fffdfa 0%,#f2ebe2 100%);
-      border:6px solid #2c2c2c;
-      border-radius:40% 40% 34% 34%;
-      z-index:2;
-      box-shadow:
-        inset -8px -10px 0 rgba(0,0,0,.04),
-        inset 6px 6px 0 rgba(255,255,255,.8);
+    .btn{
+      display: inline-block;
+      padding: 14px 22px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 900;
+      transition: .2s ease;
     }
 
-    .chest{
-      position:absolute;
-      left:50%;
-      top:162px;
-      transform:translateX(-50%);
-      width:78px;
-      height:76px;
-      background:linear-gradient(180deg,#fffdf9 0%,#f0e9e1 100%);
-      border-radius:36px 36px 24px 24px;
-      z-index:3;
+    .btn-primary{
+      background: var(--orange);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(255,122,0,.20);
     }
 
-    .collar{
-      position:absolute;
-      left:50%;
-      top:152px;
-      transform:translateX(-50%);
-      width:116px;
-      height:18px;
-      background:linear-gradient(180deg,#ff9d35 0%,#ff6900 100%);
-      border:5px solid #2c2c2c;
-      border-radius:999px;
-      z-index:9;
+    .btn-secondary{
+      background: #fff;
+      border: 2px solid var(--orange);
+      color: var(--orange);
     }
 
-    .tag{
-      position:absolute;
-      left:50%;
-      top:165px;
-      transform:translateX(-50%);
-      width:18px;
-      height:22px;
-      background:linear-gradient(180deg,#ffdc66 0%,#ffb300 100%);
-      border:4px solid #2c2c2c;
-      border-radius:12px;
-      z-index:10;
+    .btn:hover{
+      transform: translateY(-1px);
     }
 
-    .leg{
-      position:absolute;
-      width:26px;
-      height:80px;
-      background:linear-gradient(180deg,#fffdfa 0%,#f0e8df 100%);
-      border:6px solid #2c2c2c;
-      border-top:none;
-      border-radius:0 0 18px 18px;
-      bottom:28px;
-      z-index:1;
+    .hero{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 68px 20px 44px;
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 30px;
+      align-items: center;
     }
 
-    .leg.l1{left:118px}
-    .leg.l2{left:150px}
-    .leg.l3{left:184px}
-    .leg.l4{left:216px}
-
-    .paw-foot{
-      position:absolute;
-      left:-2px;
-      bottom:-8px;
-      width:30px;
-      height:14px;
-      background:#fff7ef;
-      border:5px solid #2c2c2c;
-      border-top:none;
-      border-radius:0 0 18px 18px;
+    .hero h1{
+      font-size: 58px;
+      line-height: 1.03;
+      margin: 0 0 18px;
     }
 
-    .tail{
-      position:absolute;
-      right:32px;
-      top:174px;
-      width:64px;
-      height:18px;
-      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
-      border:6px solid #2c2c2c;
-      border-left:none;
-      border-radius:0 20px 20px 0;
-      transform-origin:left center;
-      animation:tailWag .28s ease-in-out infinite alternate;
-      z-index:0;
+    .hero p{
+      font-size: 19px;
+      line-height: 1.65;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 0 26px;
     }
 
-    .leash{
-      position:absolute;
-      left:160px;
-      top:176px;
-      width:250px;
-      height:118px;
-      border-bottom:7px solid #ff7a00;
-      border-left:7px solid transparent;
-      border-right:7px solid transparent;
-      border-radius:0 0 180px 180px;
-      z-index:0;
-      opacity:.95;
+    .hero-actions{
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
     }
 
-    .bark{
-      position:absolute;
-      right:186px;
-      top:46px;
-      font-size:28px;
-      font-weight:900;
-      color:#ff7a00;
-      text-shadow:0 4px 12px rgba(255,122,0,.18);
-      opacity:0;
-      animation:barkText 1.15s ease-in-out infinite;
+    .hero-badges{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
-    .wave{
-      position:absolute;
-      right:144px;
-      top:58px;
-      width:24px;
-      height:24px;
-      border:4px solid #ff9b3d;
-      border-left:none;
-      border-bottom:none;
-      border-radius:50%;
-      transform:rotate(45deg);
-      opacity:0;
-      animation:barkWave 1.15s ease-in-out infinite;
+    .badge{
+      background: #fff;
+      border: 1px solid var(--line);
+      color: #444;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 13px;
     }
 
-    .wave.w2{
-      right:128px;
-      top:48px;
-      width:38px;
-      height:38px;
-      animation-delay:.12s;
+    .hero-card{
+      background: linear-gradient(180deg,#fff 0%, #fff6ee 100%);
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 26px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.05);
     }
 
-    .pawprints{
-      position:absolute;
-      left:50%;
-      bottom:8px;
-      transform:translateX(-50%);
-      display:flex;
-      gap:18px;
+    .hero-illustration{
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
     }
 
-    .paw{
-      width:18px;
-      height:18px;
-      background:#ff9b3d;
-      border-radius:50%;
-      position:relative;
-      animation:pawPulse 1.4s infinite;
+    .mini-grid{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
     }
 
-    .paw:nth-child(2){animation-delay:.2s}
-    .paw:nth-child(3){animation-delay:.4s}
-
-    .paw::before{
-      content:"";
-      position:absolute;
-      width:8px;
-      height:8px;
-      left:-2px;
-      top:-6px;
-      border-radius:50%;
-      background:#ff9b3d;
-      box-shadow:10px -2px 0 #ff9b3d,20px 0 0 #ff9b3d;
+    .mini-box{
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      font-weight: 700;
+      color: #444;
+      min-height: 86px;
     }
 
-    .loading{
-      margin-top:18px;
-      color:#666;
-      font-size:16px;
-      font-weight:700;
+    section{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 26px 20px 30px;
     }
 
-    .dots span{
-      display:inline-block;
-      animation:dots 1.2s infinite;
+    .section-title{
+      font-size: 36px;
+      margin: 0 0 12px;
     }
 
-    .dots span:nth-child(2){animation-delay:.2s}
-    .dots span:nth-child(3){animation-delay:.4s}
-
-    .skip-btn{
-      display:inline-block;
-      margin-top:18px;
-      padding:12px 22px;
-      border-radius:14px;
-      background:#ff7a00;
-      color:#fff;
-      text-decoration:none;
-      font-weight:900;
-      box-shadow:0 10px 22px rgba(255,122,0,.18);
+    .section-text{
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.65;
+      margin: 0 0 26px;
+      font-size: 17px;
     }
 
+    .cards{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.035);
+    }
+
+    .card h3{
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    .card p{
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .icon{
+      font-size: 30px;
+      margin-bottom: 10px;
+    }
+
+    .how{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .step{
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px;
+    }
+
+    .step-number{
+      width: 38px;
+      height: 38px;
+      background: var(--orange);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .testimonials{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .quote{
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+    }
+
+    .quote p{
+      color: #444;
+      line-height: 1.65;
+      margin: 0 0 12px;
+    }
+
+    .quote small{
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .cta{
+      margin-top: 16px;
+      background: linear-gradient(180deg,#fff1e4 0%, #ffe7d1 100%);
+      border: 1px solid #ffd5ae;
+      border-radius: 30px;
+      padding: 34px 24px;
+      text-align: center;
+    }
+
+    .cta h2{
+      margin: 0 0 12px;
+      font-size: 40px;
+    }
+
+    .cta p{
+      margin: 0 auto 22px;
+      color: #5f5f5f;
+      max-width: 720px;
+      line-height: 1.65;
+      font-size: 17px;
+    }
+
+    footer{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      color: #7b7b7b;
+      font-size: 14px;
+    }
+
+    /* animations */
     @keyframes dogBounce{
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-8px)}
+      0%,100%{ transform: translateX(-50%) translateY(0); }
+      50%{ transform: translateX(-50%) translateY(-8px); }
     }
 
-    @keyframes tailWag{
-      from{transform:rotate(10deg)}
-      to{transform:rotate(-18deg)}
-    }
-
-    @keyframes mouthBark{
-      0%,100%{transform:translateX(-50%) scaleY(1)}
-      45%,55%{transform:translateX(-50%) scaleY(1.25)}
-    }
-
-    @keyframes barkText{
-      0%,35%,100%{opacity:0;transform:translateY(5px) scale(.95)}
-      45%,70%{opacity:1;transform:translateY(0) scale(1)}
+    @keyframes barkPop{
+      0%,35%,100%{ opacity:0; transform: scale(.9) translateY(5px); }
+      45%,70%{ opacity:1; transform: scale(1) translateY(0); }
     }
 
     @keyframes barkWave{
-      0%,35%,100%{opacity:0;transform:rotate(45deg) scale(.8)}
-      45%,75%{opacity:1;transform:rotate(45deg) scale(1.1)}
-    }
-
-    @keyframes pawPulse{
-      0%,100%{transform:translateY(0);opacity:.6}
-      50%{transform:translateY(-4px);opacity:1}
-    }
-
-    @keyframes earLeft{
-      0%,100%{transform:rotate(-18deg)}
-      50%{transform:rotate(-26deg)}
-    }
-
-    @keyframes earRight{
-      0%,100%{transform:rotate(18deg)}
-      50%{transform:rotate(26deg)}
-    }
-
-    @keyframes blink{
-      0%,46%,48%,100%{transform:scaleY(1)}
-      47%{transform:scaleY(.1)}
+      0%,35%,100%{ opacity:0; transform: rotate(45deg) scale(.8); }
+      45%,75%{ opacity:1; transform: rotate(45deg) scale(1.08); }
     }
 
     @keyframes dots{
-      0%,80%,100%{opacity:.2;transform:translateY(0)}
-      40%{opacity:1;transform:translateY(-3px)}
+      0%,80%,100%{ opacity:.2; transform:translateY(0); }
+      40%{ opacity:1; transform:translateY(-3px); }
     }
 
-    @media (max-width:700px){
-      .logo{font-size:54px}
-      .subtitle{font-size:17px;padding:0 10px}
-      .scene{height:320px}
-      .dog-wrap{transform:scale(.82)}
-      .bark{right:138px;top:52px;font-size:22px}
-      .wave{right:106px}
-      .wave.w2{right:92px}
+    /* responsive */
+    @media (max-width: 980px){
+      .hero{
+        grid-template-columns: 1fr;
+      }
+      .cards,
+      .testimonials{
+        grid-template-columns: 1fr;
+      }
+      .how{
+        grid-template-columns: 1fr 1fr;
+      }
+      .hero h1{
+        font-size: 44px;
+      }
+    }
+
+    @media (max-width: 640px){
+      .topbar-inner{
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .nav{
+        gap: 12px;
+      }
+      .hero{
+        padding-top: 42px;
+      }
+      .hero h1{
+        font-size: 36px;
+      }
+      .section-title{
+        font-size: 28px;
+      }
+      .cta h2{
+        font-size: 30px;
+      }
+      .how{
+        grid-template-columns: 1fr;
+      }
+      .splash-logo{
+        font-size: 42px;
+      }
+      .dog-stage{
+        transform: scale(.9);
+      }
     }
   </style>
 </head>
 <body>
-  <div id="splash">
-    <div class="wrap">
-      <div class="logo">LADRA<span class="me">ME</span></div>
-      <div class="subtitle">Paseos, cuidado y hospedaje para tu perro</div>
 
-      <div class="scene">
-        <div class="ground"></div>
+  <!-- SPLASH -->
+  <div id="splashScreen">
+    <div class="splash-box">
+      <div class="splash-logo">LADRA<span>ME</span></div>
+      <div class="splash-sub">Cuidando perros con cariño y seguimiento en vivo</div>
 
-        <div class="bark">¡GUAU!</div>
-        <div class="wave"></div>
-        <div class="wave w2"></div>
+      <div class="dog-stage">
+        <div class="bark-text">¡GUAU!</div>
+        <div class="bark-ring"></div>
+        <div class="bark-ring2"></div>
 
-        <div class="dog-wrap">
-          <div class="leash"></div>
-
-          <div class="dog">
-            <div class="ear-left"></div>
-            <div class="ear-right"></div>
-
-            <div class="head">
-              <div class="patch"></div>
-              <div class="eye-left"></div>
-              <div class="eye-right"></div>
-              <div class="muzzle"></div>
-              <div class="nose"></div>
-              <div class="mouth"></div>
-              <div class="tongue"></div>
-            </div>
-
-            <div class="collar"></div>
-            <div class="tag"></div>
-            <div class="body"></div>
-            <div class="chest"></div>
-
-            <div class="leg l1"><div class="paw-foot"></div></div>
-            <div class="leg l2"><div class="paw-foot"></div></div>
-            <div class="leg l3"><div class="paw-foot"></div></div>
-            <div class="leg l4"><div class="paw-foot"></div></div>
-
-            <div class="tail"></div>
-          </div>
-        </div>
-
-        <div class="pawprints">
-          <div class="paw"></div>
-          <div class="paw"></div>
-          <div class="paw"></div>
-        </div>
+        <!-- Perrito caricatura SVG -->
+        <svg class="dog-cartoon" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <ellipse cx="110" cy="190" rx="58" ry="12" fill="#ffd9b9"/>
+          <g>
+            <path d="M68 86 C58 66, 60 46, 78 42 C88 40, 98 48, 100 58 L93 90 Z" fill="#ff8a1d" stroke="#262626" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M152 86 C162 66, 160 46, 142 42 C132 40, 122 48, 120 58 L127 90 Z" fill="#ff8a1d" stroke="#262626" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M58 78 C58 46, 80 30, 110 30 C140 30, 162 46, 162 78 C162 110, 140 132, 110 132 C80 132, 58 110, 58 78 Z" fill="#fff8f1" stroke="#262626" stroke-width="5"/>
+            <path d="M60 56 C76 42, 95 44, 99 62 C100 78, 88 90, 72 90 C64 90, 60 76, 60 56 Z" fill="#ff8a1d"/>
+            <ellipse cx="88" cy="78" rx="5.5" ry="8" fill="#1f1f1f"/>
+            <ellipse cx="132" cy="78" rx="5.5" ry="8" fill="#1f1f1f"/>
+            <ellipse cx="110" cy="96" rx="13" ry="10" fill="#1f1f1f"/>
+            <path d="M94 112 Q110 126 126 112" fill="none" stroke="#1f1f1f" stroke-width="5" stroke-linecap="round"/>
+            <path d="M103 113 Q110 128 117 113" fill="#ff758b" stroke="#1f1f1f" stroke-width="3" stroke-linejoin="round"/>
+            <rect x="78" y="128" width="64" height="16" rx="8" fill="#ff7a00" stroke="#262626" stroke-width="4"/>
+            <circle cx="110" cy="147" r="8" fill="#ffd25d" stroke="#262626" stroke-width="4"/>
+            <path d="M75 138 C60 148, 55 164, 58 182 L74 182 C74 170, 74 156, 75 138 Z" fill="#fff8f1" stroke="#262626" stroke-width="5"/>
+            <path d="M145 138 C160 148, 165 164, 162 182 L146 182 C146 170, 146 156, 145 138 Z" fill="#fff8f1" stroke="#262626" stroke-width="5"/>
+            <path d="M88 136 C80 150, 80 166, 82 186 L98 186 C98 170, 98 152, 98 136 Z" fill="#fff8f1" stroke="#262626" stroke-width="5"/>
+            <path d="M122 136 C130 150, 130 166, 138 186 L122 186 C122 170, 122 152, 122 136 Z" fill="#fff8f1" stroke="#262626" stroke-width="5"/>
+          </g>
+        </svg>
       </div>
 
-      <div class="loading">
-        Cargando<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+      <div class="loading-line">
+        Cargando<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>
       </div>
-
-      <a class="skip-btn" href="/app/" id="enterNow">Entrar ahora</a>
     </div>
   </div>
 
+  <!-- WEBSITE -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="brand">LADRA<span>ME</span></a>
+      <nav class="nav">
+        <a href="#servicios">Servicios</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#confianza">Confianza</a>
+        <a href="#opiniones">Opiniones</a>
+        <a href="/app/" class="btn btn-primary">Abrir app</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <h1>Conecta dueños, paseadores y hoteles para perros con paseos, cuidado y seguimiento en vivo.</h1>
+        <p>
+          LADRAME te ayuda a encontrar paseos y hospedaje por horas, días o semanas para tu perro, con chat, llamadas, videollamadas, fotos, videos y seguimiento en tiempo real.
+        </p>
+
+        <div class="hero-actions">
+          <a href="/app/" class="btn btn-primary">Entrar a la app</a>
+          <a href="/app/" class="btn btn-secondary">Crear cuenta</a>
+        </div>
+
+        <div class="hero-badges">
+          <div class="badge">Usuarios verificados</div>
+          <div class="badge">Pagos seguros dentro de la app</div>
+          <div class="badge">Seguimiento en vivo</div>
+          <div class="badge">Hospedaje por horas, días y semanas</div>
+        </div>
+      </div>
+
+      <div class="hero-card">
+        <div class="hero-illustration">
+          <svg viewBox="0 0 420 280" width="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="10" y="10" width="400" height="260" rx="24" fill="#fff7ef" stroke="#f1dfcf"/>
+            <circle cx="80" cy="70" r="26" fill="#ffecd7"/>
+            <circle cx="140" cy="52" r="16" fill="#fff1e3"/>
+            <path d="M34 220 C80 170, 130 170, 180 220" fill="#ffd9b9"/>
+            <path d="M170 220 C220 155, 285 155, 350 220" fill="#ffe6cf"/>
+            <rect x="60" y="140" width="90" height="56" rx="16" fill="#fff" stroke="#f1dfcf"/>
+            <rect x="270" y="126" width="88" height="62" rx="16" fill="#fff" stroke="#f1dfcf"/>
+            <circle cx="104" cy="168" r="18" fill="#ff7a00"/>
+            <circle cx="314" cy="158" r="18" fill="#ff7a00"/>
+            <path d="M192 104 C192 74, 212 56, 240 56 C270 56, 292 76, 292 104 C292 134, 270 156, 240 156 C212 156, 192 134, 192 104 Z" fill="#fff" stroke="#262626" stroke-width="4"/>
+            <path d="M193 86 C208 74, 225 76, 229 92 C230 106, 220 116, 206 116 C198 116, 193 104, 193 86 Z" fill="#ff8a1d"/>
+            <ellipse cx="224" cy="106" rx="4.5" ry="6.5" fill="#1f1f1f"/>
+            <ellipse cx="256" cy="106" rx="4.5" ry="6.5" fill="#1f1f1f"/>
+            <ellipse cx="240" cy="120" rx="10" ry="7" fill="#1f1f1f"/>
+            <path d="M227 132 Q240 143 253 132" fill="none" stroke="#1f1f1f" stroke-width="4" stroke-linecap="round"/>
+            <rect x="210" y="152" width="60" height="12" rx="6" fill="#ff7a00" stroke="#262626" stroke-width="3"/>
+            <circle cx="240" cy="167" r="7" fill="#ffd25d" stroke="#262626" stroke-width="3"/>
+          </svg>
+        </div>
+
+        <div class="mini-grid">
+          <div class="mini-box">📍 Sigue a tu perro en tiempo real durante paseos y servicios.</div>
+          <div class="mini-box">🏨 Reserva hospedaje por horas, días o semanas.</div>
+          <div class="mini-box">📞 Llamadas, videollamadas y chat para más tranquilidad.</div>
+          <div class="mini-box">📷 Recibe fotos y videos de tu perro en cada servicio.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="servicios">
+      <h2 class="section-title">Todo lo que necesitas para el cuidado de tu perro</h2>
+      <p class="section-text">
+        LADRAME no es solo una app de paseos. Es una plataforma para conectar dueños, paseadores y hoteles para perros con una experiencia segura, cercana y moderna.
+      </p>
+
+      <div class="cards">
+        <div class="card">
+          <div class="icon">🐕</div>
+          <h3>Paseos</h3>
+          <p>Solicita paseos y recibe ofertas de paseadores cercanos para elegir la opción que más te convenga.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">🏨</div>
+          <h3>Hospedaje</h3>
+          <p>Encuentra hoteles para perros y reserva estadías por horas, días o semanas según lo que necesites.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">📍</div>
+          <h3>Seguimiento en vivo</h3>
+          <p>Consulta en el mapa la ubicación del paseo o servicio para tener tranquilidad en todo momento.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">💬</div>
+          <h3>Chat, llamadas y videollamadas</h3>
+          <p>Habla directamente con el paseador o alojamiento con comunicación en tiempo real dentro de la app.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">📸</div>
+          <h3>Fotos y videos</h3>
+          <p>Recibe actualizaciones visuales de tu perro para sentirte cerca incluso cuando no estás con él.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">💳</div>
+          <h3>Pagos seguros</h3>
+          <p>Gestiona pagos y créditos dentro de la app con una experiencia más cómoda y ordenada.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-funciona">
+      <h2 class="section-title">Cómo funciona</h2>
+      <p class="section-text">
+        Diseñamos una experiencia simple y clara para dueños, paseadores y hoteles para perros.
+      </p>
+
+      <div class="how">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Crea tu cuenta</h3>
+          <p>Regístrate como dueño o paseador y completa tu perfil para empezar a usar la plataforma.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Publica o responde</h3>
+          <p>Solicita un paseo o una estadía, o envía tu oferta si eres paseador u hotel.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Elige con confianza</h3>
+          <p>Revisa perfiles, valoraciones, comentarios y condiciones antes de aceptar una oferta.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3>Sigue todo en vivo</h3>
+          <p>Usa el chat, el mapa y las llamadas para acompañar la experiencia de principio a fin.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="confianza">
+      <h2 class="section-title">Una experiencia pensada para dar confianza</h2>
+      <p class="section-text">
+        Sabemos que tu perro es parte de tu familia. Por eso LADRAME prioriza la seguridad, la verificación de usuarios y la transparencia.
+      </p>
+
+      <div class="cards">
+        <div class="card">
+          <div class="icon">🪪</div>
+          <h3>Usuarios verificados</h3>
+          <p>Perfiles con verificación para generar más confianza entre dueños, paseadores y hoteles.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">⭐</div>
+          <h3>Calificaciones y comentarios</h3>
+          <p>Consulta valoraciones reales y recomendaciones antes de elegir a la persona o lugar ideal.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">🐶</div>
+          <h3>Perfil del perro</h3>
+          <p>Agrega información importante como personalidad, comportamiento, tamaño y recomendaciones especiales.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="opiniones">
+      <h2 class="section-title">Lo que transmite LADRAME</h2>
+      <p class="section-text">
+        Queremos que cada dueño sienta tranquilidad y que cada perro reciba atención con cariño, seguridad y seguimiento real.
+      </p>
+
+      <div class="testimonials">
+        <div class="quote">
+          <p>“Me encanta poder ver a mi perro en tiempo real y hablar con quien lo está cuidando.”</p>
+          <small>Dueño de perro</small>
+        </div>
+
+        <div class="quote">
+          <p>“Poder recibir fotos y videos hace que la experiencia sea mucho más tranquila y cercana.”</p>
+          <small>Usuario LADRAME</small>
+        </div>
+
+        <div class="quote">
+          <p>“La combinación de paseos, hospedaje y seguimiento en vivo hace que todo se sienta más profesional.”</p>
+          <small>Comunidad LADRAME</small>
+        </div>
+      </div>
+
+      <div class="cta">
+        <h2>Empieza hoy con LADRAME</h2>
+        <p>
+          Únete a una plataforma pensada para conectar dueños, paseadores y hoteles para perros en una experiencia moderna, confiable y cercana.
+        </p>
+        <a href="/app/" class="btn btn-primary">Abrir app</a>
+        <a href="/app/" class="btn btn-secondary">Crear cuenta</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © LADRAME — Paseos, cuidado y hospedaje para perros.
+  </footer>
+
   <script>
-    function ladridoPro(){
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = "sawtooth";
-      osc2.type = "square";
-
-      osc1.frequency.setValueAtTime(520, ctx.currentTime);
-      osc1.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.16);
-
-      osc2.frequency.setValueAtTime(380, ctx.currentTime);
-      osc2.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.16);
-
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.19);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.20);
-      osc2.stop(ctx.currentTime + 0.20);
-    }
-
     setTimeout(() => {
-      try{ ladridoPro(); }catch(e){}
-    }, 700);
-
-    document.addEventListener("click", () => {
-      try{ ladridoPro(); }catch(e){}
-    }, { once:true });
-
-    const enterNow = document.getElementById("enterNow");
-    enterNow.addEventListener("click", () => {
-      try{ ladridoPro(); }catch(e){}
-    });
-
-    setTimeout(() => {
-      window.location.href = "/app/";
-    }, 3200);
+      document.getElementById("splashScreen").classList.add("hide");
+    }, 2400);
   </script>
 </body>
 </html>
