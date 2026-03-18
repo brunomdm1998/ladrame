@@ -10,15 +10,15 @@
     html{scroll-behavior:smooth}
 
     :root{
-      --bg:#f7f3ed;
+      --bg:#f6f2ec;
       --bg-soft:#fcfaf7;
       --surface:#ffffff;
-      --surface-soft:#fbf7f1;
+      --surface-soft:#fbf6ef;
       --line:#eadccd;
       --text:#151515;
       --muted:#686868;
       --orange:#ff7a00;
-      --orange-dark:#df5e00;
+      --orange-dark:#de5b00;
       --green:#18b35b;
       --shadow-xl:0 34px 90px rgba(0,0,0,.13);
       --shadow-lg:0 18px 42px rgba(0,0,0,.08);
@@ -31,17 +31,17 @@
 
     body{
       margin:0;
-      font-family:Inter, Arial, sans-serif;
+      font-family:Inter,Arial,sans-serif;
       color:var(--text);
       background:
         radial-gradient(circle at top left,#fff1e4 0%,rgba(255,241,228,0) 24%),
         radial-gradient(circle at top right,#ffe8d3 0%,rgba(255,232,211,0) 22%),
-        linear-gradient(180deg,var(--bg-soft) 0%,#f6f2ec 100%);
+        linear-gradient(180deg,var(--bg-soft) 0%,var(--bg) 100%);
     }
 
     a{text-decoration:none;color:inherit}
     img{max-width:100%;display:block}
-    .container{width:min(var(--max), calc(100% - 40px)); margin:0 auto}
+    .container{width:min(var(--max),calc(100% - 40px));margin:0 auto}
 
     /* splash */
     #splash{
@@ -55,6 +55,7 @@
         radial-gradient(circle at 50% 20%,#fff0dd 0%,#fcf6ee 42%,#f6f2ec 100%);
       transition:opacity .65s ease, visibility .65s ease;
     }
+
     #splash.hide{
       opacity:0;
       visibility:hidden;
@@ -63,7 +64,7 @@
 
     .splash-shell{
       width:min(760px,92vw);
-      min-height:470px;
+      min-height:450px;
       border-radius:40px;
       border:1px solid rgba(234,220,207,.9);
       background:rgba(255,255,255,.82);
@@ -98,9 +99,9 @@
     }
 
     .splash-logo{
-      width:min(320px,64vw);
+      width:min(300px,60vw);
       object-fit:contain;
-      filter:drop-shadow(0 26px 34px rgba(0,0,0,.12));
+      filter:drop-shadow(0 28px 34px rgba(0,0,0,.12));
       animation:floatLogo 2.8s ease-in-out infinite;
     }
 
@@ -111,6 +112,7 @@
       letter-spacing:-2px;
       font-weight:900;
     }
+
     .splash-brand .o{color:var(--orange)}
     .splash-brand .d{color:#111}
 
@@ -173,8 +175,8 @@
     }
 
     .brand-mark-wrap{
-      width:82px;
-      height:82px;
+      width:84px;
+      height:84px;
       border-radius:22px;
       display:flex;
       align-items:center;
@@ -186,8 +188,8 @@
     }
 
     .brand-mark{
-      width:62px;
-      height:62px;
+      width:64px;
+      height:64px;
       object-fit:contain;
     }
 
@@ -237,13 +239,13 @@
 
     /* hero */
     .hero{
-      padding:62px 0 34px;
+      padding:54px 0 30px;
     }
 
     .hero-grid{
       display:grid;
-      grid-template-columns:1.02fr .98fr;
-      gap:34px;
+      grid-template-columns:1fr 1fr;
+      gap:28px;
       align-items:center;
     }
 
@@ -258,22 +260,22 @@
       color:var(--orange-dark);
       font-weight:800;
       font-size:13px;
-      margin-bottom:22px;
+      margin-bottom:20px;
       box-shadow:var(--shadow-md);
     }
 
     .hero h1{
       margin:0 0 18px;
-      font-size:74px;
+      font-size:72px;
       line-height:.94;
-      letter-spacing:-2.8px;
-      max-width:760px;
+      letter-spacing:-2.6px;
+      max-width:700px;
     }
 
     .hero p{
-      margin:0 0 28px;
-      max-width:650px;
-      font-size:21px;
+      margin:0 0 26px;
+      max-width:620px;
+      font-size:20px;
       line-height:1.7;
       color:var(--muted);
     }
@@ -304,9 +306,9 @@
 
     .hero-card{
       position:relative;
-      min-height:760px;
+      min-height:640px;
       border-radius:40px;
-      padding:28px;
+      padding:24px;
       background:
         radial-gradient(circle at top right,rgba(255,213,176,.72) 0%,rgba(255,213,176,0) 26%),
         linear-gradient(180deg,#fff9f3 0%,#fff3e8 100%);
@@ -319,7 +321,7 @@
       content:"";
       position:absolute;
       inset:0;
-      opacity:.13;
+      opacity:.12;
       background-image:
         radial-gradient(circle at 20% 20%,rgba(255,255,255,.7) 0 2px,transparent 2px),
         radial-gradient(circle at 75% 30%,rgba(255,255,255,.7) 0 2px,transparent 2px),
@@ -328,30 +330,29 @@
       pointer-events:none;
     }
 
-    .logo-stage{
+    .hero-main{
       position:relative;
       z-index:2;
       border-radius:32px;
-      background:rgba(255,255,255,.78);
-      border:1px solid rgba(255,255,255,.72);
+      background:rgba(255,255,255,.8);
+      border:1px solid rgba(255,255,255,.75);
       box-shadow:0 20px 40px rgba(0,0,0,.07);
-      padding:26px 24px 30px;
-      text-align:center;
+      padding:22px;
+      display:grid;
+      gap:16px;
     }
 
-    .logo-stage-top{
+    .hero-top{
       display:flex;
-      align-items:center;
       justify-content:space-between;
+      align-items:center;
       gap:12px;
-      margin-bottom:20px;
     }
 
     .tiny-title{
-      font-size:14px;
+      font-size:15px;
       font-weight:800;
-      color:#4b4b4b;
-      text-align:left;
+      color:#444;
     }
 
     .status-chip{
@@ -377,71 +378,76 @@
       animation:pulseGreen 1.7s infinite;
     }
 
-    .logo-hero-wrap{
+    .logo-zone{
       position:relative;
       min-height:420px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:28px;
+      border-radius:30px;
       background:
         radial-gradient(circle at top,#fffefe 0%,#fdf6ef 60%,#fbf0e4 100%);
       border:1px solid #eee1d4;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       overflow:hidden;
-      padding:26px 24px 42px;
+      padding:24px 24px 44px;
     }
 
-    .hero-glow{
+    .logo-glow{
       position:absolute;
-      width:360px;
-      height:360px;
+      width:520px;
+      height:520px;
       border-radius:50%;
       background:radial-gradient(circle,rgba(255,207,166,.56) 0%,rgba(255,207,166,0) 72%);
-      top:24px;
+      top:-10px;
       filter:blur(2px);
     }
 
-    .hero-floor{
+    .logo-floor{
       position:absolute;
-      width:320px;
-      height:38px;
+      width:400px;
+      height:48px;
       border-radius:50%;
-      bottom:26px;
+      bottom:24px;
       background:radial-gradient(circle,rgba(217,165,118,.32) 0%,rgba(217,165,118,0) 72%);
     }
 
     .hero-logo{
       position:relative;
       z-index:2;
-      width:min(360px,82%);
+      width:min(520px,96%);
       object-fit:contain;
-      filter:drop-shadow(0 30px 34px rgba(0,0,0,.14));
+      filter:drop-shadow(0 30px 36px rgba(0,0,0,.14));
       animation:floatLogo 3s ease-in-out infinite;
     }
 
+    .brand-row{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
     .hero-brand{
-      margin-top:18px;
-      font-size:54px;
+      font-size:56px;
       font-weight:900;
-      letter-spacing:-1.5px;
+      letter-spacing:-1.6px;
       line-height:.95;
+      margin:0;
     }
 
     .hero-brand .o{color:var(--orange)}
     .hero-brand .d{color:#111}
 
     .hero-note{
-      margin:10px auto 0;
-      max-width:460px;
+      max-width:300px;
       color:var(--muted);
-      font-size:16px;
+      font-size:15px;
       line-height:1.65;
+      text-align:right;
     }
 
     .feature-row{
-      position:relative;
-      z-index:2;
-      margin-top:16px;
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:14px;
@@ -450,10 +456,10 @@
     .feature-box{
       padding:18px;
       border-radius:22px;
-      background:rgba(255,255,255,.82);
+      background:rgba(255,255,255,.84);
       border:1px solid rgba(234,220,207,.95);
       box-shadow:var(--shadow-md);
-      min-height:128px;
+      min-height:126px;
     }
 
     .feature-box strong{
@@ -468,7 +474,7 @@
       line-height:1.55;
     }
 
-    /* metrics */
+    /* stats */
     .stats{
       padding:14px 0 28px;
     }
@@ -500,7 +506,6 @@
       line-height:1.5;
     }
 
-    /* sections */
     section.block{
       padding:32px 0;
     }
@@ -687,7 +692,9 @@
       .splash-copy{font-size:15px}
       .splash-logo{width:min(230px,58vw)}
       .hero-brand{font-size:40px}
-      .hero-logo{width:270px}
+      .hero-logo{width:320px}
+      .logo-zone{min-height:360px}
+      .hero-note{text-align:left;max-width:none}
     }
   </style>
 </head>
@@ -763,8 +770,8 @@
         </div>
 
         <div class="hero-card">
-          <div class="logo-stage">
-            <div class="logo-stage-top">
+          <div class="hero-main">
+            <div class="hero-top">
               <div class="tiny-title">Experiencia premium para cuidado canino</div>
               <div class="status-chip">
                 <span class="status-dot"></span>
@@ -772,37 +779,38 @@
               </div>
             </div>
 
-            <div class="logo-hero-wrap">
-              <div class="hero-glow"></div>
-              <div class="hero-floor"></div>
+            <div class="logo-zone">
+              <div class="logo-glow"></div>
+              <div class="logo-floor"></div>
               <img class="hero-logo" src="/logo.png" alt="Logo LADRAME">
             </div>
 
-            <div class="hero-brand">
-              <span class="o">LADRA</span><span class="d">ME</span>
+            <div class="brand-row">
+              <h2 class="hero-brand">
+                <span class="o">LADRA</span><span class="d">ME</span>
+              </h2>
+              <div class="hero-note">
+                La marca debe sentirse más sólida, premium y confiable desde el primer segundo.
+              </div>
             </div>
 
-            <div class="hero-note">
-              La marca debe sentirse más sólida, premium y confiable desde el primer segundo.
-            </div>
-          </div>
-
-          <div class="feature-row">
-            <div class="feature-box">
-              <strong>📍 Seguimiento en vivo</strong>
-              <span>Observa el paseo o servicio con más tranquilidad desde la app.</span>
-            </div>
-            <div class="feature-box">
-              <strong>🏨 Hospedaje flexible</strong>
-              <span>Reserva por horas, días o semanas según lo que necesites.</span>
-            </div>
-            <div class="feature-box">
-              <strong>📞 Comunicación directa</strong>
-              <span>Chat, llamadas y videollamadas dentro de la plataforma.</span>
-            </div>
-            <div class="feature-box">
-              <strong>📸 Actualizaciones reales</strong>
-              <span>Recibe fotos y novedades del servicio de manera simple.</span>
+            <div class="feature-row">
+              <div class="feature-box">
+                <strong>📍 Seguimiento en vivo</strong>
+                <span>Observa el paseo o servicio con más tranquilidad desde la app.</span>
+              </div>
+              <div class="feature-box">
+                <strong>🏨 Hospedaje flexible</strong>
+                <span>Reserva por horas, días o semanas según lo que necesites.</span>
+              </div>
+              <div class="feature-box">
+                <strong>📞 Comunicación directa</strong>
+                <span>Chat, llamadas y videollamadas dentro de la plataforma.</span>
+              </div>
+              <div class="feature-box">
+                <strong>📸 Actualizaciones reales</strong>
+                <span>Recibe fotos y novedades del servicio de manera simple.</span>
+              </div>
             </div>
           </div>
         </div>
