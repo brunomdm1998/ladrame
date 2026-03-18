@@ -5,29 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LADRAME</title>
   <style>
-    *{
-      box-sizing:border-box;
-      margin:0;
-      padding:0;
-    }
+    *{box-sizing:border-box;margin:0;padding:0}
 
-    html, body{
+    html,body{
       width:100%;
       height:100%;
       overflow:hidden;
-      font-family:Arial, sans-serif;
-      background:linear-gradient(180deg,#fff7ef 0%, #fffdf9 100%);
+      font-family:Arial,sans-serif;
+      background:linear-gradient(180deg,#fff7ef 0%,#fff 100%);
+    }
+
+    body{
+      display:flex;
+      justify-content:center;
+      align-items:center;
     }
 
     #splash{
       position:fixed;
       inset:0;
       display:flex;
-      align-items:center;
       justify-content:center;
+      align-items:center;
       background:
-        radial-gradient(circle at top, #ffd9b8 0%, #fff2e6 35%, #ffffff 80%);
-      z-index:9999;
+        radial-gradient(circle at top,#ffd7b5 0%,#fff1e4 35%,#ffffff 80%);
     }
 
     .wrap{
@@ -39,31 +40,30 @@
     }
 
     .logo{
-      font-size:68px;
+      font-size:70px;
       font-weight:900;
       letter-spacing:1px;
-      margin-bottom:10px;
-      background:linear-gradient(180deg,#ffb04d 0%, #ff7a00 55%, #d85600 100%);
+      line-height:1;
+      margin-bottom:12px;
+      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 58%,#cf5800 100%);
       -webkit-background-clip:text;
       background-clip:text;
       color:transparent;
-      text-shadow:
-        0 2px 0 rgba(255,255,255,.3),
-        0 8px 20px rgba(255,122,0,.18);
+      text-shadow:0 8px 20px rgba(255,122,0,.16);
     }
 
     .logo .me{
-      background:linear-gradient(180deg,#333 0%, #111 100%);
+      background:linear-gradient(180deg,#333 0%,#111 100%);
       -webkit-background-clip:text;
       background-clip:text;
       color:transparent;
     }
 
     .subtitle{
-      color:#5f5f5f;
+      color:#666;
       font-size:20px;
       font-weight:700;
-      margin-bottom:26px;
+      margin-bottom:22px;
     }
 
     .scene{
@@ -78,9 +78,9 @@
     .ground{
       position:absolute;
       bottom:24px;
-      width:480px;
-      height:22px;
-      background:rgba(255,122,0,.11);
+      width:470px;
+      height:24px;
+      background:rgba(255,122,0,.12);
       border-radius:999px;
       filter:blur(1px);
     }
@@ -98,123 +98,79 @@
       inset:0;
     }
 
-    .body{
+    .ear-left,.ear-right{
       position:absolute;
-      left:95px;
-      top:118px;
-      width:150px;
-      height:122px;
-      background:linear-gradient(180deg,#ffffff 0%, #f4ede5 100%);
-      border:6px solid #2a2a2a;
-      border-radius:42% 42% 36% 36%;
-      box-shadow:
-        inset -8px -12px 0 rgba(0,0,0,.04),
-        inset 6px 6px 0 rgba(255,255,255,.7);
-      z-index:2;
+      width:40px;
+      height:54px;
+      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
+      border:6px solid #2c2c2c;
+      border-radius:20px 20px 14px 14px;
+      z-index:4;
+      top:30px;
     }
 
-    .chest{
-      position:absolute;
-      left:128px;
-      top:146px;
-      width:84px;
-      height:84px;
-      background:linear-gradient(180deg,#fffdf9 0%, #f2ece4 100%);
-      border-radius:40px 40px 30px 30px;
-      z-index:3;
+    .ear-left{
+      left:92px;
+      transform:rotate(-18deg);
+      animation:earLeft 1.15s ease-in-out infinite;
+    }
+
+    .ear-right{
+      right:92px;
+      transform:rotate(18deg);
+      animation:earRight 1.15s ease-in-out infinite;
     }
 
     .head{
       position:absolute;
-      left:92px;
-      top:32px;
-      width:156px;
-      height:132px;
-      background:linear-gradient(180deg,#fffdf9 0%, #f3ede5 100%);
-      border:6px solid #2a2a2a;
-      border-radius:44% 44% 42% 42%;
+      left:50%;
+      top:42px;
+      transform:translateX(-50%);
+      width:150px;
+      height:126px;
+      background:linear-gradient(180deg,#fffdfa 0%,#f3ece3 100%);
+      border:6px solid #2c2c2c;
+      border-radius:42% 42% 40% 40%;
       overflow:hidden;
       z-index:5;
       box-shadow:
         inset -8px -10px 0 rgba(0,0,0,.04),
-        inset 6px 6px 0 rgba(255,255,255,.8);
+        inset 6px 6px 0 rgba(255,255,255,.75);
     }
 
     .patch{
       position:absolute;
-      left:0;
-      top:0;
-      width:82px;
-      height:88px;
-      background:linear-gradient(180deg,#ffb04d 0%, #ff7a00 100%);
-      border-radius:0 0 38px 0;
+      left:8px;
+      top:14px;
+      width:56px;
+      height:62px;
+      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
+      border-radius:48% 44% 50% 40%;
       opacity:.95;
     }
 
-    .ear-left,
-    .ear-right{
+    .eye-left,.eye-right{
       position:absolute;
-      width:48px;
-      height:70px;
-      background:linear-gradient(180deg,#ffb04d 0%, #ff7a00 100%);
-      border:6px solid #2a2a2a;
-      border-radius:22px 22px 18px 18px;
-      z-index:4;
-      transform-origin:center top;
-    }
-
-    .ear-left{
-      left:94px;
-      top:16px;
-      transform:rotate(-20deg);
-      animation:earFlapLeft 1.15s ease-in-out infinite;
-    }
-
-    .ear-right{
-      right:94px;
-      top:16px;
-      transform:rotate(20deg);
-      animation:earFlapRight 1.15s ease-in-out infinite;
-    }
-
-    .eye-left,
-    .eye-right{
-      position:absolute;
-      width:14px;
-      height:18px;
+      width:12px;
+      height:16px;
       background:#1f1f1f;
       border-radius:50%;
-      top:48px;
+      top:44px;
       z-index:7;
       animation:blink 4s infinite;
     }
 
-    .eye-left{ left:44px; }
-    .eye-right{ right:42px; }
-
-    .eyebrow-left,
-    .eyebrow-right{
-      position:absolute;
-      width:18px;
-      height:8px;
-      border-top:4px solid #2a2a2a;
-      border-radius:50%;
-      top:34px;
-      z-index:7;
-      opacity:.65;
-    }
-
-    .eyebrow-left{ left:38px; transform:rotate(-8deg); }
-    .eyebrow-right{ right:36px; transform:rotate(8deg); }
+    .eye-left{left:42px}
+    .eye-right{right:42px}
 
     .muzzle{
       position:absolute;
       left:50%;
       top:58px;
       transform:translateX(-50%);
-      width:70px;
-      height:46px;
-      background:linear-gradient(180deg,#fffdfb 0%, #efe7dd 100%);
+      width:68px;
+      height:44px;
+      background:linear-gradient(180deg,#fffdfb 0%,#efe7de 100%);
       border-radius:26px;
       z-index:6;
     }
@@ -225,7 +181,7 @@
       top:66px;
       transform:translateX(-50%);
       width:24px;
-      height:18px;
+      height:16px;
       background:#1f1f1f;
       border-radius:50% 50% 60% 60%;
       z-index:8;
@@ -236,10 +192,10 @@
       left:50%;
       top:84px;
       transform:translateX(-50%);
-      width:54px;
-      height:26px;
+      width:52px;
+      height:24px;
       border-bottom:5px solid #1f1f1f;
-      border-radius:0 0 50px 50px;
+      border-radius:0 0 40px 40px;
       z-index:8;
       animation:mouthBark 1.15s ease-in-out infinite;
     }
@@ -247,78 +203,108 @@
     .tongue{
       position:absolute;
       left:50%;
-      top:101px;
+      top:100px;
       transform:translateX(-50%);
-      width:24px;
-      height:18px;
-      background:#ff6e86;
-      border:4px solid #2a2a2a;
+      width:22px;
+      height:16px;
+      background:#ff6d86;
+      border:4px solid #2c2c2c;
       border-top:none;
-      border-radius:0 0 16px 16px;
+      border-radius:0 0 14px 14px;
       z-index:7;
+    }
+
+    .body{
+      position:absolute;
+      left:50%;
+      top:142px;
+      transform:translateX(-50%);
+      width:144px;
+      height:112px;
+      background:linear-gradient(180deg,#fffdfa 0%,#f2ebe2 100%);
+      border:6px solid #2c2c2c;
+      border-radius:40% 40% 34% 34%;
+      z-index:2;
+      box-shadow:
+        inset -8px -10px 0 rgba(0,0,0,.04),
+        inset 6px 6px 0 rgba(255,255,255,.8);
+    }
+
+    .chest{
+      position:absolute;
+      left:50%;
+      top:162px;
+      transform:translateX(-50%);
+      width:78px;
+      height:76px;
+      background:linear-gradient(180deg,#fffdf9 0%,#f0e9e1 100%);
+      border-radius:36px 36px 24px 24px;
+      z-index:3;
     }
 
     .collar{
       position:absolute;
-      left:110px;
-      top:145px;
-      width:120px;
-      height:20px;
-      background:linear-gradient(180deg,#ff9a2f 0%, #ff6900 100%);
-      border:5px solid #2a2a2a;
+      left:50%;
+      top:152px;
+      transform:translateX(-50%);
+      width:116px;
+      height:18px;
+      background:linear-gradient(180deg,#ff9d35 0%,#ff6900 100%);
+      border:5px solid #2c2c2c;
       border-radius:999px;
       z-index:9;
     }
 
     .tag{
       position:absolute;
-      left:162px;
-      top:158px;
+      left:50%;
+      top:165px;
+      transform:translateX(-50%);
       width:18px;
-      height:23px;
-      background:linear-gradient(180deg,#ffd75e 0%, #ffb400 100%);
-      border:4px solid #2a2a2a;
+      height:22px;
+      background:linear-gradient(180deg,#ffdc66 0%,#ffb300 100%);
+      border:4px solid #2c2c2c;
       border-radius:12px;
       z-index:10;
     }
 
     .leg{
       position:absolute;
-      width:28px;
-      height:82px;
-      background:linear-gradient(180deg,#fffdf9 0%, #f0e8df 100%);
-      border:6px solid #2a2a2a;
+      width:26px;
+      height:80px;
+      background:linear-gradient(180deg,#fffdfa 0%,#f0e8df 100%);
+      border:6px solid #2c2c2c;
       border-top:none;
       border-radius:0 0 18px 18px;
-      bottom:34px;
+      bottom:28px;
       z-index:1;
     }
 
-    .leg.l1{ left:118px; }
-    .leg.l2{ left:150px; }
-    .leg.l3{ left:187px; }
-    .leg.l4{ left:219px; }
+    .leg.l1{left:118px}
+    .leg.l2{left:150px}
+    .leg.l3{left:184px}
+    .leg.l4{left:216px}
 
     .paw-foot{
       position:absolute;
-      bottom:-8px;
       left:-2px;
-      width:32px;
-      height:16px;
-      background:#fff6ee;
-      border:5px solid #2a2a2a;
+      bottom:-8px;
+      width:30px;
+      height:14px;
+      background:#fff7ef;
+      border:5px solid #2c2c2c;
       border-top:none;
       border-radius:0 0 18px 18px;
     }
 
     .tail{
       position:absolute;
-      left:226px;
-      top:150px;
-      width:72px;
+      right:32px;
+      top:174px;
+      width:64px;
       height:18px;
-      background:linear-gradient(180deg,#ffb04d 0%, #ff7a00 100%);
-      border:6px solid #2a2a2a;
+      background:linear-gradient(180deg,#ffb04f 0%,#ff7a00 100%);
+      border:6px solid #2c2c2c;
       border-left:none;
       border-radius:0 20px 20px 0;
       transform-origin:left center;
@@ -328,10 +314,10 @@
 
     .leash{
       position:absolute;
-      left:177px;
-      top:175px;
-      width:260px;
-      height:120px;
+      left:160px;
+      top:176px;
+      width:250px;
+      height:118px;
       border-bottom:7px solid #ff7a00;
       border-left:7px solid transparent;
       border-right:7px solid transparent;
@@ -340,14 +326,48 @@
       opacity:.95;
     }
 
+    .bark{
+      position:absolute;
+      right:186px;
+      top:46px;
+      font-size:28px;
+      font-weight:900;
+      color:#ff7a00;
+      text-shadow:0 4px 12px rgba(255,122,0,.18);
+      opacity:0;
+      animation:barkText 1.15s ease-in-out infinite;
+    }
+
+    .wave{
+      position:absolute;
+      right:144px;
+      top:58px;
+      width:24px;
+      height:24px;
+      border:4px solid #ff9b3d;
+      border-left:none;
+      border-bottom:none;
+      border-radius:50%;
+      transform:rotate(45deg);
+      opacity:0;
+      animation:barkWave 1.15s ease-in-out infinite;
+    }
+
+    .wave.w2{
+      right:128px;
+      top:48px;
+      width:38px;
+      height:38px;
+      animation-delay:.12s;
+    }
+
     .pawprints{
       position:absolute;
-      bottom:8px;
       left:50%;
+      bottom:8px;
       transform:translateX(-50%);
       display:flex;
       gap:18px;
-      z-index:11;
     }
 
     .paw{
@@ -359,8 +379,8 @@
       animation:pawPulse 1.4s infinite;
     }
 
-    .paw:nth-child(2){ animation-delay:.2s; }
-    .paw:nth-child(3){ animation-delay:.4s; }
+    .paw:nth-child(2){animation-delay:.2s}
+    .paw:nth-child(3){animation-delay:.4s}
 
     .paw::before{
       content:"";
@@ -371,42 +391,7 @@
       top:-6px;
       border-radius:50%;
       background:#ff9b3d;
-      box-shadow:10px -2px 0 #ff9b3d, 20px 0 0 #ff9b3d;
-    }
-
-    .bark{
-      position:absolute;
-      right:180px;
-      top:30px;
-      font-size:28px;
-      font-weight:900;
-      color:#ff7a00;
-      text-shadow:0 4px 12px rgba(255,122,0,.18);
-      opacity:0;
-      animation:barkText 1.15s ease-in-out infinite;
-    }
-
-    .wave{
-      position:absolute;
-      right:138px;
-      top:42px;
-      width:26px;
-      height:26px;
-      border:4px solid #ff9b3d;
-      border-left:none;
-      border-bottom:none;
-      border-radius:50%;
-      transform:rotate(45deg);
-      opacity:0;
-      animation:barkWave 1.15s ease-in-out infinite;
-    }
-
-    .wave.w2{
-      right:122px;
-      top:32px;
-      width:40px;
-      height:40px;
-      animation-delay:.12s;
+      box-shadow:10px -2px 0 #ff9b3d,20px 0 0 #ff9b3d;
     }
 
     .loading{
@@ -421,102 +406,79 @@
       animation:dots 1.2s infinite;
     }
 
-    .dots span:nth-child(2){ animation-delay:.2s; }
-    .dots span:nth-child(3){ animation-delay:.4s; }
+    .dots span:nth-child(2){animation-delay:.2s}
+    .dots span:nth-child(3){animation-delay:.4s}
 
     .skip-btn{
       display:inline-block;
       margin-top:18px;
+      padding:12px 22px;
+      border-radius:14px;
       background:#ff7a00;
       color:#fff;
       text-decoration:none;
-      padding:12px 22px;
-      border-radius:14px;
       font-weight:900;
-      box-shadow:0 10px 24px rgba(255,122,0,.18);
+      box-shadow:0 10px 22px rgba(255,122,0,.18);
     }
 
     @keyframes dogBounce{
-      0%,100%{ transform:translateY(0); }
-      50%{ transform:translateY(-8px); }
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-8px)}
     }
 
     @keyframes tailWag{
-      from{ transform:rotate(10deg); }
-      to{ transform:rotate(-18deg); }
+      from{transform:rotate(10deg)}
+      to{transform:rotate(-18deg)}
     }
 
     @keyframes mouthBark{
-      0%,100%{ transform:translateX(-50%) scaleY(1); }
-      45%,55%{ transform:translateX(-50%) scaleY(1.28); }
+      0%,100%{transform:translateX(-50%) scaleY(1)}
+      45%,55%{transform:translateX(-50%) scaleY(1.25)}
     }
 
     @keyframes barkText{
-      0%,35%,100%{ opacity:0; transform:translateY(5px) scale(.95); }
-      45%,70%{ opacity:1; transform:translateY(0) scale(1); }
+      0%,35%,100%{opacity:0;transform:translateY(5px) scale(.95)}
+      45%,70%{opacity:1;transform:translateY(0) scale(1)}
     }
 
     @keyframes barkWave{
-      0%,35%,100%{ opacity:0; transform:rotate(45deg) scale(.8); }
-      45%,75%{ opacity:1; transform:rotate(45deg) scale(1.1); }
+      0%,35%,100%{opacity:0;transform:rotate(45deg) scale(.8)}
+      45%,75%{opacity:1;transform:rotate(45deg) scale(1.1)}
     }
 
     @keyframes pawPulse{
-      0%,100%{ transform:translateY(0); opacity:.6; }
-      50%{ transform:translateY(-4px); opacity:1; }
+      0%,100%{transform:translateY(0);opacity:.6}
+      50%{transform:translateY(-4px);opacity:1}
     }
 
-    @keyframes earFlapLeft{
-      0%,100%{ transform:rotate(-20deg); }
-      50%{ transform:rotate(-28deg); }
+    @keyframes earLeft{
+      0%,100%{transform:rotate(-18deg)}
+      50%{transform:rotate(-26deg)}
     }
 
-    @keyframes earFlapRight{
-      0%,100%{ transform:rotate(20deg); }
-      50%{ transform:rotate(28deg); }
+    @keyframes earRight{
+      0%,100%{transform:rotate(18deg)}
+      50%{transform:rotate(26deg)}
     }
 
     @keyframes blink{
-      0%,46%,48%,100%{ transform:scaleY(1); }
-      47%{ transform:scaleY(.1); }
+      0%,46%,48%,100%{transform:scaleY(1)}
+      47%{transform:scaleY(.1)}
     }
 
     @keyframes dots{
-      0%,80%,100%{ opacity:.2; transform:translateY(0); }
-      40%{ opacity:1; transform:translateY(-3px); }
+      0%,80%,100%{opacity:.2;transform:translateY(0)}
+      40%{opacity:1;transform:translateY(-3px)}
     }
 
-    @media (max-width: 700px){
-      .logo{
-        font-size:52px;
-      }
-
-      .subtitle{
-        font-size:17px;
-        padding:0 10px;
-      }
-
-      .scene{
-        height:320px;
-      }
-
-      .dog-wrap{
-        transform:scale(.82);
-      }
-
-      .bark{
-        right:135px;
-        top:35px;
-        font-size:22px;
-      }
-
-      .wave{
-        right:104px;
-      }
-
-      .wave.w2{
-        right:90px;
-      }
+    @media (max-width:700px){
+      .logo{font-size:54px}
+      .subtitle{font-size:17px;padding:0 10px}
+      .scene{height:320px}
+      .dog-wrap{transform:scale(.82)}
+      .bark{right:138px;top:52px;font-size:22px}
+      .wave{right:106px}
+      .wave.w2{right:92px}
     }
   </style>
 </head>
@@ -528,6 +490,7 @@
 
       <div class="scene">
         <div class="ground"></div>
+
         <div class="bark">¡GUAU!</div>
         <div class="wave"></div>
         <div class="wave w2"></div>
@@ -541,8 +504,6 @@
 
             <div class="head">
               <div class="patch"></div>
-              <div class="eyebrow-left"></div>
-              <div class="eyebrow-right"></div>
               <div class="eye-left"></div>
               <div class="eye-right"></div>
               <div class="muzzle"></div>
@@ -580,28 +541,48 @@
     </div>
   </div>
 
-  <audio id="barkSound" src="bark.mp3" preload="auto"></audio>
-
   <script>
-    const bark = document.getElementById("barkSound");
-    const enterNow = document.getElementById("enterNow");
+    function ladridoPro(){
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    function tryPlayBark(){
-      bark.play().catch(() => {
-        console.log("El navegador bloqueó el sonido automático.");
-      });
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = "sawtooth";
+      osc2.type = "square";
+
+      osc1.frequency.setValueAtTime(520, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.16);
+
+      osc2.frequency.setValueAtTime(380, ctx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.16);
+
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.19);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 0.20);
+      osc2.stop(ctx.currentTime + 0.20);
     }
 
     setTimeout(() => {
-      tryPlayBark();
+      try{ ladridoPro(); }catch(e){}
     }, 700);
 
     document.addEventListener("click", () => {
-      bark.play().catch(() => {});
+      try{ ladridoPro(); }catch(e){}
     }, { once:true });
 
+    const enterNow = document.getElementById("enterNow");
     enterNow.addEventListener("click", () => {
-      bark.play().catch(() => {});
+      try{ ladridoPro(); }catch(e){}
     });
 
     setTimeout(() => {
