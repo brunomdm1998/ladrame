@@ -310,8 +310,7 @@
       <select id="signupLanguage">
         <option value="es">Español</option>
         <option value="en">English</option>
-        <option value="jp">日本語</option>
-        <option value="pe">Perú</option>
+        <option value="ja">日本語</option>
       </select>
 
       <select id="signupCountry">
@@ -563,7 +562,7 @@
 
       <div class="home-action-row">
         <button onclick="openWalkerMapScreen()">Ver solicitudes</button>
-        <button class="orange" onclick="go('buyCreditsScreen')">Comprar créditos</button>
+        <button class="orange" onclick="openBuyCreditsScreen()">Comprar créditos</button>
         <button class="secondary" onclick="activateHotelMode()" id="activateHotelBtn">Activar hotel</button>
         <button class="secondary hidden" onclick="openHotelProfileScreen()" id="hotelConfigBtn">Configurar hotel</button>
       </div>
@@ -692,13 +691,20 @@
 
     <!-- BUY CREDITS -->
     <div id="buyCreditsScreen" class="screen">
-      <h2>Comprar créditos</h2>
+      <h2 id="buyCreditsTitle">Comprar créditos</h2>
       <div class="card center">
-        <p><b>Escanea el QR y realiza el pago</b></p>
-        <a href="https://ibb.co/fdYb503M" target="_blank" rel="noopener">Ver QR de pago</a>
-        <p style="margin-top:8px;font-weight:bold">Bruno Du.</p>
-        <p class="small">Luego sube el comprobante.</p>
+        <p><b id="buyCreditsQrTitle">Método de pago configurado por el administrador</b></p>
+        <p class="small" id="buyCreditsCountryText">País: -</p>
+        <p style="margin-top:8px;font-weight:bold" id="buyCreditsMethodText">Método: -</p>
+        <img id="buyCreditsQrImage" class="wide-photo hidden" style="max-height:280px;object-fit:contain;background:#fff">
+        <a id="buyCreditsQrLink" href="#" target="_blank" rel="noopener" class="hidden">Ver QR de pago</a>
+        <p class="small" id="buyCreditsQrEmpty">El administrador aún no configuró un QR para este país.</p>
+        <p class="small" id="buyCreditsHelpText">Luego sube el comprobante.</p>
       </div>
+      <select id="creditsProviderType">
+        <option value="walker">Créditos para paseador</option>
+        <option value="hotel">Créditos para hotel</option>
+      </select>
       <input type="number" id="creditsAmount" placeholder="Cantidad de créditos (mínimo 5)">
       <div class="card">
         <p><b>Subir comprobante</b></p>
@@ -707,6 +713,51 @@
       <button class="green" onclick="sendCreditOrder()">Enviar comprobante</button>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
       <p id="buyCreditsMsg" class="msg"></p>
+    </div>
+
+
+    <!-- ADMIN HOME -->
+    <div id="adminHomeScreen" class="screen">
+      <div class="topbar">
+        <div style="flex:1">
+          <h2 style="margin:0" id="adminTitle">Administrador</h2>
+          <div class="small" id="adminWelcome">Panel de pagos y QR</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
+      </div>
+
+      <div class="card">
+        <p><b id="adminQrSectionTitle">Subir QR de pago por país</b></p>
+        <select id="adminQrCountry">
+          <option value="peru">Perú</option>
+          <option value="spain">España</option>
+          <option value="usa">Estados Unidos</option>
+          <option value="japan">Japón</option>
+        </select>
+        <select id="adminQrProviderType">
+          <option value="walker">Paseadores</option>
+          <option value="hotel">Hoteles</option>
+          <option value="all">Ambos</option>
+        </select>
+        <input id="adminQrLabel" placeholder="Texto del pago (ej. Yape, Bizum, Zelle, PayPay)">
+        <div class="card">
+          <p><b>Foto QR / medio de pago</b></p>
+          <input type="file" accept="image/*" capture="environment" id="adminQrInput">
+          <img id="adminQrPreview" class="preview-img hidden">
+        </div>
+        <button class="green" onclick="saveAdminPaymentQr()">Guardar QR</button>
+        <p id="adminQrMsg" class="msg"></p>
+      </div>
+
+      <div class="card">
+        <p><b>QR configurados</b></p>
+        <div id="adminQrList"></div>
+      </div>
+
+      <div class="card">
+        <p><b>Órdenes de créditos recientes</b></p>
+        <div id="adminCreditOrdersList"></div>
+      </div>
     </div>
 
     <!-- NOTIFICATIONS -->
@@ -820,6 +871,62 @@
     let callCamEnabled = true;
     let barkAudioContext = null;
     let incomingBarkInterval = null;
+    const COUNTRY_DEFAULT_LANGUAGE = { peru: "es", spain: "es", usa: "en", japan: "ja" };
+    const COUNTRY_LABELS = { peru: "Perú", spain: "España", usa: "Estados Unidos", japan: "Japón" };
+    const LANGUAGE_LABELS = { es: "Español", en: "English", ja: "日本語" };
+    const I18N = {
+      es: {
+        loginTitle: "LADRAME", loginEmail: "Correo electrónico", loginPass: "Contraseña", loginEnter: "Entrar", loginCreate: "Crear cuenta",
+        signupTitle: "Crear cuenta", signupName: "Nombre completo", signupEmail: "Correo electrónico", signupDni: "Número DNI / documento", signupPass: "Contraseña",
+        signupRole: "Tipo de cuenta", roleOwner: "Dueño", roleWalker: "Paseador", countryPlaceholder: "Selecciona país", verifyIdentityTitle: "Verificación de identidad",
+        verifyIdentityText: "Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.", signupButton: "Registrarme", back: "Volver",
+        verifyTitle: "Verificar correo", verifySent: "Te enviamos un código a:", verifyInput: "Escribe el código", verifyConfirm: "Confirmar código", verifyResend: "Reenviar código",
+        completeTitle: "Completar perfil", selfie: "Selfie", document: "Documento", finishProfile: "Terminar perfil", logout: "Salir",
+        ownerTitle: "Dueño", ownerHello: "Hola", registerDog: "Registrar perro", requestWalk: "Pedir paseo", findHotel: "Buscar hotel", requests: "Solicitudes", hotelRequests: "Hotel solicitudes", notifications: "Notificaciones",
+        dogTitle: "Registrar perro", dogName: "Nombre del perro", dogNotes: "Recomendaciones para el paseador", saveDog: "Guardar perro", dogPhoto: "Foto del perro",
+        walkTitle: "Pedir paseo", walkChooseDogs: "Selecciona uno o varios perros", walkOwnerPrice: "Tarifa que propone el dueño", walkNotes: "Notas para el paseador", publishWalk: "Publicar solicitud",
+        hotelsTitle: "Hoteles cercanos", hotelsUpTo: "Hasta 8 km", hotelRequestTitle: "Solicitar hotel", hotelRequestNotes: "Notas para el hotel", hotelPublish: "Publicar solicitud de hotel",
+        providerTitle: "Paseador", providerCredits: "Créditos disponibles paseo", providerMaxTariff: "Tarifa máxima:", viewRequests: "Ver solicitudes", buyCredits: "Comprar créditos", activateHotel: "Activar hotel", configHotel: "Configurar hotel",
+        nearbyRequests: "Solicitudes cercanas", sendOfferTitle: "Enviar oferta", walkerOfferPrice: "Tarifa que propone el paseador", sendOffer: "Enviar oferta",
+        hotelConfigTitle: "Configurar hotel", hotelName: "Nombre del hotel", hotelDescription: "Describe tu hotel", hotelAddress: "Dirección o referencia", hotelBasePrice: "Precio base por día", hotelCheckIn: "Check-in desde (ej. 08:00)", hotelCheckOut: "Check-out hasta (ej. 18:00)", hotelHours: "Horas de paseo por día", hotelTimes: "Veces de paseo por día", hotelMainPhoto: "Foto principal", saveHotel: "Guardar hotel",
+        buyCreditsTitle: "Comprar créditos", buyCreditsQrTitle: "Método de pago configurado por el administrador", buyCreditsHelpText: "Luego sube el comprobante.", creditsAmount: "Cantidad de créditos (mínimo 5)", uploadProof: "Subir comprobante", sendProof: "Enviar comprobante",
+        adminTitle: "Administrador", adminWelcome: "Panel de pagos y QR", adminQrSectionTitle: "Subir QR de pago por país"
+      },
+      en: {
+        loginTitle: "LADRAME", loginEmail: "Email", loginPass: "Password", loginEnter: "Sign in", loginCreate: "Create account",
+        signupTitle: "Create account", signupName: "Full name", signupEmail: "Email", signupDni: "ID / document number", signupPass: "Password",
+        signupRole: "Account type", roleOwner: "Owner", roleWalker: "Walker", countryPlaceholder: "Select country", verifyIdentityTitle: "Identity verification",
+        verifyIdentityText: "Create your account and verify your email first. Then we will ask for selfie and ID only once.", signupButton: "Register", back: "Back",
+        verifyTitle: "Verify email", verifySent: "We sent a code to:", verifyInput: "Enter the code", verifyConfirm: "Confirm code", verifyResend: "Resend code",
+        completeTitle: "Complete profile", selfie: "Selfie", document: "Document", finishProfile: "Finish profile", logout: "Log out",
+        ownerTitle: "Owner", ownerHello: "Hello", registerDog: "Register dog", requestWalk: "Request walk", findHotel: "Find hotel", requests: "Requests", hotelRequests: "Hotel requests", notifications: "Notifications",
+        dogTitle: "Register dog", dogName: "Dog name", dogNotes: "Recommendations for the walker", saveDog: "Save dog", dogPhoto: "Dog photo",
+        walkTitle: "Request walk", walkChooseDogs: "Select one or more dogs", walkOwnerPrice: "Owner proposed fare", walkNotes: "Notes for the walker", publishWalk: "Publish request",
+        hotelsTitle: "Nearby hotels", hotelsUpTo: "Up to 8 km", hotelRequestTitle: "Request hotel", hotelRequestNotes: "Notes for the hotel", hotelPublish: "Publish hotel request",
+        providerTitle: "Walker", providerCredits: "Available walking credits", providerMaxTariff: "Maximum fare:", viewRequests: "View requests", buyCredits: "Buy credits", activateHotel: "Enable hotel", configHotel: "Configure hotel",
+        nearbyRequests: "Nearby requests", sendOfferTitle: "Send offer", walkerOfferPrice: "Walker proposed fare", sendOffer: "Send offer",
+        hotelConfigTitle: "Configure hotel", hotelName: "Hotel name", hotelDescription: "Describe your hotel", hotelAddress: "Address or reference", hotelBasePrice: "Base price per day", hotelCheckIn: "Check-in from (e.g. 08:00)", hotelCheckOut: "Check-out until (e.g. 18:00)", hotelHours: "Walking hours per day", hotelTimes: "Walk times per day", hotelMainPhoto: "Main photo", saveHotel: "Save hotel",
+        buyCreditsTitle: "Buy credits", buyCreditsQrTitle: "Payment method configured by admin", buyCreditsHelpText: "Then upload the payment proof.", creditsAmount: "Credit amount (minimum 5)", uploadProof: "Upload proof", sendProof: "Send proof",
+        adminTitle: "Admin", adminWelcome: "Payments and QR panel", adminQrSectionTitle: "Upload payment QR by country"
+      },
+      ja: {
+        loginTitle: "LADRAME", loginEmail: "メールアドレス", loginPass: "パスワード", loginEnter: "ログイン", loginCreate: "アカウント作成",
+        signupTitle: "アカウント作成", signupName: "氏名", signupEmail: "メールアドレス", signupDni: "身分証番号", signupPass: "パスワード",
+        signupRole: "アカウント種別", roleOwner: "飼い主", roleWalker: "ウォーカー", countryPlaceholder: "国を選択", verifyIdentityTitle: "本人確認",
+        verifyIdentityText: "まずアカウントを作成してメール認証してください。その後、セルフィーと身分証を一度だけアップロードします。", signupButton: "登録", back: "戻る",
+        verifyTitle: "メール認証", verifySent: "確認コードを送信しました:", verifyInput: "コードを入力", verifyConfirm: "コード確認", verifyResend: "再送信",
+        completeTitle: "プロフィールを完了", selfie: "セルフィー", document: "身分証", finishProfile: "プロフィール完了", logout: "ログアウト",
+        ownerTitle: "飼い主", ownerHello: "こんにちは", registerDog: "犬を登録", requestWalk: "散歩を依頼", findHotel: "ホテルを探す", requests: "依頼一覧", hotelRequests: "ホテル依頼", notifications: "通知",
+        dogTitle: "犬を登録", dogName: "犬の名前", dogNotes: "ウォーカーへの注意事項", saveDog: "保存", dogPhoto: "犬の写真",
+        walkTitle: "散歩を依頼", walkChooseDogs: "1匹以上選択", walkOwnerPrice: "希望料金", walkNotes: "ウォーカーへのメモ", publishWalk: "依頼を公開",
+        hotelsTitle: "近くのホテル", hotelsUpTo: "8km以内", hotelRequestTitle: "ホテルを依頼", hotelRequestNotes: "ホテルへのメモ", hotelPublish: "ホテル依頼を公開",
+        providerTitle: "ウォーカー", providerCredits: "利用可能クレジット", providerMaxTariff: "最大料金:", viewRequests: "依頼を見る", buyCredits: "クレジット購入", activateHotel: "ホテル有効化", configHotel: "ホテル設定",
+        nearbyRequests: "近くの依頼", sendOfferTitle: "オファー送信", walkerOfferPrice: "提案料金", sendOffer: "オファー送信",
+        hotelConfigTitle: "ホテル設定", hotelName: "ホテル名", hotelDescription: "ホテル説明", hotelAddress: "住所または目印", hotelBasePrice: "1日基本料金", hotelCheckIn: "チェックイン開始 (例 08:00)", hotelCheckOut: "チェックアウト終了 (例 18:00)", hotelHours: "1日の散歩時間", hotelTimes: "1日の散歩回数", hotelMainPhoto: "メイン写真", saveHotel: "ホテル保存",
+        buyCreditsTitle: "クレジット購入", buyCreditsQrTitle: "管理者が設定した支払い方法", buyCreditsHelpText: "その後、支払い証明をアップロードしてください。", creditsAmount: "クレジット数量 (最低5)", uploadProof: "証明をアップロード", sendProof: "証明送信",
+        adminTitle: "管理者", adminWelcome: "支払いとQR管理", adminQrSectionTitle: "国別QRをアップロード"
+      }
+    };
 
     function syncGlobalState() {
       window.supabaseClient = supabaseClient;
@@ -836,6 +943,11 @@
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
+      bindPreview("adminQrInput", "adminQrPreview");
+      $("signupCountry")?.addEventListener("change", handleSignupCountryChange);
+      $("signupLanguage")?.addEventListener("change", () => applyTranslations($("signupLanguage").value));
+      $("creditsProviderType")?.addEventListener("change", renderPaymentQrForCurrentUser);
+      applyTranslations($("signupLanguage")?.value || "es");
       boot();
     });
 
@@ -894,6 +1006,111 @@
       return (value || "").replace(/\D/g, "");
     }
 
+    function normalizeLanguageCode(value) {
+      if (value === "jp") return "ja";
+      if (!value) return "es";
+      return value;
+    }
+
+    function t(key) {
+      const lang = normalizeLanguageCode(currentProfile?.language || $("signupLanguage")?.value || "es");
+      return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+    }
+
+    function handleSignupCountryChange() {
+      const country = $("signupCountry").value;
+      const newLang = COUNTRY_DEFAULT_LANGUAGE[country] || "es";
+      $("signupLanguage").value = newLang;
+      applyTranslations(newLang);
+    }
+
+    function applyTranslations(lang) {
+      lang = normalizeLanguageCode(lang || "es");
+      const dict = I18N[lang] || I18N.es;
+      const loginTitle = document.querySelector('#loginScreen .logo');
+      if (loginTitle) loginTitle.innerHTML = 'LADRA<span>ME</span>';
+      $("loginEmail").placeholder = dict.loginEmail;
+      $("loginPass").placeholder = dict.loginPass;
+      document.querySelector('#loginScreen button:nth-of-type(1)').textContent = dict.loginEnter;
+      document.querySelector('#loginScreen button:nth-of-type(2)').textContent = dict.loginCreate;
+      document.querySelector('#signupScreen h2').textContent = dict.signupTitle;
+      $("signupName").placeholder = dict.signupName;
+      $("signupEmail").placeholder = dict.signupEmail;
+      $("signupDNI").placeholder = dict.signupDni;
+      $("signupPass").placeholder = dict.signupPass;
+      $("signupRole").options[0].text = dict.signupRole;
+      $("signupRole").options[1].text = dict.roleOwner;
+      $("signupRole").options[2].text = dict.roleWalker;
+      $("signupCountry").options[0].text = dict.countryPlaceholder;
+      document.querySelector('#signupScreen .card b').textContent = dict.verifyIdentityTitle;
+      document.querySelector('#signupScreen .card .small').textContent = dict.verifyIdentityText;
+      document.querySelector('#signupScreen button.green').textContent = dict.signupButton;
+      document.querySelector('#signupScreen button.secondary').textContent = dict.back;
+      document.querySelector('#verifyCodeScreen h2').textContent = dict.verifyTitle;
+      document.querySelector('#verifyCodeScreen .card p').textContent = dict.verifySent;
+      $("signupCodeInput").placeholder = dict.verifyInput;
+      document.querySelector('#verifyCodeScreen button.green').textContent = dict.verifyConfirm;
+      document.querySelector('#verifyCodeScreen button.secondary').textContent = dict.verifyResend;
+      document.querySelectorAll('#verifyCodeScreen button.secondary')[1].textContent = dict.back;
+      document.querySelector('#completeProfileScreen h2').textContent = dict.completeTitle;
+      document.querySelectorAll('#completeProfileScreen .card p b')[0].textContent = dict.selfie;
+      document.querySelectorAll('#completeProfileScreen .card p b')[1].textContent = dict.document;
+      document.querySelector('#completeProfileScreen button.green').textContent = dict.finishProfile;
+      document.querySelector('#completeProfileScreen button.secondary').textContent = dict.logout;
+      document.querySelector('#ownerHomeScreen h2').textContent = dict.ownerTitle;
+      document.querySelector('#addDogScreen h2').textContent = dict.dogTitle;
+      $("dogNameInput").placeholder = dict.dogName;
+      $("dogNotesInput").placeholder = dict.dogNotes;
+      document.querySelector('#addDogScreen .card b').textContent = dict.dogPhoto;
+      document.querySelector('#addDogScreen button.green').textContent = dict.saveDog;
+      document.querySelector('#addDogScreen button.secondary').textContent = dict.back;
+      document.querySelector('#createWalkScreen h2').textContent = dict.walkTitle;
+      document.querySelector('#createWalkScreen .card p b').textContent = dict.walkChooseDogs;
+      $("walkPriceInput").placeholder = dict.walkOwnerPrice;
+      $("walkNotesInput").placeholder = dict.walkNotes;
+      document.querySelector('#createWalkScreen button.green').textContent = dict.publishWalk;
+      document.querySelector('#createWalkScreen button.secondary').textContent = dict.back;
+      document.querySelector('#hotelSearchScreen h2').textContent = dict.hotelsTitle;
+      document.querySelector('#hotelSearchScreen .small').textContent = dict.hotelsUpTo;
+      document.querySelector('#hotelRequestScreen h2').textContent = dict.hotelRequestTitle;
+      $("hotelRequestNotes").placeholder = dict.hotelRequestNotes;
+      document.querySelector('#hotelRequestScreen button.green').textContent = dict.hotelPublish;
+      document.querySelector('#hotelRequestScreen button.secondary').textContent = dict.back;
+      document.querySelector('#providerHomeScreen h2').textContent = dict.providerTitle;
+      document.querySelector('#providerHomeScreen .card p b').textContent = dict.providerCredits;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[0].textContent = dict.viewRequests;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[1].textContent = dict.buyCredits;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[2].textContent = dict.activateHotel;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[3].textContent = dict.configHotel;
+      document.querySelector('#walkerMapScreen h2').textContent = dict.nearbyRequests;
+      document.querySelector('#sendOfferScreen h2').textContent = dict.sendOfferTitle;
+      $("offerPriceInput").placeholder = dict.walkerOfferPrice;
+      document.querySelector('#sendOfferScreen button.green').textContent = dict.sendOffer;
+      document.querySelector('#sendOfferScreen button.secondary').textContent = dict.back;
+      document.querySelector('#hotelProfileScreen h2').textContent = dict.hotelConfigTitle;
+      $("hotelNameInput").placeholder = dict.hotelName;
+      $("hotelDescriptionInput").placeholder = dict.hotelDescription;
+      $("hotelAddressInput").placeholder = dict.hotelAddress;
+      $("hotelPriceInput").placeholder = dict.hotelBasePrice;
+      $("hotelCheckInFromInput").placeholder = dict.hotelCheckIn;
+      $("hotelCheckOutUntilInput").placeholder = dict.hotelCheckOut;
+      $("hotelWalkHoursDayInput").placeholder = dict.hotelHours;
+      $("hotelWalkTimesDayInput").placeholder = dict.hotelTimes;
+      document.querySelector('#hotelProfileScreen .card b').textContent = dict.hotelMainPhoto;
+      document.querySelector('#hotelProfileScreen button.green').textContent = dict.saveHotel;
+      document.querySelector('#hotelProfileScreen button.secondary').textContent = dict.back;
+      $("buyCreditsTitle").textContent = dict.buyCreditsTitle;
+      $("buyCreditsQrTitle").textContent = dict.buyCreditsQrTitle;
+      $("buyCreditsHelpText").textContent = dict.buyCreditsHelpText;
+      $("creditsAmount").placeholder = dict.creditsAmount;
+      document.querySelector('#buyCreditsScreen .card:last-of-type b').textContent = dict.uploadProof;
+      document.querySelector('#buyCreditsScreen button.green').textContent = dict.sendProof;
+      document.querySelector('#buyCreditsScreen button.secondary').textContent = dict.back;
+      $("adminTitle").textContent = dict.adminTitle;
+      $("adminWelcome").textContent = dict.adminWelcome;
+      $("adminQrSectionTitle").textContent = dict.adminQrSectionTitle;
+    }
+
     function getDogRiskClass(personality) {
       const p = (personality || "").toLowerCase();
       if (p.includes("agresivo")) return "dog-red";
@@ -921,6 +1138,10 @@
       if (role === "hotel") return "Hotel";
       if (role === "admin") return "Administrador";
       return "-";
+    }
+
+    function isAllowedSignupRole(role) {
+      return role === "owner" || role === "walker";
     }
 
     function sleep(ms) {
@@ -1024,11 +1245,16 @@
       const dni = normalizeDni($("signupDNI").value);
       const password = $("signupPass").value;
       const role = $("signupRole").value;
-      const language = $("signupLanguage").value;
+      const language = normalizeLanguageCode($("signupLanguage").value);
       const country = $("signupCountry").value;
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
+        return;
+      }
+
+      if (!isAllowedSignupRole(role)) {
+        showMsg("signupMsg", "Tipo de cuenta no permitido");
         return;
       }
 
@@ -1271,6 +1497,7 @@
       currentUser = user;
       syncGlobalState();
       const profile = await loadCurrentProfile();
+      if (profile?.language) applyTranslations(profile.language);
 
       if (!profile) {
         const raw = localStorage.getItem("ladrame_pending_signup_data");
@@ -1292,6 +1519,23 @@
         return;
       }
 
+      if (!profile.role || (!["owner","walker","admin"].includes(profile.role))) {
+        await logout();
+        return;
+      }
+
+      if (!profile.selfie_url || !profile.dni_photo_url || profile.profile_completed === false) {
+        $("completeProfileInfo").innerHTML = `
+          <p><b>Nombre:</b> ${profile?.name || "-"}</p>
+          <p><b>Correo:</b> ${profile?.email || user.email || "-"}</p>
+          <p><b>DNI:</b> ${profile?.dni || "-"}</p>
+          <p><b>Rol:</b> ${getCurrentRoleLabel(profile?.role)}</p>
+          <p><b>País:</b> ${profile?.country || "-"}</p>
+        `;
+        go("completeProfileScreen");
+        return;
+      }
+
       routeUser(profile);
       subscribeNotifications();
       subscribeRequestsRealtime();
@@ -1304,8 +1548,9 @@
     }
 
     function routeUser(profile) {
+      applyTranslations(profile?.language || "es");
       if (profile.role === "owner") {
-        $("ownerWelcome").textContent = "Hola " + (profile.name || "");
+        $("ownerWelcome").textContent = t("ownerHello") + " " + (profile.name || "");
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
@@ -1317,10 +1562,16 @@
       }
 
       if (profile.role === "walker") {
-        $("providerWelcome").textContent = "Hola " + (profile.name || "");
+        $("providerWelcome").textContent = t("ownerHello") + " " + (profile.name || "");
         renderProviderHome();
         startProviderLiveGps();
         go("providerHomeScreen");
+        return;
+      }
+
+      if (profile.role === "admin") {
+        loadAdminDashboard();
+        go("adminHomeScreen");
         return;
       }
 
@@ -1660,6 +1911,16 @@
         }
       }
 
+      $("dogNameInput").value = "";
+      $("dogSizeInput").value = "";
+      $("dogSociableInput").value = "";
+      $("dogControllableInput").value = "";
+      $("dogRespondsInput").value = "";
+      $("dogPersonalityInput").value = "";
+      $("dogNotesInput").value = "";
+      $("dogPhotoInput").value = "";
+      $("dogPreview").classList.add("hidden");
+      $("dogPreview").removeAttribute("src");
       showMsg("dogMsg", "Perro guardado");
       await loadDogs();
       setTimeout(() => go("ownerHomeScreen"), 700);
@@ -2146,22 +2407,31 @@
       hotelsMap.setCenter([ownerLng, ownerLat]);
       hotelMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(hotelsMap));
 
-      const { data, error } = await supabaseClient.rpc("nearby_hotels", {
-        user_lat: ownerLat,
-        user_lng: ownerLng
-      });
+      const { data, error } = await supabaseClient
+        .from("hotel_profiles")
+        .select("*")
+        .eq("is_active", true);
 
       if (error) {
         $("hotelsList").innerHTML = `<p class="small">${error.message}</p>`;
         return;
       }
 
-      if (!data || data.length === 0) {
+      const nearby = (data || [])
+        .filter(hotel => hotel.lat != null && hotel.lng != null)
+        .map(hotel => ({
+          ...hotel,
+          distance: getDistanceKm(ownerLat, ownerLng, Number(hotel.lat), Number(hotel.lng))
+        }))
+        .filter(hotel => hotel.distance <= 8)
+        .sort((a, b) => a.distance - b.distance);
+
+      if (!nearby.length) {
         $("hotelsList").innerHTML = `<p class="small">No hay hoteles hasta 8 km.</p>`;
         return;
       }
 
-      for (const hotel of data) {
+      for (const hotel of nearby) {
         hotelMarkers.push(createEmojiMarker("🏨").setLngLat([Number(hotel.lng), Number(hotel.lat)]).addTo(hotelsMap));
 
         const { data: photos } = await supabaseClient
@@ -2180,10 +2450,16 @@
           <p class="small">Dirección: ${hotel.address || "-"}</p>
           <p class="small">Precio base: S/${hotel.base_price_per_day || "-"}</p>
           <p class="small">Distancia: ${Number(hotel.distance || 0).toFixed(2)} km</p>
-          <button class="orange" onclick="go('hotelRequestScreen')">Pedir estadía</button>
+          <button class="orange" onclick="prepareHotelRequest('${hotel.id}')">Pedir estadía</button>
         `;
         $("hotelsList").appendChild(div);
       }
+    }
+
+    async function prepareHotelRequest(hotelId) {
+      selectedHotelBooking = { hotel_profile_id: hotelId };
+      updateHotelDogSelect();
+      go("hotelRequestScreen");
     }
 
     async function createHotelRequest() {
@@ -2584,6 +2860,46 @@
       setTimeout(() => go("providerHotelRequestsScreen"), 700);
     }
 
+    async function openBuyCreditsScreen() {
+      const defaultType = currentProfile?.hotel_enabled ? "hotel" : "walker";
+      if ($("creditsProviderType")) $("creditsProviderType").value = defaultType;
+      await renderPaymentQrForCurrentUser();
+      go("buyCreditsScreen");
+    }
+
+    async function getPaymentQrForCountry(country, providerType) {
+      const { data, error } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("*")
+        .eq("country", country)
+        .in("provider_type", [providerType, "all"])
+        .order("updated_at", { ascending: false });
+      if (error) return null;
+      return data && data.length ? data[0] : null;
+    }
+
+    async function renderPaymentQrForCurrentUser() {
+      const providerType = $("creditsProviderType")?.value || "walker";
+      const country = currentProfile?.country || "peru";
+      $("buyCreditsCountryText").textContent = `País: ${COUNTRY_LABELS[country] || country}`;
+      const qr = await getPaymentQrForCountry(country, providerType);
+      const img = $("buyCreditsQrImage");
+      const link = $("buyCreditsQrLink");
+      const empty = $("buyCreditsQrEmpty");
+      $("buyCreditsMethodText").textContent = `Método: ${qr?.label || "-"}`;
+      if (qr?.image_url) {
+        img.src = qr.image_url;
+        img.classList.remove("hidden");
+        link.href = qr.image_url;
+        link.classList.remove("hidden");
+        empty.classList.add("hidden");
+      } else {
+        img.classList.add("hidden");
+        link.classList.add("hidden");
+        empty.classList.remove("hidden");
+      }
+    }
+
     async function loadWalkerCredits() {
       const { data } = await supabaseClient
         .from("provider_wallets")
@@ -2611,6 +2927,8 @@
     async function sendCreditOrder() {
       const amount = Number($("creditsAmount").value || 0);
       const file = $("paymentProof").files?.[0];
+      const providerType = $("creditsProviderType").value || "walker";
+      const paymentQr = await getPaymentQrForCountry(currentProfile?.country || "peru", providerType);
 
       if (!amount || amount < 5) {
         showMsg("buyCreditsMsg", "La compra mínima es 5");
@@ -2636,7 +2954,7 @@
           credits: amount,
           status: "pending",
           payment_proof_url: proofUrl,
-          provider_type: "walker"
+          provider_type: providerType
         });
 
       if (error) {
@@ -2644,13 +2962,13 @@
         return;
       }
 
-      await sendTelegramAlert(currentProfile?.name || "Usuario", currentProfile?.country || "peru", amount, proofUrl);
+      await sendTelegramAlert(currentProfile?.name || "Usuario", currentProfile?.country || "peru", amount, proofUrl, providerType, paymentQr?.label || "");
       await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.");
       showMsg("buyCreditsMsg", "Comprobante enviado");
       setTimeout(() => go("providerHomeScreen"), 700);
     }
 
-    async function sendTelegramAlert(name, country, amount, proofUrl) {
+    async function sendTelegramAlert(name, country, amount, proofUrl, providerType = "walker", paymentLabel = "") {
       try {
         await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-telegram-alert", {
           method: "POST",
@@ -2659,10 +2977,82 @@
             walkerName: name,
             country,
             amount,
-            proofUrl
+            proofUrl,
+            providerType,
+            paymentLabel
           })
         });
       } catch {}
+    }
+
+    async function saveAdminPaymentQr() {
+      const country = currentProfile?.country || $("adminQrCountry").value;
+      const providerType = $("adminQrProviderType").value;
+      const label = $("adminQrLabel").value.trim();
+      const file = $("adminQrInput").files?.[0];
+      if (!country || !providerType || !label || !file) {
+        showMsg("adminQrMsg", "Completa país, tipo, etiqueta y foto");
+        return;
+      }
+      showMsg("adminQrMsg", "Subiendo QR...");
+      const imageUrl = await uploadSelectedFile(file, "service-evidence");
+      if (!imageUrl) {
+        showMsg("adminQrMsg", "No se pudo subir el QR");
+        return;
+      }
+      const payload = {
+        country,
+        provider_type: providerType,
+        label,
+        image_url: imageUrl,
+        updated_by: currentUser.id,
+        updated_at: new Date().toISOString()
+      };
+      const { data: existing } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("id")
+        .eq("country", country)
+        .eq("provider_type", providerType)
+        .maybeSingle();
+      const res = existing
+        ? await supabaseClient.from("admin_payment_qrs").update(payload).eq("id", existing.id)
+        : await supabaseClient.from("admin_payment_qrs").insert(payload);
+      if (res.error) {
+        showMsg("adminQrMsg", res.error.message);
+        return;
+      }
+      showMsg("adminQrMsg", "QR guardado");
+      $("adminQrInput").value = "";
+      $("adminQrPreview").classList.add("hidden");
+      await loadAdminDashboard();
+    }
+
+    async function loadAdminDashboard() {
+      $("adminWelcome").textContent = `Panel de ${currentProfile?.name || "administrador"}`;
+      const { data: qrs } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("*")
+        .order("updated_at", { ascending: false });
+      $("adminQrList").innerHTML = (qrs || []).length ? (qrs || []).map(item => `
+        <div class="card">
+          <p><b>${COUNTRY_LABELS[item.country] || item.country}</b> · ${item.provider_type}</p>
+          <p class="small">${item.label || "-"}</p>
+          ${item.image_url ? `<img src="${item.image_url}" class="wide-photo">` : ""}
+        </div>
+      `).join("") : `<p class="small">No hay QR cargados.</p>`;
+
+      const { data: orders } = await supabaseClient
+        .from("credit_orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      $("adminCreditOrdersList").innerHTML = (orders || []).length ? (orders || []).map(order => `
+        <div class="card">
+          <p><b>${order.provider_type || "walker"}</b> · ${order.amount} créditos</p>
+          <p class="small">Estado: ${order.status || "pending"}</p>
+          ${order.payment_proof_url ? `<a href="${order.payment_proof_url}" target="_blank" rel="noopener">Ver comprobante</a>` : ""}
+        </div>
+      `).join("") : `<p class="small">No hay órdenes recientes.</p>`;
     }
 
     async function createNotification(userId, title, message) {
