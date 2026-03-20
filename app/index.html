@@ -334,15 +334,8 @@
       </select>
 
       <div class="card">
-        <p><b>Selfie de verificación</b></p>
-        <input type="file" accept="image/*" capture="user" id="selfieInput">
-        <img id="selfiePreview" class="preview-img hidden">
-      </div>
-
-      <div class="card">
-        <p><b>Foto del DNI / documento</b></p>
-        <input type="file" accept="image/*" capture="environment" id="dniInput">
-        <img id="dniPreview" class="preview-img hidden">
+        <p><b>Verificación de identidad</b></p>
+        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -897,97 +890,6 @@
       localStorage.removeItem("ladrame_pending_verification_email");
     }
 
-    function savePendingSignupData(data) {
-      pendingSignupData = data || null;
-      if (data) {
-        localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(data));
-      } else {
-        localStorage.removeItem("ladrame_pending_signup_data");
-      }
-    }
-
-    function loadPendingSignupData() {
-      if (pendingSignupData) return pendingSignupData;
-      const raw = localStorage.getItem("ladrame_pending_signup_data");
-      if (!raw) return null;
-      try {
-        pendingSignupData = JSON.parse(raw);
-        return pendingSignupData;
-      } catch {
-        localStorage.removeItem("ladrame_pending_signup_data");
-        pendingSignupData = null;
-        return null;
-      }
-    }
-
-    function clearPendingSignupData() {
-      pendingSignupData = null;
-      localStorage.removeItem("ladrame_pending_signup_data");
-    }
-
-    async function createUserProfileFromPendingData(user, fallbackFiles = {}) {
-      const pending = loadPendingSignupData();
-      if (!user || !pending) {
-        return { ok: false, reason: "missing-pending-data" };
-      }
-
-      const { data: existingUser } = await supabaseClient
-        .from("users")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (existingUser) {
-        clearPendingSignupData();
-        return { ok: true, alreadyExists: true };
-      }
-
-      let selfieUrl = pending.selfie_url || null;
-      let dniUrl = pending.dni_photo_url || null;
-
-      if (!selfieUrl && fallbackFiles.selfieFile) {
-        selfieUrl = await uploadSelectedFile(fallbackFiles.selfieFile, "avatars");
-      }
-      if (!dniUrl && fallbackFiles.dniFile) {
-        dniUrl = await uploadSelectedFile(fallbackFiles.dniFile, "avatars");
-      }
-
-      if (!selfieUrl || !dniUrl) {
-        return { ok: false, reason: "missing-files" };
-      }
-
-      const payload = {
-        id: user.id,
-        name: pending.name,
-        email: user.email,
-        dni: pending.dni,
-        role: pending.role,
-        selfie_url: selfieUrl,
-        dni_photo_url: dniUrl,
-        country: pending.country,
-        language: pending.language
-      };
-
-      const { error } = await supabaseClient.from("users").insert(payload);
-      if (error) {
-        return { ok: false, reason: error.message, error };
-      }
-
-      clearPendingSignupData();
-      return { ok: true };
-    }
-
-    function fillCompleteProfileInfo(user = currentUser) {
-      const pending = loadPendingSignupData();
-      $("completeProfileInfo").innerHTML = `
-        <p><b>Nombre:</b> ${pending?.name || "-"}</p>
-        <p><b>Correo:</b> ${pending?.email || user?.email || "-"}</p>
-        <p><b>DNI:</b> ${pending?.dni || "-"}</p>
-        <p><b>Rol:</b> ${getCurrentRoleLabel(pending?.role)}</p>
-        <p><b>País:</b> ${pending?.country || "-"}</p>
-      `;
-    }
-
     function normalizeDni(value) {
       return (value || "").replace(/\D/g, "");
     }
@@ -1124,41 +1026,16 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
-      const selfie = $("selfieInput").files?.[0];
-      const dniPhoto = $("dniInput").files?.[0];
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
 
-      if (!selfie || !dniPhoto) {
-        showMsg("signupMsg", "Debes subir selfie y documento");
-        return;
-      }
-
-      showMsg("signupMsg", "Subiendo archivos...");
-
-      const selfieUrl = await uploadSelectedFile(selfie, "avatars");
-      const dniUrl = await uploadSelectedFile(dniPhoto, "avatars");
-
-      if (!selfieUrl || !dniUrl) {
-        showMsg("signupMsg", "No se pudo subir selfie o documento");
-        return;
-      }
-
-      savePendingSignupData({
-        name,
-        email,
-        dni,
-        role,
-        language,
-        country,
-        selfie_url: selfieUrl,
-        dni_photo_url: dniUrl
-      });
-
       showMsg("signupMsg", "Creando cuenta...");
+
+      pendingSignupData = { name, email, dni, role, language, country };
+      localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
 
       const { error } = await supabaseClient.auth.signUp({
         email,
@@ -1169,9 +1046,7 @@
             pending_dni: dni,
             pending_role: role,
             pending_language: language,
-            pending_country: country,
-            pending_selfie_url: selfieUrl,
-            pending_dni_photo_url: dniUrl
+            pending_country: country
           }
         }
       });
@@ -1181,9 +1056,9 @@
         return;
       }
 
+      showMsg("signupMsg", "");
       setPendingVerificationEmail(email);
       $("verifyEmailText").textContent = email;
-      showMsg("signupMsg", "");
       go("verifyCodeScreen");
     }
 
@@ -1206,22 +1081,22 @@
       }
 
       clearPendingVerificationEmail();
-      loadPendingSignupData();
+      const raw = localStorage.getItem("ladrame_pending_signup_data");
+      if (raw) pendingSignupData = JSON.parse(raw);
 
       const current = await getCurrentSessionUser();
       currentUser = current;
       syncGlobalState();
 
-      const created = await createUserProfileFromPendingData(currentUser);
-      if (!created.ok) {
-        fillCompleteProfileInfo(currentUser);
-        showMsg("verifyCodeMsg", "Correo verificado. Falta terminar perfil.");
-        go("completeProfileScreen");
-        return;
-      }
+      $("completeProfileInfo").innerHTML = `
+        <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
+        <p><b>Correo:</b> ${pendingSignupData?.email || currentUser?.email || "-"}</p>
+        <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
+        <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+        <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
+      `;
 
-      showMsg("verifyCodeMsg", "");
-      boot();
+      go("completeProfileScreen");
     }
 
     async function resendSignupCode() {
@@ -1249,26 +1124,77 @@
         return;
       }
 
-      loadPendingSignupData();
+      const raw = localStorage.getItem("ladrame_pending_signup_data");
+      if (raw) pendingSignupData = JSON.parse(raw);
+
+      const selfieFile = $("completeSelfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
         return;
       }
 
-      const selfieFile = $("completeSelfieInput").files?.[0] || null;
-      const dniFile = $("completeDniInput").files?.[0] || null;
-
-      const created = await createUserProfileFromPendingData(user, { selfieFile, dniFile });
-      if (!created.ok) {
-        if (created.reason === "missing-files") {
-          showMsg("completeProfileMsg", "Debes subir selfie y documento");
-        } else {
-          showMsg("completeProfileMsg", created.reason || "No se pudo terminar el perfil");
-        }
+      if (!selfieFile || !dniFile) {
+        showMsg("completeProfileMsg", "Debes subir selfie y documento");
         return;
       }
 
+      showMsg("completeProfileMsg", "Subiendo archivos...");
+
+      const selfieUrl = await uploadSelectedFile(selfieFile, "avatars");
+      if (!selfieUrl) {
+        showMsg("completeProfileMsg", "No se pudo subir la selfie");
+        return;
+      }
+
+      const dniUrl = await uploadSelectedFile(dniFile, "avatars");
+      if (!dniUrl) {
+        showMsg("completeProfileMsg", "No se pudo subir el documento");
+        return;
+      }
+
+      const payload = {
+        id: user.id,
+        name: pendingSignupData.name,
+        email: user.email,
+        dni: pendingSignupData.dni,
+        role: pendingSignupData.role,
+        selfie_url: selfieUrl,
+        dni_photo_url: dniUrl,
+        country: pendingSignupData.country,
+        language: pendingSignupData.language
+      };
+
+      const { data: existingUser } = await supabaseClient
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      let error = null;
+
+      if (existingUser) {
+        const response = await supabaseClient.from("users").update(payload).eq("id", user.id);
+        error = response.error;
+      } else {
+        const response = await supabaseClient.from("users").insert(payload);
+        error = response.error;
+      }
+
+      if (error) {
+        showMsg("completeProfileMsg", error.message);
+        return;
+      }
+
+      localStorage.removeItem("ladrame_pending_signup_data");
+      pendingSignupData = null;
+      $("completeSelfieInput").value = "";
+      $("completeDniInput").value = "";
+      $("completeSelfiePreview").classList.add("hidden");
+      $("completeDniPreview").classList.add("hidden");
+      $("completeSelfiePreview").removeAttribute("src");
+      $("completeDniPreview").removeAttribute("src");
       showMsg("completeProfileMsg", "");
       boot();
     }
@@ -1344,24 +1270,24 @@
 
       currentUser = user;
       syncGlobalState();
-      let profile = await loadCurrentProfile();
+      const profile = await loadCurrentProfile();
 
       if (!profile) {
-        loadPendingSignupData();
+        const raw = localStorage.getItem("ladrame_pending_signup_data");
+        if (raw) pendingSignupData = JSON.parse(raw);
 
         if (pendingSignupData) {
-          const created = await createUserProfileFromPendingData(user);
-          if (created.ok) {
-            profile = await loadCurrentProfile();
-          } else {
-            fillCompleteProfileInfo(user);
-            go("completeProfileScreen");
-            return;
-          }
+          $("completeProfileInfo").innerHTML = `
+            <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
+            <p><b>Correo:</b> ${pendingSignupData?.email || user.email || "-"}</p>
+            <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
+            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+            <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
+          `;
+          go("completeProfileScreen");
+          return;
         }
-      }
 
-      if (!profile) {
         go("loginScreen");
         return;
       }
