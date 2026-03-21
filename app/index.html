@@ -155,6 +155,105 @@
       gap: 10px;
       align-items: center;
     }
+    .glass-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+      border: 1px solid rgba(46,134,222,.14);
+      box-shadow: 0 10px 24px rgba(26,52,90,.08);
+    }
+    .request-hero {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px;
+      border-radius:16px;
+      background:linear-gradient(135deg,#f8fbff 0%,#eef6ff 100%);
+      border:1px solid #dbe9ff;
+      margin-bottom:10px;
+    }
+    .request-people {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+    .avatar-ring {
+      width:58px;
+      height:58px;
+      border-radius:50%;
+      object-fit:cover;
+      border:3px solid #fff;
+      box-shadow:0 6px 16px rgba(20,50,90,.16);
+      background:#eef2f7;
+    }
+    .hero-arrow {
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#fff;
+      border:1px solid #dbe9ff;
+      color:#2e86de;
+      font-weight:900;
+      flex:none;
+    }
+    .section-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#edf5ff;
+      color:#2563a9;
+      font-size:11px;
+      font-weight:800;
+      margin-bottom:8px;
+    }
+    .dog-compact {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px;
+      border-radius:14px;
+      background:#fff;
+      border:1px solid #edf1f5;
+      margin-top:8px;
+    }
+    .dog-compact img {
+      width:68px;
+      height:68px;
+      object-fit:cover;
+      border-radius:14px;
+      background:#eef2f7;
+      border:1px solid #e9edf3;
+    }
+    .meta-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:6px;
+    }
+    .meta-pill {
+      font-size:11px;
+      padding:5px 8px;
+      border-radius:999px;
+      background:#f3f7fb;
+      color:#536273;
+      border:1px solid #e6edf5;
+    }
+    .offer-pro-card {
+      background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%);
+      border:1px solid #dbe9ff;
+      box-shadow:0 10px 24px rgba(26,52,90,.08);
+    }
+    .identity-line {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:wrap;
+    }
     .comment-box {
       padding: 8px 10px;
       border-radius: 10px;
@@ -343,6 +442,12 @@
         <option value="">Tipo de cuenta</option>
         <option value="owner">Dueño</option>
         <option value="walker">Paseador</option>
+      </select>
+
+      <select id="signupGender">
+        <option value="">Sexo / género</option>
+        <option value="male">Hombre</option>
+        <option value="female">Mujer</option>
       </select>
 
       <div class="card">
@@ -1137,12 +1242,13 @@
       const sociable = String(dog?.sociable || "").toUpperCase();
       const controllable = String(dog?.controllable || "").toUpperCase();
       const responds = String(dog?.responds_to_name || dog?.responds || "").toUpperCase();
+      const allGood = sociable === "SI" && controllable === "SI" && responds === "SI";
 
       if (personality.includes("agresivo")) return "red";
       if (controllable === "NO" && (size.includes("grande") || sociable === "NO")) return "red";
-      if (personality.includes("nervioso")) return "yellow";
       if (sociable === "NO" || controllable === "NO" || responds === "NO") return "yellow";
-      if (personality.includes("activo") && size.includes("grande")) return "yellow";
+      if (personality.includes("nervioso") && !size.includes("peque") && !allGood) return "yellow";
+      if (personality.includes("activo") && size.includes("grande") && !allGood) return "yellow";
       return "green";
     }
 
@@ -1161,8 +1267,85 @@
     }
 
     async function getUserBasicProfile(userId) {
-      const { data } = await supabaseClient.from("users").select("id,name,email,selfie_url,country,language").eq("id", userId).maybeSingle();
+      const { data } = await supabaseClient.from("users").select("*").eq("id", userId).maybeSingle();
       return data || null;
+    }
+
+    function getGenderEmoji(user) {
+      const raw = String(user?.gender || user?.sexo || user?.sex || "").toLowerCase().trim();
+      if (["mujer","female","femenino","woman","f"].includes(raw)) return "👩";
+      if (["hombre","male","masculino","man","m"].includes(raw)) return "👨";
+      return "🧑";
+    }
+
+    function getWalkerTitle(user) {
+      return `${getGenderEmoji(user)} ${user?.name || "Paseador"}`;
+    }
+
+    function buildDogCompactHtml(dog) {
+      return `
+        <div class="dog-compact">
+          ${dog?.photo_url ? `<img src="${dog.photo_url}" alt="${dog.name || 'Perro'}">` : `<div style="width:68px;height:68px;border-radius:14px;background:#eef2f7;border:1px solid #e9edf3"></div>`}
+          <div style="flex:1;min-width:0">
+            <div class="identity-line"><b>${dog?.name || "Perro"}</b> <span class="dog-pill ${getDogRiskClass(dog)}">${getDogRiskLabel(dog)}</span></div>
+            <div class="meta-row">
+              <span class="meta-pill">${dog?.size || "-"}</span>
+              <span class="meta-pill">Sociable: ${dog?.sociable || "-"}</span>
+              <span class="meta-pill">Controlable: ${dog?.controllable || "-"}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildOwnerDogHero(owner, dogs) {
+      const leadDog = dogs?.[0];
+      return `
+        <div class="request-hero">
+          <div class="request-people">
+            ${owner?.selfie_url ? `<img src="${owner.selfie_url}" class="avatar-ring">` : `<div class="avatar-ring"></div>`}
+            <div style="min-width:0">
+              <div class="section-chip">👤 Dueño</div>
+              <div class="identity-line"><b>${owner?.name || "Dueño"}</b></div>
+              <div class="small">${owner?.country ? `País: ${owner.country}` : "Solicitud en vivo"}</div>
+            </div>
+          </div>
+          <div class="hero-arrow">→</div>
+          <div class="request-people" style="justify-content:flex-end">
+            <div style="min-width:0;text-align:right">
+              <div class="section-chip">🐶 Perro</div>
+              <div class="identity-line" style="justify-content:flex-end"><b>${leadDog?.name || `${dogs?.length || 0} perro(s)`}</b></div>
+              <div class="small">${dogs?.length || 0} perro(s) en la solicitud</div>
+            </div>
+            ${leadDog?.photo_url ? `<img src="${leadDog.photo_url}" class="avatar-ring">` : `<div class="avatar-ring"></div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildWalkerDogHero(profile, dogs) {
+      const leadDog = dogs?.[0];
+      return `
+        <div class="request-hero">
+          <div class="request-people">
+            ${leadDog?.photo_url ? `<img src="${leadDog.photo_url}" class="avatar-ring">` : `<div class="avatar-ring"></div>`}
+            <div style="min-width:0">
+              <div class="section-chip">🐶 Perro</div>
+              <div class="identity-line"><b>${leadDog?.name || `${dogs?.length || 0} perro(s)`}</b></div>
+              <div class="small">${dogs?.length || 0} perro(s) en esta solicitud</div>
+            </div>
+          </div>
+          <div class="hero-arrow">↔</div>
+          <div class="request-people" style="justify-content:flex-end">
+            <div style="min-width:0;text-align:right">
+              <div class="section-chip">🚶 Paseador</div>
+              <div class="identity-line" style="justify-content:flex-end"><b>${getWalkerTitle(profile?.user)}</b></div>
+              <div class="small">${Number(profile?.walker?.rating_avg || 0).toFixed(1)} ⭐ · ${profile?.completedWalks || 0} paseos</div>
+            </div>
+            ${profile?.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-ring">` : `<div class="avatar-ring"></div>`}
+          </div>
+        </div>
+      `;
     }
 
     function createEmojiMarker(emoji) {
@@ -1288,7 +1471,7 @@
       const language = normalizeLanguageCode($("signupLanguage").value);
       const country = $("signupCountry").value;
 
-      if (!name || !email || !dni || !password || !role || !country || !language) {
+      if (!name || !email || !dni || !password || !role || !gender || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
@@ -1300,7 +1483,7 @@
 
       showMsg("signupMsg", "Creando cuenta...");
 
-      pendingSignupData = { name, email, dni, role, language, country };
+      pendingSignupData = { name, email, dni, role, gender, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
 
       const { error } = await supabaseClient.auth.signUp({
@@ -1311,6 +1494,7 @@
             pending_name: name,
             pending_dni: dni,
             pending_role: role,
+            pending_gender: gender,
             pending_language: language,
             pending_country: country
           }
@@ -1359,6 +1543,7 @@
         <p><b>Correo:</b> ${pendingSignupData?.email || currentUser?.email || "-"}</p>
         <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
         <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+        <p><b>Sexo:</b> ${pendingSignupData?.gender || "-"}</p>
         <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
       `;
 
@@ -1426,6 +1611,7 @@
         email: user.email,
         dni: pendingSignupData.dni,
         role: pendingSignupData.role,
+        gender: pendingSignupData.gender,
         selfie_url: selfieUrl,
         dni_photo_url: dniUrl,
         country: pendingSignupData.country,
@@ -1550,6 +1736,7 @@
             <p><b>Correo:</b> ${pendingSignupData?.email || user.email || "-"}</p>
             <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
             <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+            <p><b>Sexo:</b> ${pendingSignupData?.gender || "-"}</p>
             <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
           `;
           go("completeProfileScreen");
@@ -1896,15 +2083,13 @@
       if (!dogs || !dogs.length) return `<p class="small">Sin perros.</p>`;
 
       return dogs.map(dog => `
-        <div class="card">
-          <p><b>${dog.name || "Perro"}</b></p>
-          ${dog.photo_url ? `<img src="${dog.photo_url}" class="wide-photo">` : ""}
-          <span class="dog-pill ${getDogRiskClass(dog)}">${getDogRiskLabel(dog)}</span>
-          <p class="small" style="margin-top:8px">Tamaño: ${dog.size || "-"}</p>
-          <p class="small">Sociable: ${dog.sociable || "-"}</p>
-          <p class="small">Controlable: ${dog.controllable || "-"}</p>
-          <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
-          <p class="small">Recomendaciones: ${dog.recommendations || "-"}</p>
+        <div class="card glass-card">
+          ${buildDogCompactHtml(dog)}
+          <div class="meta-row">
+            <span class="meta-pill">Responde: ${dog.responds_to_name || "-"}</span>
+            <span class="meta-pill">Personalidad: ${dog.personality || "-"}</span>
+          </div>
+          <p class="small" style="margin-top:8px">Recomendaciones: ${dog.recommendations || "-"}</p>
         </div>
       `).join("");
     }
@@ -2198,14 +2383,17 @@
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const owner = await getUserBasicProfile(req.owner_id);
 
         const div = document.createElement("div");
-        div.className = "card";
+        div.className = "card glass-card";
         div.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
-          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          ${buildOwnerDogHero(owner, dogs)}
+          <div class="meta-row">
+            <span class="meta-pill">Tarifa dueño: S/${req.tariff}</span>
+            <span class="meta-pill">Tiempo: ${req.time || 0} min</span>
+            ${distance != null ? `<span class="meta-pill">Distancia: ${distance.toFixed(2)} km</span>` : ""}
+          </div>
           ${buildDogsHtml(dogs)}
           <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
         `;
@@ -2236,17 +2424,12 @@
       const owner = await getUserBasicProfile(data.owner_id);
 
       $("offerRequestInfo").innerHTML = `
-        <div class="profile-mini" style="margin-bottom:10px">
-          ${owner?.selfie_url ? `<img src="${owner.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-          <div style="flex:1">
-            <p style="margin:0"><b>${owner?.name || "Dueño"}</b></p>
-            <p class="small" style="margin:4px 0 0">${owner?.country ? `País: ${owner.country}` : "Perfil del dueño"}</p>
-            <p class="small" style="margin:4px 0 0">Mapa activo: verás tu posición y la solicitud abajo.</p>
-          </div>
+        ${buildOwnerDogHero(owner, dogs)}
+        <div class="meta-row">
+          <span class="meta-pill">Tarifa del dueño: S/${data.tariff}</span>
+          <span class="meta-pill">Tiempo: ${data.time || 0} min</span>
+          <span class="meta-pill">Mapa en vivo activo</span>
         </div>
-        <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-        <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
-        <p><b>Tiempo:</b> ${data.time || 0} min</p>
         ${buildDogsHtml(dogs)}
         <p class="small">Debes enviar tu propia tarifa.</p>
       `;
@@ -2352,7 +2535,7 @@
           <div class="live-offer-head">
             ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
             <div style="flex:1">
-              <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+              <p style="margin:0"><b>${getWalkerTitle(profile.user)}</b></p>
               <p class="small" style="margin:4px 0 0">${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐ · ${profile.walker?.total_reviews || 0} reseñas · ${profile.completedWalks} paseos</p>
             </div>
           </div>
@@ -2384,12 +2567,14 @@
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
 
         const card = document.createElement("div");
-        card.className = "card";
+        card.className = "card glass-card";
         card.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Estado: ${req.status || "-"}</p>
-          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
-          <p class="small">Tiempo: ${req.time || 0} min</p>
+          <div class="section-chip">📣 Solicitud activa</div>
+          <div class="meta-row">
+            <span class="meta-pill">Estado: ${req.status || "-"}</span>
+            <span class="meta-pill">Tarifa dueño: S/${req.tariff || "-"}</span>
+            <span class="meta-pill">Tiempo: ${req.time || 0} min</span>
+          </div>
           ${buildDogsHtml(dogs)}
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
@@ -2420,20 +2605,23 @@
               : `<p class="small">Sin comentarios todavía.</p>`;
 
             const offerCard = document.createElement("div");
-            offerCard.className = "card";
+            offerCard.className = "card offer-pro-card";
             offerCard.innerHTML = `
+              ${buildWalkerDogHero(profile, dogs)}
               <div class="profile-mini">
                 ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
                 <div style="flex:1">
-                  <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+                  <p style="margin:0"><b>${getWalkerTitle(profile.user)}</b></p>
                   <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
                   <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
-                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
+                  <p class="small" style="margin:4px 0 0">Paseos completados: ${profile.completedWalks}</p>
                 </div>
               </div>
 
-              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
+              <div class="meta-row">
+                <span class="meta-pill">Oferta: S/${ofr.price}</span>
+                <span class="meta-pill">Estado: ${ofr.status || "pending"}</span>
+              </div>
               <div>${commentsHtml}</div>
 
               ${ofr.status === "pending" ? `
