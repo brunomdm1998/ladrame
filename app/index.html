@@ -168,6 +168,7 @@
     #ownerHomeMap,
     #providerHomeMap,
     #walkerMap,
+    #offerMap,
     #hotelsMap,
     #liveMap {
       width: 100%;
@@ -585,10 +586,12 @@
     <!-- SEND OFFER -->
     <div id="sendOfferScreen" class="screen">
       <h2>Enviar oferta</h2>
+      <div id="offerMap"></div>
+      <div class="small center" style="margin-top:8px">🚶 tú · 📣 dueño</div>
       <div id="offerRequestInfo" class="card"></div>
       <input id="offerPriceInput" type="number" placeholder="Tarifa que propone el paseador">
       <button class="green" onclick="sendOffer()">Enviar oferta</button>
-      <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
+      <button class="secondary" onclick="openWalkerMapScreen()">Volver</button>
       <p id="offerMsg" class="msg"></p>
     </div>
 
@@ -824,12 +827,14 @@
     let ownerHomeMap = null;
     let providerHomeMap = null;
     let walkerMap = null;
+    let offerMap = null;
     let hotelsMap = null;
     let liveMap = null;
 
     let ownerHomeMarkers = [];
     let providerHomeMarkers = [];
     let walkerRequestMarkers = [];
+    let offerMapMarkers = [];
     let hotelMarkers = [];
     let liveOwnerMarker = null;
     let liveWalkerMarker = null;
@@ -841,6 +846,7 @@
     let providerLng = null;
 
     let selectedRequest = null;
+    let selectedRequestData = null;
     let selectedHotelRequest = null;
     let selectedWalk = null;
     let selectedHotelBooking = null;
@@ -1432,6 +1438,7 @@
       currentProfile = null;
       pushActivatedForUserId = null;
       selectedRequest = null;
+      selectedRequestData = null;
       selectedHotelRequest = null;
       selectedWalk = null;
       selectedHotelBooking = null;
@@ -2071,6 +2078,40 @@
       }
     }
 
+    function ensureOfferMap() {
+      if (!offerMap) {
+        offerMap = new mapboxgl.Map({
+          container: "offerMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 13
+        });
+      }
+      offerMap.resize();
+    }
+
+    function renderOfferMap(req) {
+      ensureOfferMap();
+      offerMapMarkers.forEach(m => m.remove());
+      offerMapMarkers = [];
+
+      const points = [];
+      if (providerLat != null && providerLng != null) {
+        offerMapMarkers.push(createEmojiMarker("🚶").setLngLat([providerLng, providerLat]).addTo(offerMap));
+        points.push([providerLng, providerLat]);
+      }
+      if (req?.lng != null && req?.lat != null) {
+        offerMapMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(offerMap));
+        points.push([Number(req.lng), Number(req.lat)]);
+      }
+      if (points.length === 1) offerMap.setCenter(points[0]);
+      if (points.length >= 2) {
+        const bounds = new mapboxgl.LngLatBounds(points[0], points[0]);
+        points.forEach(p => bounds.extend(p));
+        offerMap.fitBounds(bounds, { padding: 40, maxZoom: 15 });
+      }
+    }
+
     function openWalkerMapScreen() {
       go("walkerMapScreen");
       ensureWalkerMap();
@@ -2155,6 +2196,7 @@
         return;
       }
 
+      selectedRequestData = data;
       const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
 
       $("offerRequestInfo").innerHTML = `
@@ -2168,11 +2210,12 @@
       $("offerPriceInput").value = "";
       showMsg("offerMsg", "");
       go("sendOfferScreen");
+      setTimeout(() => renderOfferMap(data), 120);
     }
 
     async function sendOffer() {
       const price = Number($("offerPriceInput").value || 0);
-      if (!selectedRequest) {
+      if (!selectedRequest || !selectedRequestData) {
         showMsg("offerMsg", "Selecciona una solicitud");
         return;
       }
@@ -2181,16 +2224,7 @@
         return;
       }
 
-      const { data: req, error: reqError } = await supabaseClient
-        .from("walk_requests")
-        .select("*")
-        .eq("id", selectedRequest)
-        .single();
-
-      if (reqError || !req) {
-        showMsg("offerMsg", "No se pudo cargar la solicitud");
-        return;
-      }
+      const req = selectedRequestData;
 
       const { error } = await supabaseClient
         .from("offers")
@@ -2212,7 +2246,7 @@
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
       await loadWalkerCredits();
-      setTimeout(() => go("providerHomeScreen"), 700);
+      setTimeout(() => openWalkerMapScreen(), 700);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
