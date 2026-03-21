@@ -54,33 +54,6 @@
       padding: 3px 8px;
       border-radius: 8px;
     }
-    .brand-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: inherit;
-    }
-    .brand-link img {
-      width: 42px;
-      height: 42px;
-      object-fit: contain;
-      border-radius: 10px;
-      background: #fff;
-    }
-    .brand-link strong {
-      font-size: 18px;
-      font-weight: 900;
-      color: #2e86de;
-      letter-spacing: .4px;
-    }
-    .brand-link strong span {
-      background: #000;
-      color: #d4ff00;
-      padding: 2px 7px;
-      border-radius: 8px;
-      margin-left: 2px;
-    }
     h2 {
       text-align: center;
       margin: 6px 0;
@@ -379,7 +352,7 @@
 
     <!-- LOGIN -->
     <div id="loginScreen" class="screen active">
-      <a class="brand-link logo" href="/app/" aria-label="Ir a inicio"><img src="/logo.png" alt="LADRAME"><strong>LADRA<span>ME</span></strong></a>
+      <div class="logo">LADRA<span>ME</span></div>
       <input id="loginEmail" type="email" placeholder="Correo electrónico">
       <input id="loginPass" type="password" placeholder="Contraseña">
       <button onclick="handleLogin()">Entrar</button>
@@ -937,23 +910,10 @@
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
-      enhanceTopbarsWithBrand();
       boot();
     });
 
     function $(id) { return document.getElementById(id); }
-
-    function enhanceTopbarsWithBrand() {
-      document.querySelectorAll('.topbar').forEach(bar => {
-        if (bar.querySelector('.brand-link')) return;
-        const brand = document.createElement('a');
-        brand.className = 'brand-link';
-        brand.href = '/app/';
-        brand.setAttribute('aria-label', 'Ir al inicio de LADRAME');
-        brand.innerHTML = '<img src="/logo.png" alt="LADRAME"><strong>LADRA<span>ME</span></strong>';
-        bar.prepend(brand);
-      });
-    }
 
     function bindPreview(inputId, imgId) {
       const input = $(inputId);
