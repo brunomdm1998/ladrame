@@ -1853,7 +1853,7 @@
       walkerMap.resize();
     }
 
-    function initWalkerMap() {
+    async function initWalkerMap() {
       ensureWalkerMap();
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
