@@ -143,6 +143,18 @@
       gap: 10px;
       align-items: center;
     }
+    .live-offer-card {
+      background: #f7fbff;
+      border: 1px solid #d8e9ff;
+      border-radius: 14px;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    .live-offer-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
     .comment-box {
       padding: 8px 10px;
       border-radius: 10px;
@@ -405,6 +417,8 @@
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
       </div>
 
+      <div id="ownerLiveOffersBanner" class="card hidden"></div>
+      <div id="ownerLiveOffersList"></div>
       <div id="ownerDogsList"></div>
     </div>
 
@@ -1117,18 +1131,38 @@
       $("adminQrSectionTitle").textContent = dict.adminQrSectionTitle;
     }
 
-    function getDogRiskClass(personality) {
-      const p = (personality || "").toLowerCase();
-      if (p.includes("agresivo")) return "dog-red";
-      if (p.includes("activo") || p.includes("nervioso")) return "dog-yellow";
+    function getDogRiskLevel(dog) {
+      const personality = String(dog?.personality || "").toLowerCase();
+      const size = String(dog?.size || "").toLowerCase();
+      const sociable = String(dog?.sociable || "").toUpperCase();
+      const controllable = String(dog?.controllable || "").toUpperCase();
+      const responds = String(dog?.responds_to_name || dog?.responds || "").toUpperCase();
+
+      if (personality.includes("agresivo")) return "red";
+      if (controllable === "NO" && (size.includes("grande") || sociable === "NO")) return "red";
+      if (personality.includes("nervioso")) return "yellow";
+      if (sociable === "NO" || controllable === "NO" || responds === "NO") return "yellow";
+      if (personality.includes("activo") && size.includes("grande")) return "yellow";
+      return "green";
+    }
+
+    function getDogRiskClass(dog) {
+      const level = getDogRiskLevel(dog);
+      if (level === "red") return "dog-red";
+      if (level === "yellow") return "dog-yellow";
       return "dog-green";
     }
 
-    function getDogRiskLabel(personality) {
-      const p = (personality || "").toLowerCase();
-      if (p.includes("agresivo")) return "🔴 Riesgo alto";
-      if (p.includes("activo") || p.includes("nervioso")) return "🟡 Riesgo medio";
-      return "🟢 Tranquilo";
+    function getDogRiskLabel(dog) {
+      const level = getDogRiskLevel(dog);
+      if (level === "red") return "🔴 Riesgo alto";
+      if (level === "yellow") return "🟡 Riesgo medio";
+      return "🟢 Riesgo bajo";
+    }
+
+    async function getUserBasicProfile(userId) {
+      const { data } = await supabaseClient.from("users").select("id,name,email,selfie_url,country,language").eq("id", userId).maybeSingle();
+      return data || null;
     }
 
     function createEmojiMarker(emoji) {
@@ -1561,6 +1595,7 @@
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
+        loadOwnerLiveOffersPreview();
         go("ownerHomeScreen");
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
@@ -1812,7 +1847,7 @@
           <p class="small">Sociable: ${dog.sociable || "-"}</p>
           <p class="small">Controlable: ${dog.controllable || "-"}</p>
           <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
-          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+          <span class="dog-pill ${getDogRiskClass(dog)}">${getDogRiskLabel(dog)}</span>
           <p class="small" style="margin-top:8px">${dog.recommendations || ""}</p>
         `;
         $("ownerDogsList").appendChild(card);
@@ -1864,7 +1899,7 @@
         <div class="card">
           <p><b>${dog.name || "Perro"}</b></p>
           ${dog.photo_url ? `<img src="${dog.photo_url}" class="wide-photo">` : ""}
-          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+          <span class="dog-pill ${getDogRiskClass(dog)}">${getDogRiskLabel(dog)}</span>
           <p class="small" style="margin-top:8px">Tamaño: ${dog.size || "-"}</p>
           <p class="small">Sociable: ${dog.sociable || "-"}</p>
           <p class="small">Controlable: ${dog.controllable || "-"}</p>
@@ -2198,8 +2233,17 @@
 
       selectedRequestData = data;
       const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
+      const owner = await getUserBasicProfile(data.owner_id);
 
       $("offerRequestInfo").innerHTML = `
+        <div class="profile-mini" style="margin-bottom:10px">
+          ${owner?.selfie_url ? `<img src="${owner.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+          <div style="flex:1">
+            <p style="margin:0"><b>${owner?.name || "Dueño"}</b></p>
+            <p class="small" style="margin:4px 0 0">${owner?.country ? `País: ${owner.country}` : "Perfil del dueño"}</p>
+            <p class="small" style="margin:4px 0 0">Mapa activo: verás tu posición y la solicitud abajo.</p>
+          </div>
+        </div>
         <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
         <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
         <p><b>Tiempo:</b> ${data.time || 0} min</p>
@@ -2276,6 +2320,49 @@
       result.comments = reviews || [];
       return result;
     }
+
+    async function loadOwnerLiveOffersPreview() {
+      if (!currentUser || currentProfile?.role !== "owner") return;
+      const banner = $("ownerLiveOffersBanner");
+      const list = $("ownerLiveOffersList");
+      if (!banner || !list) return;
+
+      const { data: offers } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      list.innerHTML = "";
+      if (!offers || !offers.length) {
+        banner.classList.add("hidden");
+        return;
+      }
+
+      banner.classList.remove("hidden");
+      banner.innerHTML = `<b>Ofertas en vivo</b><div class="small" style="margin-top:4px">Tienes ${offers.length} oferta(s) pendientes. Puedes verlas sin salir del mapa.</div>`;
+
+      for (const ofr of offers) {
+        const profile = await getWalkerProfileSummary(ofr.walker_id);
+        const card = document.createElement("div");
+        card.className = "live-offer-card";
+        card.innerHTML = `
+          <div class="live-offer-head">
+            ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+            <div style="flex:1">
+              <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+              <p class="small" style="margin:4px 0 0">${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐ · ${profile.walker?.total_reviews || 0} reseñas · ${profile.completedWalks} paseos</p>
+            </div>
+          </div>
+          <p style="margin:10px 0 0"><b>Oferta:</b> S/${ofr.price}</p>
+          <button class="secondary" onclick="loadOwnerRequests()">Ver perfil y comentarios</button>
+        `;
+        list.appendChild(card);
+      }
+    }
+
 
     async function loadOwnerRequests() {
       const { data, error } = await supabaseClient
@@ -3180,6 +3267,7 @@
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
             await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
+            if ($("ownerHomeScreen").classList.contains("active")) await loadOwnerLiveOffersPreview();
           }
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
