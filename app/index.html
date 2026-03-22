@@ -355,8 +355,8 @@
       <div class="logo">LADRA<span>ME</span></div>
       <input id="loginEmail" type="email" placeholder="Correo electrónico">
       <input id="loginPass" type="password" placeholder="Contraseña">
-      <button onclick="handleLogin()">Entrar</button>
-      <button class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
+      <button id="loginBtn" onclick="handleLogin()">Entrar</button>
+      <button id="createAccountBtn" class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
       <p id="loginMsg" class="msg"></p>
     </div>
 
@@ -816,13 +816,17 @@
   </div>
 
   <script>
-    mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
+    if (window.mapboxgl) {
+      mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
+    }
 
-    const { createClient } = supabase;
-    const supabaseClient = createClient(
-      "https://dnxiaronekfbbwqzslon.supabase.co",
-      "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-    );
+    const createClient = window.supabase?.createClient;
+    const supabaseClient = createClient
+      ? createClient(
+          "https://dnxiaronekfbbwqzslon.supabase.co",
+          "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+        )
+      : null;
 
     const TURN_CONFIG = {
       iceServers: [
@@ -910,6 +914,17 @@
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
+
+      const loginBtn = document.getElementById("loginBtn");
+      if (loginBtn) loginBtn.addEventListener("click", handleLogin);
+      const createBtn = document.getElementById("createAccountBtn");
+      if (createBtn) createBtn.addEventListener("click", () => go("signupScreen"));
+
+      if (!supabaseClient) {
+        console.error("Supabase no cargó");
+        showMsg("loginMsg", "No cargó Supabase. Recarga la página.");
+        return;
+      }
       boot();
     });
 
@@ -1069,12 +1084,17 @@
     }
 
     async function getCurrentSessionUser() {
+      if (!supabaseClient) return null;
       const { data, error } = await supabaseClient.auth.getUser();
       if (error) return null;
       return data.user || null;
     }
 
     async function handleLogin() {
+      if (!supabaseClient) {
+        showMsg("loginMsg", "No cargó Supabase. Recarga la página.");
+        return;
+      }
       const email = $("loginEmail").value.trim();
       const password = $("loginPass").value.trim();
 
@@ -3886,101 +3906,6 @@
       callCamEnabled = !callCamEnabled;
       tracks.forEach(t => t.enabled = callCamEnabled);
     }
-  </script>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD9L3huvvYNiKbpC1NUwoMpY0D3XhTjqMQ",
-      authDomain: "ladrame-95d90.firebaseapp.com",
-      projectId: "ladrame-95d90",
-      storageBucket: "ladrame-95d90.firebasestorage.app",
-      messagingSenderId: "214404716079",
-      appId: "1:214404716079:web:780f60acdba8b3903518da"
-    };
-
-    const firebaseApp = initializeApp(firebaseConfig);
-    const messaging = getMessaging(firebaseApp);
-
-    async function savePushToken(token) {
-      try {
-        if (!window.supabaseClient || !window.currentUser || !token) return;
-
-        const payload = {
-          user_id: window.currentUser.id,
-          token: token,
-          updated_at: new Date().toISOString()
-        };
-
-        const { error } = await window.supabaseClient
-          .from("push_tokens")
-          .upsert(payload, { onConflict: "token" });
-
-        if (error) {
-          console.log("Error guardando token push:", error.message);
-        } else {
-          console.log("Token push guardado");
-        }
-      } catch (err) {
-        console.log("Error savePushToken:", err);
-      }
-    }
-
-    window.activarPush = async function activarPush() {
-      try {
-        if (!window.currentUser) {
-          console.log("No hay usuario logueado para push");
-          return;
-        }
-
-        if (!("serviceWorker" in navigator)) {
-          console.log("Service Worker no soportado");
-          return;
-        }
-
-        if (!("Notification" in window)) {
-          console.log("Notifications no soportado");
-          return;
-        }
-
-        const permiso = await Notification.requestPermission();
-
-        if (permiso !== "granted") {
-          console.log("Permiso de notificación denegado");
-          return;
-        }
-
-        const sw = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
-
-        const token = await getToken(messaging, {
-          vapidKey: "BEB_OnIAe6K0jKlH1cSBpfm2Quf4OywLmp7Dmm9JlCQRc77xEHTeCvKQqanEEtWzCSSMtWO1l30PuvqVQlA39dg",
-          serviceWorkerRegistration: sw
-        });
-
-        if (!token) {
-          console.log("No se obtuvo token push");
-          return;
-        }
-
-        console.log("TOKEN PUSH:", token);
-        await savePushToken(token);
-      } catch (err) {
-        console.log("Error en activarPush:", err);
-      }
-    };
-
-    onMessage(messaging, (payload) => {
-      console.log("Notificación recibida en foreground:", payload);
-
-      const title = payload?.notification?.title || payload?.data?.title || "LADRAME";
-      const body = payload?.notification?.body || payload?.data?.body || "Nueva notificación";
-
-      if (Notification.permission === "granted") {
-        new Notification(title, { body });
-      }
-    });
   </script>
 </body>
 </html>
