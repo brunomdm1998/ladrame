@@ -357,6 +357,7 @@
       <input id="loginPass" type="password" placeholder="Contraseña">
       <button id="loginBtn" onclick="handleLogin()">Entrar</button>
       <button id="createAccountBtn" class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
+      <p class="small center" style="margin-top:4px"><a href="#" id="forgotPassLink" style="color:#2e86de;text-decoration:none;font-weight:600">Olvidé mi contraseña</a></p>
       <p id="loginMsg" class="msg"></p>
     </div>
 
@@ -3906,6 +3907,34 @@
       callCamEnabled = !callCamEnabled;
       tracks.forEach(t => t.enabled = callCamEnabled);
     }
+    async function openForgotPassword() {
+      const email = (document.getElementById("loginEmail")?.value || "").trim();
+      if (!email) {
+        showMsg("loginMsg", "Escribe tu correo primero");
+        return;
+      }
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://ladrame.sbs/app/"
+      });
+      showMsg("loginMsg", error ? error.message : "Te enviamos el enlace de recuperación");
+    }
+
+    window.go = go;
+    window.handleLogin = handleLogin;
+    window.registerUser = registerUser;
+    window.verifySignupCode = verifySignupCode;
+    window.resendSignupCode = resendSignupCode;
+    window.openForgotPassword = openForgotPassword;
+
+    window.addEventListener("load", () => {
+      const loginBtn = document.getElementById("loginBtn");
+      if (loginBtn) loginBtn.onclick = handleLogin;
+      const createBtn = document.getElementById("createAccountBtn");
+      if (createBtn) createBtn.onclick = () => go("signupScreen");
+      const forgot = document.getElementById("forgotPassLink");
+      if (forgot) forgot.onclick = (e) => { e.preventDefault(); openForgotPassword(); };
+    });
+
   </script>
 </body>
 </html>
