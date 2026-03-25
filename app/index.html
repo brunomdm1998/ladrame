@@ -452,8 +452,7 @@
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-        <button onclick="loadOwnerRequests()">Solicitudes</button>
-      </div>
+              </div>
 
       <div class="home-action-row">
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
@@ -878,6 +877,7 @@
     let chatMessagesChannel = null;
 
     let providerGpsWatchId = null;
+    let ownerGpsWatchId = null;
     let walkTrackWatchId = null;
     let walkerRefreshInterval = null;
     let ownerMapRefreshInterval = null;
@@ -1023,6 +1023,19 @@
 
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function requestAgeMs(createdAt) {
+      if (!createdAt) return 0;
+      return Date.now() - new Date(createdAt).getTime();
+    }
+
+    function isRequestExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
+    }
+
+    function isOfferCardExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 1 * 60 * 1000;
     }
 
     async function compressImageIfNeeded(file, maxWidth = 1000, quality = 0.78) {
@@ -1311,12 +1324,14 @@
       callChannel = null;
 
       if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
+      if (ownerGpsWatchId) navigator.geolocation.clearWatch(ownerGpsWatchId);
       if (walkTrackWatchId) navigator.geolocation.clearWatch(walkTrackWatchId);
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
       if (liveWalkInterval) clearInterval(liveWalkInterval);
 
       providerGpsWatchId = null;
+      ownerGpsWatchId = null;
       walkTrackWatchId = null;
       walkerRefreshInterval = null;
       ownerMapRefreshInterval = null;
@@ -1420,14 +1435,19 @@
 
     async function getOwnerLocation() {
       if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition(
+
+      if (ownerGpsWatchId) {
+        navigator.geolocation.clearWatch(ownerGpsWatchId);
+      }
+
+      ownerGpsWatchId = navigator.geolocation.watchPosition(
         pos => {
           ownerLat = pos.coords.latitude;
           ownerLng = pos.coords.longitude;
           renderOwnerHomeMap();
         },
         () => {},
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
       );
     }
 
@@ -1791,6 +1811,12 @@
         return;
       }
 
+      await supabaseClient
+        .from("walk_requests")
+        .update({ status: "expired" })
+        .eq("owner_id", currentUser.id)
+        .eq("status", "open");
+
       const { data: requestInserted, error } = await supabaseClient
         .from("walk_requests")
         .insert({
@@ -1943,7 +1969,9 @@
 
       if (error) return;
 
-      for (const req of (data || [])) {
+      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+
+      for (const req of activeRequests) {
         if (req.lat == null || req.lng == null) continue;
 
         let distance = null;
@@ -1955,18 +1983,29 @@
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const owner = await supabaseClient.from("users").select("name,selfie_url").eq("id", req.owner_id).maybeSingle();
+        const ownerData = owner.data || {};
 
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
-          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          <div class="profile-mini">
+            ${ownerData.selfie_url ? `<img src="${ownerData.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+            <div style="flex:1">
+              <p style="margin:0"><b>${ownerData.name || "Dueño"}</b></p>
+              <p class="small" style="margin:4px 0 0">Tarifa del dueño: S/${req.tariff}</p>
+              <p class="small" style="margin:4px 0 0">Expira en ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
+            </div>
+          </div>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min ${distance != null ? `· Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
           <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
         `;
         $("requestsList").appendChild(div);
+      }
+
+      if (!activeRequests.length) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
       }
 
       if (providerLat != null && providerLng != null) {
@@ -1978,7 +2017,7 @@
 
     function getOfferRemainingSeconds(offer) {
       const created = offer?.created_at ? new Date(offer.created_at).getTime() : Date.now();
-      return Math.max(0, 420 - Math.floor((Date.now() - created) / 1000));
+      return Math.max(0, 60 - Math.floor((Date.now() - created) / 1000));
     }
 
     function isOfferExpired(offer) {
@@ -2197,11 +2236,11 @@
         .eq("owner_id", currentUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
 
       const validOffers = [];
       for (const ofr of (offers || [])) {
-        if (!(await expireOfferIfNeeded(ofr))) validOffers.push(ofr);
+        if (!isOfferCardExpired(ofr.created_at) && !(await expireOfferIfNeeded(ofr))) validOffers.push(ofr);
       }
 
       await renderOwnerFloatingOfferCard(validOffers[0] || null);
@@ -2213,10 +2252,13 @@
       }
 
       box.classList.remove("hidden");
-      box.innerHTML = "<p><b>Ofertas nuevas en vivo</b></p>";
+      box.innerHTML = "<p><b>Ofertas nuevas</b></p>";
 
       for (const ofr of validOffers) {
         const walker = await getWalkerProfileSummary(ofr.walker_id);
+        const req = await supabaseClient.from("walk_requests").select("*").eq("id", ofr.request_id).maybeSingle();
+        if (!req.data || isRequestExpired(req.data.created_at)) continue;
+
         const div = document.createElement("div");
         div.className = "comment-box";
         div.innerHTML = `
@@ -2227,193 +2269,11 @@
               <p class="small" style="margin:4px 0 0">S/${ofr.price} · ${Number(walker.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
               <p class="small" style="margin:4px 0 0">Expira en ${formatCountdown(getOfferRemainingSeconds(ofr))}</p>
             </div>
+            <button class="green" style="width:auto;padding:10px 12px" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
           </div>
-          <button onclick="loadOwnerRequests()">Ver ofertas</button>
         `;
         box.appendChild(div);
       }
-    }
-
-    async function cancelSpecificOffer(offerId) {
-      const { error } = await supabaseClient.from("offers").update({ status: "cancelled" }).eq("id", offerId).eq("walker_id", currentUser.id);
-      if (error) {
-        alert(error.message);
-        return;
-      }
-      await loadProviderLiveOffers();
-      if ($("walkerMapScreen").classList.contains("active")) await loadNearbyRequests();
-    }
-
-    async function cancelMyPendingOffer() {
-      const { data: myOffer } = await supabaseClient
-        .from("offers")
-        .select("*")
-        .eq("request_id", selectedRequest)
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!myOffer) return;
-      await cancelSpecificOffer(myOffer.id);
-      $("cancelMyOfferBtn").classList.add("hidden");
-      $("offerAutoStatus").classList.add("hidden");
-      showMsg("offerMsg", "Oferta cancelada");
-    }
-
-    async function openOffer(requestId) {
-      selectedRequest = requestId;
-
-      const { data, error } = await supabaseClient
-        .from("walk_requests_with_dogs")
-        .select("*")
-        .eq("id", requestId)
-        .single();
-
-      if (error) {
-        showMsg("offerMsg", error.message);
-        return;
-      }
-
-      if (data.status && data.status !== "open") {
-        showMsg("offerMsg", "Esta solicitud ya no está disponible");
-        return;
-      }
-
-      const { data: ownerProfile } = await supabaseClient.from("users").select("*").eq("id", data.owner_id).maybeSingle();
-      const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
-
-      $("offerRequestInfo").innerHTML = `
-        <div class="profile-mini">
-          ${ownerProfile?.selfie_url ? `<img src="${ownerProfile.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-          <div style="flex:1">
-            <p style="margin:0"><b>${ownerProfile?.name || "Dueño"}</b></p>
-            <p class="small" style="margin:4px 0 0">Tarifa del dueño: S/${data.tariff}</p>
-            <p class="small" style="margin:4px 0 0">Tiempo: ${data.time || 0} min</p>
-          </div>
-        </div>
-        ${buildDogsHtml(dogs)}
-        <p class="small">Tu oferta aparece sola al dueño y expira en 7 minutos.</p>
-      `;
-
-      const { data: myPending } = await supabaseClient
-        .from("offers")
-        .select("*")
-        .eq("request_id", requestId)
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      $("offerPriceInput").value = "";
-      $("offerAutoStatus").classList.add("hidden");
-      $("cancelMyOfferBtn").classList.add("hidden");
-
-      if (myPending && !(await expireOfferIfNeeded(myPending))) {
-        $("offerAutoStatus").classList.remove("hidden");
-        $("offerAutoStatus").innerHTML = `<p><b>Ya tienes una oferta pendiente</b></p><p class="small">Expira en ${formatCountdown(getOfferRemainingSeconds(myPending))}</p>`;
-        $("cancelMyOfferBtn").classList.remove("hidden");
-      }
-
-      showMsg("offerMsg", "");
-      go("sendOfferScreen");
-    }
-
-    async function sendOffer() {
-      const price = Number($("offerPriceInput").value || 0);
-      if (!selectedRequest) {
-        showMsg("offerMsg", "Selecciona una solicitud");
-        return;
-      }
-      if (!price || price <= 0) {
-        showMsg("offerMsg", "Tarifa inválida");
-        return;
-      }
-
-      const { data: req, error: reqError } = await supabaseClient
-        .from("walk_requests")
-        .select("*")
-        .eq("id", selectedRequest)
-        .single();
-
-      if (reqError || !req || req.status !== "open") {
-        showMsg("offerMsg", "La solicitud ya no está disponible");
-        return;
-      }
-
-      const { data: existingPending } = await supabaseClient
-        .from("offers")
-        .select("*")
-        .eq("request_id", selectedRequest)
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingPending && !(await expireOfferIfNeeded(existingPending))) {
-        showMsg("offerMsg", "Ya tienes una oferta pendiente para esta solicitud");
-        $("offerAutoStatus").classList.remove("hidden");
-        $("offerAutoStatus").innerHTML = `<p><b>Oferta pendiente</b></p><p class="small">Expira en ${formatCountdown(getOfferRemainingSeconds(existingPending))}</p>`;
-        $("cancelMyOfferBtn").classList.remove("hidden");
-        return;
-      }
-
-      const { error } = await supabaseClient
-        .from("offers")
-        .insert({
-          request_id: selectedRequest,
-          walker_id: currentUser.id,
-          owner_id: req.owner_id,
-          dog_id: req.dog_id,
-          price,
-          offer_time: req.time,
-          status: "pending"
-        });
-
-      if (error) {
-        showMsg("offerMsg", error.message);
-        return;
-      }
-
-      await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}. Expira en 7 minutos.`);
-      $("offerAutoStatus").classList.remove("hidden");
-      $("offerAutoStatus").innerHTML = `<p><b>Oferta enviada</b></p><p class="small">Expira en 07:00 y puedes cancelarla manualmente.</p>`;
-      $("cancelMyOfferBtn").classList.remove("hidden");
-      showMsg("offerMsg", "Oferta enviada");
-      await loadWalkerCredits();
-      await loadProviderLiveOffers();
-      setTimeout(() => go("walkerMapScreen"), 700);
-    }
-
-    async function getWalkerProfileSummary(walkerUserId) {
-      const result = { user: null, walker: null, completedWalks: 0, comments: [] };
-
-      const { data: user } = await supabaseClient.from("users").select("*").eq("id", walkerUserId).maybeSingle();
-      result.user = user || null;
-
-      const { data: walker } = await supabaseClient.from("walkers").select("*").eq("user_id", walkerUserId).maybeSingle();
-      result.walker = walker || null;
-
-      const { data: completed } = await supabaseClient
-        .from("walks")
-        .select("id")
-        .eq("walker_id", walkerUserId)
-        .in("status", ["completed", "finished"]);
-
-      result.completedWalks = completed ? completed.length : 0;
-
-      const { data: reviews } = await supabaseClient
-        .from("reviews")
-        .select("*")
-        .eq("reviewee_id", walkerUserId)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      result.comments = reviews || [];
-      return result;
     }
 
     async function loadOwnerRequests() {
@@ -2421,27 +2281,30 @@
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("owner_id", currentUser.id)
+        .eq("status", "open")
         .order("created_at", { ascending: false });
 
       if (error) return;
       $("ownerRequestsList").innerHTML = "";
 
-      if (!data || data.length === 0) {
-        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
+      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+
+      if (!activeRequests.length) {
+        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes activas.</p>`;
         go("ownerRequestsScreen");
         return;
       }
 
-      for (const req of data) {
+      for (const req of activeRequests) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
 
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
           <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Estado: ${req.status || "-"}</p>
           <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
           <p class="small">Tiempo: ${req.time || 0} min</p>
+          <p class="small">Expira en: ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
           ${buildDogsHtml(dogs)}
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
@@ -2451,26 +2314,20 @@
           .from("offers")
           .select("*")
           .eq("request_id", req.id)
+          .eq("status", "pending")
           .order("created_at", { ascending: false });
 
         const offerBox = $(`offers-${req.id}`);
         offerBox.innerHTML = "";
 
-        if (!offers || offers.length === 0) {
-          offerBox.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
-        } else {
-          for (const ofr of offers) {
-            await expireOfferIfNeeded(ofr);
-            const profile = await getWalkerProfileSummary(ofr.walker_id);
+        const activeOffers = (offers || []).filter(ofr => !isOfferCardExpired(ofr.created_at));
 
-            const commentsHtml = profile.comments.length
-              ? profile.comments.map(r => `
-                <div class="comment-box">
-                  <div class="small"><b>${r.rating || 0}/5</b></div>
-                  <div class="small">${r.comment || "Sin comentario"}</div>
-                </div>
-              `).join("")
-              : `<p class="small">Sin comentarios todavía.</p>`;
+        if (!activeOffers.length) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas activas.</p>`;
+        } else {
+          for (const ofr of activeOffers) {
+            const profile = await getWalkerProfileSummary(ofr.walker_id);
+            const commentsHtml = (profile.comments || []).slice(0,2).map(c => `<div class="comment-box"><p style="margin:0"><b>${c.rating || 5}⭐</b></p><p class="small" style="margin:4px 0 0">${c.comment || ""}</p></div>`).join("");
 
             const offerCard = document.createElement("div");
             offerCard.className = "card";
@@ -2480,20 +2337,14 @@
                 <div style="flex:1">
                   <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
                   <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
-                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
+                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0} · Paseos: ${profile.completedWalks}</p>
                 </div>
               </div>
-
               <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Estado oferta: ${isOfferExpired(ofr) ? "expired" : (ofr.status || "pending")}</p>
-              <p class="small">${ofr.status === "pending" ? `Expira en ${formatCountdown(getOfferRemainingSeconds(ofr))}` : ""}</p>
+              <p class="small">Expira en ${formatCountdown(getOfferRemainingSeconds(ofr))}</p>
               <div>${commentsHtml}</div>
-
-              ${(ofr.status === "pending" && !isOfferExpired(ofr)) ? `
-                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-              ` : `<div class="small">${isOfferExpired(ofr) ? "Oferta expirada" : ""}</div>`}
+              <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+              <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
             `;
             offerBox.appendChild(offerCard);
           }
