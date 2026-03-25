@@ -199,6 +199,33 @@
       border-radius: 12px;
       background: #fff;
       padding: 10px;
+      min-height: 48px;
+    }
+
+    .dog-choice {
+      display: flex;
+      gap: 10px;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 10px;
+      margin: 8px 0;
+      background: #fff;
+      align-items: flex-start;
+    }
+    .dog-choice input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 3px 0 0;
+      accent-color: #27ae60;
+      flex: 0 0 auto;
+    }
+    .dog-choice-photo {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid #eee;
+      flex: 0 0 auto;
     }
     .dog-choice {
       display: flex;
@@ -460,7 +487,7 @@
 
       <div class="card">
         <p><b>Selecciona uno o varios perros</b></p>
-        <div id="walkDogsMultiSelect" class="multi-dog-box"></div>
+        <div id="walkDogsMultiSelect" class="multi-dog-box"><p class="small">Cargando perros...</p></div>
       </div>
 
       <input type="number" id="walkPriceInput" placeholder="Tarifa que propone el dueño">
@@ -822,6 +849,87 @@
     let barkAudioContext = null;
     let incomingBarkInterval = null;
 
+    const I18N = {
+      es: {
+        loginEmail:'Correo electrónico', loginPass:'Contraseña', loginEnter:'Entrar', loginCreate:'Crear cuenta',
+        signupTitle:'Crear cuenta', fullName:'Nombre completo', document:'Número DNI / documento', accountType:'Tipo de cuenta', owner:'Dueño', walker:'Paseador', register:'Registrarme', back:'Volver',
+        verifyTitle:'Verificar correo', verifySent:'Te enviamos un código a:', verifyPlaceholder:'Escribe el código', verifyConfirm:'Confirmar código', verifyResend:'Reenviar código',
+        completeTitle:'Completar perfil', selfie:'Selfie', documentPhoto:'Documento', finishProfile:'Terminar perfil',
+        ownerTitle:'Dueño', registerDog:'Registrar perro', requestWalk:'Pedir paseo', findHotel:'Buscar hotel', hotelRequests:'Hotel solicitudes', notifications:'Notificaciones',
+        addDogTitle:'Registrar perro', dogName:'Nombre del perro', size:'Tamaño', sociable:'¿Sociable?', controllable:'¿Es controlable?', responds:'¿Responde a su nombre?', personality:'Personalidad', dogNotes:'Recomendaciones para el paseador', dogPhoto:'Foto del perro', saveDog:'Guardar perro',
+        walkTitle:'Pedir paseo', chooseDogs:'Selecciona uno o varios perros', ownerTariff:'Tarifa que propone el dueño', walkTime:'Tiempo del paseo', walkNotes:'Notas para el paseador', publishRequest:'Publicar solicitud'
+      },
+      en: {
+        loginEmail:'Email', loginPass:'Password', loginEnter:'Sign in', loginCreate:'Create account',
+        signupTitle:'Create account', fullName:'Full name', document:'Document / ID number', accountType:'Account type', owner:'Owner', walker:'Walker', register:'Sign up', back:'Back',
+        verifyTitle:'Verify email', verifySent:'We sent a code to:', verifyPlaceholder:'Enter the code', verifyConfirm:'Confirm code', verifyResend:'Resend code',
+        completeTitle:'Complete profile', selfie:'Selfie', documentPhoto:'Document', finishProfile:'Finish profile',
+        ownerTitle:'Owner', registerDog:'Register dog', requestWalk:'Request walk', findHotel:'Find hotel', hotelRequests:'Hotel requests', notifications:'Notifications',
+        addDogTitle:'Register dog', dogName:'Dog name', size:'Size', sociable:'Sociable?', controllable:'Controllable?', responds:'Responds to name?', personality:'Personality', dogNotes:'Recommendations for the walker', dogPhoto:'Dog photo', saveDog:'Save dog',
+        walkTitle:'Request walk', chooseDogs:'Choose one or more dogs', ownerTariff:'Owner proposed fare', walkTime:'Walk duration', walkNotes:'Notes for the walker', publishRequest:'Publish request'
+      },
+      ja: {
+        loginEmail:'メールアドレス', loginPass:'パスワード', loginEnter:'ログイン', loginCreate:'アカウント作成',
+        signupTitle:'アカウント作成', fullName:'氏名', document:'身分証番号', accountType:'アカウント種別', owner:'飼い主', walker:'ウォーカー', register:'登録', back:'戻る',
+        verifyTitle:'メール認証', verifySent:'コードを送信しました:', verifyPlaceholder:'コードを入力', verifyConfirm:'コード確認', verifyResend:'再送信',
+        completeTitle:'プロフィールを完了', selfie:'セルフィー', documentPhoto:'身分証', finishProfile:'プロフィール完了',
+        ownerTitle:'飼い主', registerDog:'犬を登録', requestWalk:'散歩を依頼', findHotel:'ホテルを探す', hotelRequests:'ホテル依頼', notifications:'通知',
+        addDogTitle:'犬を登録', dogName:'犬の名前', size:'サイズ', sociable:'社交的?', controllable:'制御可能?', responds:'名前に反応?', personality:'性格', dogNotes:'ウォーカーへの注意', dogPhoto:'犬の写真', saveDog:'保存',
+        walkTitle:'散歩を依頼', chooseDogs:'1匹以上選択', ownerTariff:'希望料金', walkTime:'散歩時間', walkNotes:'ウォーカーへのメモ', publishRequest:'依頼を公開'
+      }
+    };
+
+    function currentLang() {
+      const raw = currentProfile?.language || $("signupLanguage")?.value || 'es';
+      return raw === 'jp' ? 'ja' : raw;
+    }
+
+    function applyTranslations(lang = currentLang()) {
+      const t = I18N[lang] || I18N.es;
+      if ($('loginEmail')) $('loginEmail').placeholder = t.loginEmail;
+      if ($('loginPass')) $('loginPass').placeholder = t.loginPass;
+      if (document.querySelector('#loginScreen button:nth-of-type(1)')) document.querySelector('#loginScreen button:nth-of-type(1)').textContent = t.loginEnter;
+      if (document.querySelector('#loginScreen button:nth-of-type(2)')) document.querySelector('#loginScreen button:nth-of-type(2)').textContent = t.loginCreate;
+      if (document.querySelector('#signupScreen h2')) document.querySelector('#signupScreen h2').textContent = t.signupTitle;
+      if ($('signupName')) $('signupName').placeholder = t.fullName;
+      if ($('signupEmail')) $('signupEmail').placeholder = t.loginEmail;
+      if ($('signupDNI')) $('signupDNI').placeholder = t.document;
+      if ($('signupPass')) $('signupPass').placeholder = t.loginPass;
+      if (document.querySelector('#signupRole option[value=""]')) document.querySelector('#signupRole option[value=""]').textContent = t.accountType;
+      if (document.querySelector('#signupRole option[value="owner"]')) document.querySelector('#signupRole option[value="owner"]').textContent = t.owner;
+      if (document.querySelector('#signupRole option[value="walker"]')) document.querySelector('#signupRole option[value="walker"]').textContent = t.walker;
+      if (document.querySelector('#signupScreen .green')) document.querySelector('#signupScreen .green').textContent = t.register;
+      if (document.querySelector('#signupScreen .secondary')) document.querySelector('#signupScreen .secondary').textContent = t.back;
+      if (document.querySelector('#verifyCodeScreen h2')) document.querySelector('#verifyCodeScreen h2').textContent = t.verifyTitle;
+      if (document.querySelector('#verifyCodeScreen .card p')) document.querySelector('#verifyCodeScreen .card p').textContent = t.verifySent;
+      if ($('signupCodeInput')) $('signupCodeInput').placeholder = t.verifyPlaceholder;
+      if (document.querySelector('#verifyCodeScreen button.green')) document.querySelector('#verifyCodeScreen button.green').textContent = t.verifyConfirm;
+      if (document.querySelector('#verifyCodeScreen button.secondary')) document.querySelector('#verifyCodeScreen button.secondary').textContent = t.verifyResend;
+      if (document.querySelector('#completeProfileScreen h2')) document.querySelector('#completeProfileScreen h2').textContent = t.completeTitle;
+      if (document.querySelector('#completeProfileScreen .card:nth-of-type(2) p b')) document.querySelector('#completeProfileScreen .card:nth-of-type(2) p b').textContent = t.selfie;
+      if (document.querySelector('#completeProfileScreen .card:nth-of-type(3) p b')) document.querySelector('#completeProfileScreen .card:nth-of-type(3) p b').textContent = t.documentPhoto;
+      if (document.querySelector('#completeProfileScreen .green')) document.querySelector('#completeProfileScreen .green').textContent = t.finishProfile;
+      if (document.querySelector('#ownerHomeScreen h2')) document.querySelector('#ownerHomeScreen h2').textContent = t.ownerTitle;
+      const ownerBtns = document.querySelectorAll('#ownerHomeScreen .home-action-row button');
+      if (ownerBtns[0]) ownerBtns[0].textContent = t.registerDog;
+      if (ownerBtns[1]) ownerBtns[1].textContent = t.requestWalk;
+      if (ownerBtns[2]) ownerBtns[2].textContent = t.findHotel;
+      if (ownerBtns[3]) ownerBtns[3].textContent = t.hotelRequests;
+      if (ownerBtns[4]) ownerBtns[4].textContent = t.notifications;
+      if (document.querySelector('#addDogScreen h2')) document.querySelector('#addDogScreen h2').textContent = t.addDogTitle;
+      if ($('dogNameInput')) $('dogNameInput').placeholder = t.dogName;
+      if ($('dogNotesInput')) $('dogNotesInput').placeholder = t.dogNotes;
+      if (document.querySelector('#addDogScreen .card p b')) document.querySelector('#addDogScreen .card p b').textContent = t.dogPhoto;
+      if (document.querySelector('#addDogScreen .green')) document.querySelector('#addDogScreen .green').textContent = t.saveDog;
+      if (document.querySelector('#createWalkScreen h2')) document.querySelector('#createWalkScreen h2').textContent = t.walkTitle;
+      if (document.querySelector('#createWalkScreen .card p b')) document.querySelector('#createWalkScreen .card p b').textContent = t.chooseDogs;
+      if ($('walkPriceInput')) $('walkPriceInput').placeholder = t.ownerTariff;
+      if ($('walkNotesInput')) $('walkNotesInput').placeholder = t.walkNotes;
+      if (document.querySelector('#createWalkScreen .green')) document.querySelector('#createWalkScreen .green').textContent = t.publishRequest;
+      if (document.querySelector('#createWalkScreen .secondary')) document.querySelector('#createWalkScreen .secondary').textContent = t.back;
+      if (document.querySelector('#walkTimeInput option[value=""]')) document.querySelector('#walkTimeInput option[value=""]').textContent = t.walkTime;
+    }
+
     function syncGlobalState() {
       window.supabaseClient = supabaseClient;
       window.currentUser = currentUser;
@@ -845,9 +953,11 @@
           if (c === "usa") $("signupLanguage").value = "en";
           else if (c === "japan") $("signupLanguage").value = "ja";
           else $("signupLanguage").value = "es";
+          applyTranslations($("signupLanguage").value);
         });
       }
-
+      $("signupLanguage")?.addEventListener("change", () => applyTranslations($("signupLanguage").value));
+      applyTranslations($("signupLanguage")?.value || 'es');
       boot();
     });
 
@@ -1301,8 +1411,9 @@
     }
 
     function routeUser(profile) {
+      applyTranslations(profile.language || "es");
       if (profile.role === "owner") {
-        $("ownerWelcome").textContent = "Hola " + (profile.name || "");
+        $("ownerWelcome").textContent = (currentLang()==="en"?"Hello ":currentLang()==="ja"?"こんにちは ":"Hola ") + (profile.name || "");
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
@@ -1315,7 +1426,7 @@
       }
 
       if (profile.role === "walker") {
-        $("providerWelcome").textContent = "Hola " + (profile.name || "");
+        $("providerWelcome").textContent = (currentLang()==="en"?"Hello ":currentLang()==="ja"?"こんにちは ":"Hola ") + (profile.name || "");
         renderProviderHome();
         startProviderLiveGps();
         go("providerHomeScreen");
@@ -1569,15 +1680,20 @@
         .eq("owner_id", currentUser.id)
         .order("created_at", { ascending: false });
 
-      if (error) return;
+      if (error) {
+        $("ownerDogsList").innerHTML = `<p class="small">${error.message}</p>`;
+        $("walkDogsMultiSelect").innerHTML = `<p class="small">${error.message}</p>`;
+        return;
+      }
 
       $("ownerDogsList").innerHTML = "";
       $("walkDogsMultiSelect").innerHTML = "";
-      $("hotelDogSelect").innerHTML = `<option value="">Selecciona perro</option>`;
+      $("hotelDogSelect").innerHTML = `<option value="">${currentLang()==='en'?'Select dog':currentLang()==='ja'?'犬を選択':'Selecciona perro'}</option>`;
 
       if (!data || data.length === 0) {
-        $("ownerDogsList").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
-        $("walkDogsMultiSelect").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
+        const emptyText = currentLang()==='en'?'You have no registered dogs.':currentLang()==='ja'?'登録された犬がいません。':'No tienes perros registrados.';
+        $("ownerDogsList").innerHTML = `<p class="small">${emptyText}</p>`;
+        $("walkDogsMultiSelect").innerHTML = `<p class="small">${emptyText}</p>`;
         return;
       }
 
@@ -1598,10 +1714,11 @@
         `;
         $("ownerDogsList").appendChild(card);
 
-        const option = document.createElement("div");
+        const option = document.createElement("label");
         option.className = "dog-choice";
         option.innerHTML = `
           <input type="checkbox" class="walk-dog-checkbox" value="${dog.id}">
+          ${photo ? `<img src="${photo}" class="dog-choice-photo">` : `<div class="dog-choice-photo" style="display:flex;align-items:center;justify-content:center;background:#f5f5f5">🐶</div>`}
           <div style="flex:1">
             <p style="margin:0"><b>${dog.name}</b></p>
             <p class="small" style="margin:4px 0 0">Tamaño: ${dog.size || "-"}</p>
@@ -1704,8 +1821,9 @@
       setTimeout(() => go("ownerHomeScreen"), 700);
     }
 
-    function openCreateWalkScreen() {
-      loadDogs();
+    async function openCreateWalkScreen() {
+      $("walkDogsMultiSelect").innerHTML = `<p class="small">${currentLang()==='en' ? 'Loading dogs...' : currentLang()==='ja' ? '犬を読み込み中...' : 'Cargando perros...'}</p>`;
+      await loadDogs();
       getOwnerLocation();
       go("createWalkScreen");
     }
