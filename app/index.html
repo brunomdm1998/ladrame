@@ -369,8 +369,7 @@
         <option value="es">Español</option>
         <option value="en">English</option>
         <option value="jp">日本語</option>
-        <option value="pe">Perú</option>
-      </select>
+              </select>
 
       <select id="signupCountry">
         <option value="">Selecciona país</option>
@@ -390,18 +389,6 @@
         <option value="owner">Dueño</option>
         <option value="walker">Paseador</option>
       </select>
-
-      <div class="card">
-        <p><b>Selfie de verificación</b></p>
-        <input type="file" accept="image/*" capture="user" id="selfieInput">
-        <img id="selfiePreview" class="preview-img hidden">
-      </div>
-
-      <div class="card">
-        <p><b>Foto del DNI / documento</b></p>
-        <input type="file" accept="image/*" capture="environment" id="dniInput">
-        <img id="dniPreview" class="preview-img hidden">
-      </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
       <button class="secondary" onclick="go('loginScreen')">Volver</button>
@@ -471,6 +458,11 @@
       <div class="home-action-row">
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
+      </div>
+
+      <div class="home-action-row">
+        <button class="secondary" onclick="switchRole('walker')">Cambiar a paseador</button>
+        <button class="secondary" onclick="refreshOwnerLiveData()">Actualizar mapa</button>
       </div>
 
       <div id="ownerLiveOffersBox" class="card hidden"></div>
@@ -640,6 +632,11 @@
       <div class="home-action-row">
         <button class="secondary hidden" id="hotelRequestsBtn" onclick="loadHotelRequestsForProvider()">Solicitudes hotel</button>
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
+      </div>
+
+      <div class="home-action-row">
+        <button class="secondary" onclick="switchRole('owner')">Cambiar a dueño</button>
+        <button class="secondary" onclick="renderProviderHomeMap()">Actualizar mapa</button>
       </div>
       <div id="providerLiveOffersBox" class="card hidden"></div>
     </div>
@@ -913,6 +910,8 @@
       bindPreview("dniInput", "dniPreview");
       bindPreview("completeSelfieInput", "completeSelfiePreview");
       bindPreview("completeDniInput", "completeDniPreview");
+      const signupCountry = $("signupCountry");
+      if (signupCountry) signupCountry.addEventListener("change", syncCountryLanguage);
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
 
@@ -968,6 +967,15 @@
     function showMsg(id, text) {
       const el = $(id);
       if (el) el.textContent = text || "";
+    }
+
+    function syncCountryLanguage() {
+      const country = $("signupCountry")?.value;
+      const lang = $("signupLanguage");
+      if (!lang) return;
+      if (country === "usa") lang.value = "en";
+      else if (country === "japan") lang.value = "jp";
+      else if (country === "peru" || country === "spain") lang.value = "es";
     }
 
     function setPendingVerificationEmail(email) {
@@ -1121,18 +1129,12 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
-      const selfie = $("selfieInput").files?.[0];
-      const dniPhoto = $("dniInput").files?.[0];
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
 
-      if (!selfie || !dniPhoto) {
-        showMsg("signupMsg", "Debes subir selfie y documento");
-        return;
-      }
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
@@ -1226,8 +1228,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1262,6 +1264,25 @@
       localStorage.removeItem("ladrame_pending_signup_data");
       pendingSignupData = null;
       boot();
+    }
+
+
+    async function refreshOwnerLiveData() {
+      await getOwnerLocation();
+      await renderOwnerHomeMap();
+      await loadOwnerLiveOffers();
+    }
+
+    async function switchRole(nextRole) {
+      if (!currentUser || !nextRole || !["owner","walker"].includes(nextRole)) return;
+      const { error } = await supabaseClient.from("users").update({ role: nextRole }).eq("id", currentUser.id);
+      if (error) { alert(error.message); return; }
+      if (nextRole === "walker") {
+        const { data: wallet } = await supabaseClient.from("provider_wallets").select("id").eq("user_id", currentUser.id).eq("provider_type","walker").maybeSingle();
+        if (!wallet) await supabaseClient.from("provider_wallets").insert({ user_id: currentUser.id, provider_type: "walker", balance: 0 });
+      }
+      await loadCurrentProfile();
+      routeUser(currentProfile);
     }
 
     async function logout() {
@@ -1406,7 +1427,7 @@
           renderOwnerHomeMap();
         },
         () => {},
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     }
 
@@ -1419,7 +1440,7 @@
         navigator.geolocation.getCurrentPosition(
           pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
           () => resolve(null),
-          { enableHighAccuracy: true, timeout: 10000 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       });
     }
@@ -1599,6 +1620,7 @@
         .from("dogs")
         .select("*")
         .eq("owner_id", currentUser.id)
+        .in("status", ["open","active"])
         .order("created_at", { ascending: false });
 
       if (error) return;
