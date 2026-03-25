@@ -285,63 +285,6 @@
     }
     .center { text-align: center; }
 
-
-    .map-stage {
-      position: relative;
-      width: 100%;
-    }
-    .floating-offer-card {
-      position: absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      z-index: 6;
-      background: rgba(255,255,255,.98);
-      border: 1px solid rgba(46,134,222,.15);
-      border-radius: 18px;
-      box-shadow: 0 14px 36px rgba(0,0,0,.18);
-      padding: 12px;
-      backdrop-filter: blur(8px);
-    }
-    .floating-offer-card.hidden { display: none !important; }
-    .floating-offer-card .mini-line {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: center;
-      margin-top: 8px;
-    }
-    .floating-offer-card .mini-line .small { margin: 0; }
-    .floating-offer-card .pill-time {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #eef5ff;
-      color: #215b9a;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .floating-offer-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .floating-inline-dog {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 14px;
-      background: #f8fbff;
-      border: 1px solid #edf3fb;
-    }
-    .floating-inline-dog .avatar-small {
-      width: 52px;
-      height: 52px;
-    }
-
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -355,9 +298,8 @@
       <div class="logo">LADRA<span>ME</span></div>
       <input id="loginEmail" type="email" placeholder="Correo electrónico">
       <input id="loginPass" type="password" placeholder="Contraseña">
-      <button id="loginBtn" onclick="handleLogin()">Entrar</button>
-      <button id="createAccountBtn" class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
-      <p class="small center" style="margin-top:4px"><a href="#" id="forgotPassLink" style="color:#2e86de;text-decoration:none;font-weight:600">Olvidé mi contraseña</a></p>
+      <button onclick="handleLogin()">Entrar</button>
+      <button class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
       <p id="loginMsg" class="msg"></p>
     </div>
 
@@ -368,8 +310,8 @@
       <select id="signupLanguage">
         <option value="es">Español</option>
         <option value="en">English</option>
-        <option value="jp">日本語</option>
-              </select>
+        <option value="ja">日本語</option>
+      </select>
 
       <select id="signupCountry">
         <option value="">Selecciona país</option>
@@ -389,6 +331,11 @@
         <option value="owner">Dueño</option>
         <option value="walker">Paseador</option>
       </select>
+
+      <div class="card">
+        <p><b>Verificación de identidad</b></p>
+        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
+      </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
       <button class="secondary" onclick="go('loginScreen')">Volver</button>
@@ -441,11 +388,10 @@
         <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
       </div>
 
+      <div id="ownerActiveRequestsCards"></div>
+
       <div class="home-map-wrap">
-        <div class="map-stage">
-          <div id="ownerHomeMap"></div>
-          <div id="ownerFloatingOfferCard" class="floating-offer-card hidden"></div>
-        </div>
+        <div id="ownerHomeMap"></div>
       </div>
 
       <div class="home-action-row">
@@ -459,12 +405,6 @@
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
       </div>
 
-      <div class="home-action-row">
-        <button class="secondary" onclick="switchRole('walker')">Cambiar a paseador</button>
-        <button class="secondary" onclick="refreshOwnerLiveData()">Actualizar mapa</button>
-      </div>
-
-      <div id="ownerLiveOffersBox" class="card hidden"></div>
       <div id="ownerDogsList"></div>
     </div>
 
@@ -632,21 +572,12 @@
         <button class="secondary hidden" id="hotelRequestsBtn" onclick="loadHotelRequestsForProvider()">Solicitudes hotel</button>
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
       </div>
-
-      <div class="home-action-row">
-        <button class="secondary" onclick="switchRole('owner')">Cambiar a dueño</button>
-        <button class="secondary" onclick="renderProviderHomeMap()">Actualizar mapa</button>
-      </div>
-      <div id="providerLiveOffersBox" class="card hidden"></div>
     </div>
 
     <!-- WALKER MAP -->
     <div id="walkerMapScreen" class="screen">
       <h2>Solicitudes cercanas</h2>
-      <div class="map-stage">
-        <div id="walkerMap"></div>
-        <div id="providerFloatingOfferCard" class="floating-offer-card hidden"></div>
-      </div>
+      <div id="walkerMap"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
@@ -656,10 +587,8 @@
     <div id="sendOfferScreen" class="screen">
       <h2>Enviar oferta</h2>
       <div id="offerRequestInfo" class="card"></div>
-      <div id="offerAutoStatus" class="card hidden"></div>
       <input id="offerPriceInput" type="number" placeholder="Tarifa que propone el paseador">
       <button class="green" onclick="sendOffer()">Enviar oferta</button>
-      <button class="red hidden" id="cancelMyOfferBtn" onclick="cancelMyPendingOffer()">Cancelar mi oferta</button>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
       <p id="offerMsg" class="msg"></p>
     </div>
@@ -813,17 +742,13 @@
   </div>
 
   <script>
-    if (window.mapboxgl) {
-      mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
-    }
+    mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
 
-    const createClient = window.supabase?.createClient;
-    const supabaseClient = createClient
-      ? createClient(
-          "https://dnxiaronekfbbwqzslon.supabase.co",
-          "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-        )
-      : null;
+    const { createClient } = supabase;
+    const supabaseClient = createClient(
+      "https://dnxiaronekfbbwqzslon.supabase.co",
+      "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+    );
 
     const TURN_CONFIG = {
       iceServers: [
@@ -910,21 +835,19 @@
       bindPreview("dniInput", "dniPreview");
       bindPreview("completeSelfieInput", "completeSelfiePreview");
       bindPreview("completeDniInput", "completeDniPreview");
-      const signupCountry = $("signupCountry");
-      if (signupCountry) signupCountry.addEventListener("change", syncCountryLanguage);
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
 
-      const loginBtn = document.getElementById("loginBtn");
-      if (loginBtn) loginBtn.addEventListener("click", handleLogin);
-      const createBtn = document.getElementById("createAccountBtn");
-      if (createBtn) createBtn.addEventListener("click", () => go("signupScreen"));
-
-      if (!supabaseClient) {
-        console.error("Supabase no cargó");
-        showMsg("loginMsg", "No cargó Supabase. Recarga la página.");
-        return;
+      const signupCountry = $("signupCountry");
+      if (signupCountry) {
+        signupCountry.addEventListener("change", () => {
+          const c = signupCountry.value;
+          if (c === "usa") $("signupLanguage").value = "en";
+          else if (c === "japan") $("signupLanguage").value = "ja";
+          else $("signupLanguage").value = "es";
+        });
       }
+
       boot();
     });
 
@@ -967,15 +890,6 @@
     function showMsg(id, text) {
       const el = $(id);
       if (el) el.textContent = text || "";
-    }
-
-    function syncCountryLanguage() {
-      const country = $("signupCountry")?.value;
-      const lang = $("signupLanguage");
-      if (!lang) return;
-      if (country === "usa") lang.value = "en";
-      else if (country === "japan") lang.value = "jp";
-      else if (country === "peru" || country === "spain") lang.value = "es";
     }
 
     function setPendingVerificationEmail(email) {
@@ -1026,7 +940,6 @@
     }
 
     function requestAgeMs(createdAt) {
-      if (!createdAt) return 0;
       return Date.now() - new Date(createdAt).getTime();
     }
 
@@ -1037,6 +950,14 @@
     function isOfferCardExpired(createdAt) {
       return requestAgeMs(createdAt) >= 1 * 60 * 1000;
     }
+
+    function formatRemaining(ms) {
+      const total = Math.max(0, Math.ceil(ms / 1000));
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    }
+
 
     async function compressImageIfNeeded(file, maxWidth = 1000, quality = 0.78) {
       if (!file || !file.type.startsWith("image/")) return file;
@@ -1106,17 +1027,12 @@
     }
 
     async function getCurrentSessionUser() {
-      if (!supabaseClient) return null;
       const { data, error } = await supabaseClient.auth.getUser();
       if (error) return null;
       return data.user || null;
     }
 
     async function handleLogin() {
-      if (!supabaseClient) {
-        showMsg("loginMsg", "No cargó Supabase. Recarga la página.");
-        return;
-      }
       const email = $("loginEmail").value.trim();
       const password = $("loginPass").value.trim();
 
@@ -1147,7 +1063,6 @@
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
-
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
@@ -1241,8 +1156,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1277,25 +1192,6 @@
       localStorage.removeItem("ladrame_pending_signup_data");
       pendingSignupData = null;
       boot();
-    }
-
-
-    async function refreshOwnerLiveData() {
-      await getOwnerLocation();
-      await renderOwnerHomeMap();
-      await loadOwnerLiveOffers();
-    }
-
-    async function switchRole(nextRole) {
-      if (!currentUser || !nextRole || !["owner","walker"].includes(nextRole)) return;
-      const { error } = await supabaseClient.from("users").update({ role: nextRole }).eq("id", currentUser.id);
-      if (error) { alert(error.message); return; }
-      if (nextRole === "walker") {
-        const { data: wallet } = await supabaseClient.from("provider_wallets").select("id").eq("user_id", currentUser.id).eq("provider_type","walker").maybeSingle();
-        if (!wallet) await supabaseClient.from("provider_wallets").insert({ user_id: currentUser.id, provider_type: "walker", balance: 0 });
-      }
-      await loadCurrentProfile();
-      routeUser(currentProfile);
     }
 
     async function logout() {
@@ -1411,20 +1307,16 @@
         updateHotelDogSelect();
         getOwnerLocation();
         go("ownerHomeScreen");
-        loadOwnerLiveOffers();
 
+        loadOwnerActiveRequests();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(async () => {
-          renderOwnerHomeMap();
-          loadOwnerLiveOffers();
-        }, 5000);
+        ownerMapRefreshInterval = setInterval(async () => { renderOwnerHomeMap(); await loadOwnerActiveRequests(); }, 5000);
         return;
       }
 
       if (profile.role === "walker") {
         $("providerWelcome").textContent = "Hola " + (profile.name || "");
         renderProviderHome();
-        loadProviderLiveOffers();
         startProviderLiveGps();
         go("providerHomeScreen");
         return;
@@ -1460,7 +1352,7 @@
         navigator.geolocation.getCurrentPosition(
           pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
           () => resolve(null),
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 10000 }
         );
       });
     }
@@ -1516,6 +1408,42 @@
       });
     }
 
+
+    async function loadOwnerActiveRequests() {
+      const box = $("ownerActiveRequestsCards");
+      if (!box) return;
+
+      const { data, error } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+
+      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+      box.innerHTML = "";
+
+      if (!activeRequests.length) return;
+
+      for (const req of activeRequests) {
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>Solicitud activa</b></p>
+          <p class="small">Tarifa: S/${req.tariff || "-"}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
+          ${dogs.length ? `<p class="small">Perros: ${dogs.map(d => d.name).join(", ")}</p>` : ""}
+        `;
+        box.appendChild(card);
+      }
+    }
+
     function ensureProviderHomeMap() {
       if (!providerHomeMap) {
         providerHomeMap = new mapboxgl.Map({
@@ -1549,7 +1477,6 @@
       }
 
       renderProviderHomeMap();
-      loadProviderLiveOffers();
     }
 
     async function renderProviderHomeMap() {
@@ -1640,7 +1567,6 @@
         .from("dogs")
         .select("*")
         .eq("owner_id", currentUser.id)
-        .in("status", ["open","active"])
         .order("created_at", { ascending: false });
 
       if (error) return;
@@ -1922,12 +1848,11 @@
       walkerMap.resize();
     }
 
-    async function initWalkerMap() {
+    function initWalkerMap() {
       ensureWalkerMap();
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
-      await loadProviderLiveOffers();
     }
 
     function openWalkerMapScreen() {
@@ -1983,21 +1908,16 @@
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const owner = await supabaseClient.from("users").select("name,selfie_url").eq("id", req.owner_id).maybeSingle();
-        const ownerData = owner.data || {};
+        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
 
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = `
-          <div class="profile-mini">
-            ${ownerData.selfie_url ? `<img src="${ownerData.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-            <div style="flex:1">
-              <p style="margin:0"><b>${ownerData.name || "Dueño"}</b></p>
-              <p class="small" style="margin:4px 0 0">Tarifa del dueño: S/${req.tariff}</p>
-              <p class="small" style="margin:4px 0 0">Expira en ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
-            </div>
-          </div>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min ${distance != null ? `· Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
+          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
           <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
         `;
@@ -2011,269 +1931,129 @@
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
-      await loadProviderLiveOffers();
     }
 
+    async function openOffer(requestId) {
+      selectedRequest = requestId;
 
-    function getOfferRemainingSeconds(offer) {
-      const created = offer?.created_at ? new Date(offer.created_at).getTime() : Date.now();
-      return Math.max(0, 60 - Math.floor((Date.now() - created) / 1000));
-    }
-
-    function isOfferExpired(offer) {
-      return (offer?.status === "pending") && getOfferRemainingSeconds(offer) <= 0;
-    }
-
-    function formatCountdown(total) {
-      const safe = Math.max(0, Number(total || 0));
-      const m = Math.floor(safe / 60);
-      const s = safe % 60;
-      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-    }
-
-    async function expireOfferIfNeeded(offer) {
-      if (!offer?.id || !isOfferExpired(offer)) return false;
-      try {
-        await supabaseClient.from("offers").update({ status: "expired" }).eq("id", offer.id).eq("status", "pending");
-      } catch {}
-      return true;
-    }
-
-
-    async function renderProviderFloatingOfferCard(activeOffer) {
-      const card = $("providerFloatingOfferCard");
-      if (!card) return;
-      if (!currentUser || currentProfile?.role !== "walker") {
-        card.classList.add("hidden");
-        card.innerHTML = "";
-        return;
-      }
-
-      if (activeOffer && !(await expireOfferIfNeeded(activeOffer))) {
-        const { data: req } = await supabaseClient.from("walk_requests").select("*").eq("id", activeOffer.request_id).maybeSingle();
-        const { data: owner } = req?.owner_id
-          ? await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle()
-          : { data: null };
-        const dogs = req ? await getRequestDogsWithPhotos(req.id, req.owner_id) : [];
-        const firstDog = dogs[0];
-
-        card.classList.remove("hidden");
-        card.innerHTML = `
-          <div class="profile-mini">
-            ${owner?.selfie_url ? `<img src="${owner.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-            <div style="flex:1">
-              <p style="margin:0"><b>${owner?.name || "Dueño"}</b></p>
-              <p class="small" style="margin:4px 0 0">Tu oferta: S/${activeOffer.price}</p>
-            </div>
-            <span class="pill-time">${activeOffer.status === "accepted" ? "Aceptada" : formatCountdown(getOfferRemainingSeconds(activeOffer))}</span>
-          </div>
-          ${firstDog ? `
-            <div class="floating-inline-dog">
-              ${firstDog.photo_url ? `<img src="${firstDog.photo_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-              <div style="flex:1">
-                <p style="margin:0"><b>${firstDog.name || "Perro"}</b></p>
-                <p class="small" style="margin:4px 0 0">${getDogRiskLabelFromTraits(firstDog)}</p>
-              </div>
-            </div>
-          ` : ""}
-          <div class="floating-offer-actions">
-            ${activeOffer.status === "pending" ? `<button class="red" onclick="cancelSpecificOffer('${activeOffer.id}')">Cancelar</button>` : `<button class="secondary" onclick="openWalkerMapScreen()">Ver mapa</button>`}
-            <button class="secondary" onclick="openOffer('${activeOffer.request_id}')">Ver detalle</button>
-          </div>
-        `;
-        return;
-      }
-
-      const { data: requests } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
-        .eq("status", "open")
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .eq("id", requestId)
+        .single();
 
-      let firstReq = null;
-      for (const req of (requests || [])) {
-        if (req.lat == null || req.lng == null) continue;
-        if (providerLat != null && providerLng != null) {
-          const distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
-          if (distance > 3) continue;
-        }
-        firstReq = req;
-        break;
-      }
-
-      if (!firstReq) {
-        card.classList.add("hidden");
-        card.innerHTML = "";
+      if (error) {
+        showMsg("offerMsg", error.message);
         return;
       }
 
-      const { data: owner } = await supabaseClient.from("users").select("*").eq("id", firstReq.owner_id).maybeSingle();
-      const dogs = await getRequestDogsWithPhotos(firstReq.id, firstReq.owner_id);
-      const firstDog = dogs[0];
-      const distanceText = (providerLat != null && providerLng != null)
-        ? `${getDistanceKm(providerLat, providerLng, Number(firstReq.lat), Number(firstReq.lng)).toFixed(2)} km`
-        : "";
+      const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
 
-      card.classList.remove("hidden");
-      card.innerHTML = `
-        <div class="profile-mini">
-          ${owner?.selfie_url ? `<img src="${owner.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-          <div style="flex:1">
-            <p style="margin:0"><b>${owner?.name || "Dueño"}</b></p>
-            <p class="small" style="margin:4px 0 0">Dueño propone S/${firstReq.tariff} · ${firstReq.time || 0} min</p>
-          </div>
-          ${distanceText ? `<span class="pill-time">${distanceText}</span>` : ""}
-        </div>
-        ${firstDog ? `
-          <div class="floating-inline-dog">
-            ${firstDog.photo_url ? `<img src="${firstDog.photo_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-            <div style="flex:1">
-              <p style="margin:0"><b>${firstDog.name || "Perro"}</b></p>
-              <p class="small" style="margin:4px 0 0">${getDogRiskLabelFromTraits(firstDog)}</p>
-            </div>
-          </div>
-        ` : ""}
-        <div class="floating-offer-actions">
-          <button onclick="openOffer('${firstReq.id}')">Responder</button>
-          <button class="secondary" onclick="loadNearbyRequests()">Actualizar</button>
-        </div>
+      $("offerRequestInfo").innerHTML = `
+        <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+        <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
+        <p><b>Tiempo:</b> ${data.time || 0} min</p>
+        ${buildDogsHtml(dogs)}
+        <p class="small">Debes enviar tu propia tarifa.</p>
       `;
+
+      $("offerPriceInput").value = "";
+      showMsg("offerMsg", "");
+      go("sendOfferScreen");
     }
 
-    async function renderOwnerFloatingOfferCard(firstOffer) {
-      const card = $("ownerFloatingOfferCard");
-      if (!card) return;
-      if (!currentUser || currentProfile?.role !== "owner" || !firstOffer) {
-        card.classList.add("hidden");
-        card.innerHTML = "";
+    async function sendOffer() {
+      const price = Number($("offerPriceInput").value || 0);
+      if (!selectedRequest) {
+        showMsg("offerMsg", "Selecciona una solicitud");
+        return;
+      }
+      if (!price || price <= 0) {
+        showMsg("offerMsg", "Tarifa inválida");
         return;
       }
 
-      const { data: req } = await supabaseClient.from("walk_requests").select("*").eq("id", firstOffer.request_id).maybeSingle();
-      const dogs = req ? await getRequestDogsWithPhotos(req.id, req.owner_id) : [];
-      const firstDog = dogs[0];
-      const walker = await getWalkerProfileSummary(firstOffer.walker_id);
-
-      card.classList.remove("hidden");
-      card.innerHTML = `
-        <div class="profile-mini">
-          ${walker.user?.selfie_url ? `<img src="${walker.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-          <div style="flex:1">
-            <p style="margin:0"><b>${walker.user?.name || "Paseador"}</b></p>
-            <p class="small" style="margin:4px 0 0">S/${firstOffer.price} · ${Number(walker.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-          </div>
-          <span class="pill-time">${formatCountdown(getOfferRemainingSeconds(firstOffer))}</span>
-        </div>
-        ${firstDog ? `
-          <div class="floating-inline-dog">
-            ${firstDog.photo_url ? `<img src="${firstDog.photo_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-            <div style="flex:1">
-              <p style="margin:0"><b>${firstDog.name || "Perro"}</b></p>
-              <p class="small" style="margin:4px 0 0">${getDogRiskLabelFromTraits(firstDog)}</p>
-            </div>
-          </div>
-        ` : ""}
-        <div class="floating-offer-actions">
-          <button class="green" onclick="acceptOffer('${firstOffer.id}')">Aceptar</button>
-          <button class="red" onclick="rejectOffer('${firstOffer.id}')">Rechazar</button>
-        </div>
-      `;
-    }
-
-    async function loadProviderLiveOffers() {
-      if (!currentUser || currentProfile?.role !== "walker") return;
-      const box = $("providerLiveOffersBox");
-      if (!box) return;
-
-      const { data: offers } = await supabaseClient
-        .from("offers")
+      const { data: req, error: reqError } = await supabaseClient
+        .from("walk_requests")
         .select("*")
+        .eq("id", selectedRequest)
+        .single();
+
+      if (reqError || !req) {
+        showMsg("offerMsg", "No se pudo cargar la solicitud");
+        return;
+      }
+
+      if (req.status !== "open" || isRequestExpired(req.created_at)) {
+        showMsg("offerMsg", "La solicitud ya expiró");
+        await loadNearbyRequests();
+        return;
+      }
+
+      const { data: existingPending } = await supabaseClient
+        .from("offers")
+        .select("id")
+        .eq("request_id", selectedRequest)
         .eq("walker_id", currentUser.id)
-        .in("status", ["pending", "accepted"])
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .eq("status", "pending")
+        .maybeSingle();
 
-      const validOffers = [];
-      for (const ofr of (offers || [])) {
-        if (!(await expireOfferIfNeeded(ofr))) validOffers.push(ofr);
-      }
-
-      await renderProviderFloatingOfferCard(validOffers[0] || null);
-
-      if (!validOffers.length) {
-        box.classList.add("hidden");
-        box.innerHTML = "";
+      if (existingPending?.id) {
+        showMsg("offerMsg", "Ya enviaste una oferta a esta solicitud");
         return;
       }
 
-      box.classList.remove("hidden");
-      box.innerHTML = "<p><b>Tus ofertas en vivo</b></p>";
+      const { error } = await supabaseClient
+        .from("offers")
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
 
-      for (const ofr of validOffers) {
-        const { data: req } = await supabaseClient.from("walk_requests").select("*").eq("id", ofr.request_id).maybeSingle();
-        const seconds = getOfferRemainingSeconds(ofr);
-        const div = document.createElement("div");
-        div.className = "comment-box";
-        div.innerHTML = `
-          <p style="margin:0"><b>S/${ofr.price}</b> · ${ofr.status === "accepted" ? "Aceptada" : "Pendiente"}</p>
-          <p class="small" style="margin:4px 0 0">Solicitud: ${req?.time || 0} min</p>
-          <p class="small" style="margin:4px 0 0">${ofr.status === "pending" ? `Expira en ${formatCountdown(seconds)}` : "Ya aceptada"}</p>
-          ${ofr.status === "pending" ? `<button class="red" onclick="cancelSpecificOffer('${ofr.id}')">Cancelar</button>` : ""}
-        `;
-        box.appendChild(div);
+      if (error) {
+        showMsg("offerMsg", error.message);
+        return;
       }
+
+      await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
+      showMsg("offerMsg", "Oferta enviada");
+      setTimeout(async () => {
+        go("walkerMapScreen");
+        await loadNearbyRequests();
+      }, 700);
     }
 
-    async function loadOwnerLiveOffers() {
-      if (!currentUser || currentProfile?.role !== "owner") return;
-      const box = $("ownerLiveOffersBox");
-      if (!box) return;
+    async function getWalkerProfileSummary(walkerUserId) {
+      const result = { user: null, walker: null, completedWalks: 0, comments: [] };
 
-      const { data: offers } = await supabaseClient
-        .from("offers")
+      const { data: user } = await supabaseClient.from("users").select("*").eq("id", walkerUserId).maybeSingle();
+      result.user = user || null;
+
+      const { data: walker } = await supabaseClient.from("walkers").select("*").eq("user_id", walkerUserId).maybeSingle();
+      result.walker = walker || null;
+
+      const { data: completed } = await supabaseClient
+        .from("walks")
+        .select("id")
+        .eq("walker_id", walkerUserId)
+        .in("status", ["completed", "finished"]);
+
+      result.completedWalks = completed ? completed.length : 0;
+
+      const { data: reviews } = await supabaseClient
+        .from("reviews")
         .select("*")
-        .eq("owner_id", currentUser.id)
-        .eq("status", "pending")
+        .eq("reviewee_id", walkerUserId)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(3);
 
-      const validOffers = [];
-      for (const ofr of (offers || [])) {
-        if (!isOfferCardExpired(ofr.created_at) && !(await expireOfferIfNeeded(ofr))) validOffers.push(ofr);
-      }
-
-      await renderOwnerFloatingOfferCard(validOffers[0] || null);
-
-      if (!validOffers.length) {
-        box.classList.add("hidden");
-        box.innerHTML = "";
-        return;
-      }
-
-      box.classList.remove("hidden");
-      box.innerHTML = "<p><b>Ofertas nuevas</b></p>";
-
-      for (const ofr of validOffers) {
-        const walker = await getWalkerProfileSummary(ofr.walker_id);
-        const req = await supabaseClient.from("walk_requests").select("*").eq("id", ofr.request_id).maybeSingle();
-        if (!req.data || isRequestExpired(req.data.created_at)) continue;
-
-        const div = document.createElement("div");
-        div.className = "comment-box";
-        div.innerHTML = `
-          <div class="profile-mini">
-            ${walker.user?.selfie_url ? `<img src="${walker.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-            <div style="flex:1">
-              <p style="margin:0"><b>${walker.user?.name || "Paseador"}</b></p>
-              <p class="small" style="margin:4px 0 0">S/${ofr.price} · ${Number(walker.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-              <p class="small" style="margin:4px 0 0">Expira en ${formatCountdown(getOfferRemainingSeconds(ofr))}</p>
-            </div>
-            <button class="green" style="width:auto;padding:10px 12px" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-          </div>
-        `;
-        box.appendChild(div);
-      }
+      result.comments = reviews || [];
+      return result;
     }
 
     async function loadOwnerRequests() {
@@ -2297,14 +2077,16 @@
 
       for (const req of activeRequests) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
 
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
           <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Estado: ${req.status || "-"}</p>
           <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
           <p class="small">Tiempo: ${req.time || 0} min</p>
-          <p class="small">Expira en: ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
+          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
           ${buildDogsHtml(dogs)}
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
@@ -2327,26 +2109,33 @@
         } else {
           for (const ofr of activeOffers) {
             const profile = await getWalkerProfileSummary(ofr.walker_id);
-            const commentsHtml = (profile.comments || []).slice(0,2).map(c => `<div class="comment-box"><p style="margin:0"><b>${c.rating || 5}⭐</b></p><p class="small" style="margin:4px 0 0">${c.comment || ""}</p></div>`).join("");
 
-            const offerCard = document.createElement("div");
-            offerCard.className = "card";
-            offerCard.innerHTML = `
+            const commentsHtml = profile.comments.length
+              ? profile.comments.map(r => `
+                <div class="comment-box">
+                  <div class="small"><b>${r.rating || 0}/5</b></div>
+                  <div class="small">${r.comment || "Sin comentario"}</div>
+                </div>
+              `).join("")
+              : `<p class="small">Sin comentarios todavía.</p>`;
+
+            const div = document.createElement("div");
+            div.className = "card";
+            div.innerHTML = `
               <div class="profile-mini">
-                ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-                <div style="flex:1">
+                <img class="avatar-small" src="${profile.user?.selfie_url || ''}" onerror="this.style.display='none'">
+                <div>
                   <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
-                  <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0} · Paseos: ${profile.completedWalks}</p>
+                  <p class="small" style="margin:4px 0 0">Paseos completados: ${profile.completedWalks || 0}</p>
                 </div>
               </div>
-              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Expira en ${formatCountdown(getOfferRemainingSeconds(ofr))}</p>
-              <div>${commentsHtml}</div>
+              <p class="small" style="margin-top:8px">Tarifa ofrecida: S/${ofr.price}</p>
+              <p class="small">Expira en ${formatRemaining(Math.max(0, 60000 - requestAgeMs(ofr.created_at)))}</p>
+              ${commentsHtml}
               <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
               <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
             `;
-            offerBox.appendChild(offerCard);
+            offerBox.appendChild(div);
           }
         }
       }
@@ -2388,15 +2177,12 @@
     }
 
     async function rejectOffer(offerId) {
-      const { data: offer } = await supabaseClient.from("offers").select("*").eq("id", offerId).maybeSingle();
       const { error } = await supabaseClient.from("offers").update({ status: "rejected" }).eq("id", offerId);
       if (error) {
         alert(error.message);
         return;
       }
-      if (offer?.walker_id) await createNotification(offer.walker_id, "Oferta rechazada", "Tu oferta fue rechazada.");
       loadOwnerRequests();
-      loadOwnerLiveOffers();
     }
 
     function ensureHotelsMap() {
@@ -3043,25 +2829,9 @@
 
       offersChannel = supabaseClient
         .channel("offers-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, async ({ new: offer, old: oldOffer, eventType }) => {
-          const row = offer || oldOffer;
-          if (!row) return;
-
-          if (currentProfile?.role === "owner" && row.owner_id === currentUser.id) {
-            if (eventType === "INSERT") {
-              await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${row.price}.`);
-            }
-            await loadOwnerLiveOffers();
-            if ($("ownerRequestsScreen").classList.contains("active")) await loadOwnerRequests();
-          }
-
-          if (currentProfile?.role === "walker" && row.walker_id === currentUser.id) {
-            await loadProviderLiveOffers();
-            if ($("sendOfferScreen").classList.contains("active") && row.request_id === selectedRequest && row.status !== "pending") {
-              $("cancelMyOfferBtn").classList.add("hidden");
-              $("offerAutoStatus").classList.remove("hidden");
-              $("offerAutoStatus").innerHTML = `<p><b>Estado actualizado</b></p><p class="small">${row.status === "accepted" ? "Tu oferta fue aceptada." : row.status === "rejected" ? "Tu oferta fue rechazada." : row.status === "expired" ? "Tu oferta expiró." : "Tu oferta fue cancelada."}</p>`;
-            }
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
+          if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
+            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
           }
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
@@ -3780,34 +3550,101 @@
       callCamEnabled = !callCamEnabled;
       tracks.forEach(t => t.enabled = callCamEnabled);
     }
-    async function openForgotPassword() {
-      const email = (document.getElementById("loginEmail")?.value || "").trim();
-      if (!email) {
-        showMsg("loginMsg", "Escribe tu correo primero");
-        return;
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD9L3huvvYNiKbpC1NUwoMpY0D3XhTjqMQ",
+      authDomain: "ladrame-95d90.firebaseapp.com",
+      projectId: "ladrame-95d90",
+      storageBucket: "ladrame-95d90.firebasestorage.app",
+      messagingSenderId: "214404716079",
+      appId: "1:214404716079:web:780f60acdba8b3903518da"
+    };
+
+    const firebaseApp = initializeApp(firebaseConfig);
+    const messaging = getMessaging(firebaseApp);
+
+    async function savePushToken(token) {
+      try {
+        if (!window.supabaseClient || !window.currentUser || !token) return;
+
+        const payload = {
+          user_id: window.currentUser.id,
+          token: token,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await window.supabaseClient
+          .from("push_tokens")
+          .upsert(payload, { onConflict: "token" });
+
+        if (error) {
+          console.log("Error guardando token push:", error.message);
+        } else {
+          console.log("Token push guardado");
+        }
+      } catch (err) {
+        console.log("Error savePushToken:", err);
       }
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://ladrame.sbs/app/"
-      });
-      showMsg("loginMsg", error ? error.message : "Te enviamos el enlace de recuperación");
     }
 
-    window.go = go;
-    window.handleLogin = handleLogin;
-    window.registerUser = registerUser;
-    window.verifySignupCode = verifySignupCode;
-    window.resendSignupCode = resendSignupCode;
-    window.openForgotPassword = openForgotPassword;
+    window.activarPush = async function activarPush() {
+      try {
+        if (!window.currentUser) {
+          console.log("No hay usuario logueado para push");
+          return;
+        }
 
-    window.addEventListener("load", () => {
-      const loginBtn = document.getElementById("loginBtn");
-      if (loginBtn) loginBtn.onclick = handleLogin;
-      const createBtn = document.getElementById("createAccountBtn");
-      if (createBtn) createBtn.onclick = () => go("signupScreen");
-      const forgot = document.getElementById("forgotPassLink");
-      if (forgot) forgot.onclick = (e) => { e.preventDefault(); openForgotPassword(); };
+        if (!("serviceWorker" in navigator)) {
+          console.log("Service Worker no soportado");
+          return;
+        }
+
+        if (!("Notification" in window)) {
+          console.log("Notifications no soportado");
+          return;
+        }
+
+        const permiso = await Notification.requestPermission();
+
+        if (permiso !== "granted") {
+          console.log("Permiso de notificación denegado");
+          return;
+        }
+
+        const sw = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+
+        const token = await getToken(messaging, {
+          vapidKey: "BEB_OnIAe6K0jKlH1cSBpfm2Quf4OywLmp7Dmm9JlCQRc77xEHTeCvKQqanEEtWzCSSMtWO1l30PuvqVQlA39dg",
+          serviceWorkerRegistration: sw
+        });
+
+        if (!token) {
+          console.log("No se obtuvo token push");
+          return;
+        }
+
+        console.log("TOKEN PUSH:", token);
+        await savePushToken(token);
+      } catch (err) {
+        console.log("Error en activarPush:", err);
+      }
+    };
+
+    onMessage(messaging, (payload) => {
+      console.log("Notificación recibida en foreground:", payload);
+
+      const title = payload?.notification?.title || payload?.data?.title || "LADRAME";
+      const body = payload?.notification?.body || payload?.data?.body || "Nueva notificación";
+
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      }
     });
-
   </script>
 </body>
 </html>
