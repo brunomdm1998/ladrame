@@ -1061,6 +1061,47 @@
       return requestAgeMs(createdAt) >= 1 * 60 * 1000;
     }
 
+    async function cleanupExpiredWalkRequests() {
+      try {
+        await supabaseClient
+          .from("walk_requests")
+          .update({ status: "expired" })
+          .eq("status", "open")
+          .lt("created_at", new Date(Date.now() - 7 * 60 * 1000).toISOString());
+      } catch (_) {}
+    }
+
+    async function cleanupOwnerDuplicateOpenRequests() {
+      if (!currentUser) return;
+      const { data } = await supabaseClient
+        .from("walk_requests")
+        .select("id, created_at")
+        .eq("owner_id", currentUser.id)
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      const extras = (data || []).slice(1).map(r => r.id);
+      if (extras.length) {
+        await supabaseClient
+          .from("walk_requests")
+          .update({ status: "expired" })
+          .in("id", extras);
+      }
+    }
+
+    function dedupeLatestRequestPerOwner(requests) {
+      const seen = new Set();
+      const out = [];
+      for (const req of (requests || [])) {
+        const key = req.owner_id || req.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(req);
+      }
+      return out;
+    }
+
+
     function formatRemaining(ms) {
       const total = Math.max(0, Math.ceil(ms / 1000));
       const min = Math.floor(total / 60);
@@ -1419,9 +1460,16 @@
         getOwnerLocation();
         go("ownerHomeScreen");
 
+        cleanupExpiredWalkRequests();
+        cleanupOwnerDuplicateOpenRequests();
         loadOwnerActiveRequests();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(async () => { renderOwnerHomeMap(); await loadOwnerActiveRequests(); }, 5000);
+        ownerMapRefreshInterval = setInterval(async () => {
+          await cleanupExpiredWalkRequests();
+          await cleanupOwnerDuplicateOpenRequests();
+          renderOwnerHomeMap();
+          await loadOwnerActiveRequests();
+        }, 5000);
         return;
       }
 
@@ -1511,9 +1559,10 @@
         .select("*")
         .eq("owner_id", currentUser.id)
         .in("status", ["open", "active"])
+        .order("created_at", { ascending: false })
         .limit(10);
 
-      (reqs || []).forEach(r => {
+      dedupeLatestRequestPerOwner((reqs || []).filter(r => r.status === "active" || !isRequestExpired(r.created_at))).forEach(r => {
         if (r.lat == null || r.lng == null) return;
         ownerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(r.lng), Number(r.lat)]).addTo(ownerHomeMap));
       });
@@ -1524,6 +1573,9 @@
       const box = $("ownerActiveRequestsCards");
       if (!box) return;
 
+      await cleanupExpiredWalkRequests();
+      await cleanupOwnerDuplicateOpenRequests();
+
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -1533,28 +1585,28 @@
 
       if (error) return;
 
-      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+      const activeRequests = dedupeLatestRequestPerOwner((data || []).filter(req => !isRequestExpired(req.created_at)));
       box.innerHTML = "";
 
       if (!activeRequests.length) return;
 
-      for (const req of activeRequests) {
-        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
+      const req = activeRequests[0];
+      const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+      const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
 
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <p><b>Solicitud activa</b></p>
-          <p class="small">Tarifa: S/${req.tariff || "-"}</p>
-          <p class="small">Tiempo: ${req.time || 0} min</p>
-          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
-          ${dogs.length ? `<p class="small">Perros: ${dogs.map(d => d.name).join(", ")}</p>` : ""}
-        `;
-        box.appendChild(card);
-      }
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <p><b>Solicitud activa</b></p>
+        <p class="small">Tarifa: S/${req.tariff || "-"}</p>
+        <p class="small">Tiempo: ${req.time || 0} min</p>
+        <p class="small">Expira en ${formatRemaining(remainMs)}</p>
+        ${dogs.length ? `<p class="small">Perros: ${dogs.map(d => d.name).join(", ")}</p>` : ""}
+      `;
+      box.appendChild(card);
     }
 
+    
     function ensureProviderHomeMap() {
       if (!providerHomeMap) {
         providerHomeMap = new mapboxgl.Map({
@@ -1855,6 +1907,7 @@
         return;
       }
 
+      await cleanupExpiredWalkRequests();
       await supabaseClient
         .from("walk_requests")
         .update({ status: "expired" })
@@ -2004,6 +2057,8 @@
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
 
+      await cleanupExpiredWalkRequests();
+
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -2012,7 +2067,7 @@
 
       if (error) return;
 
-      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+      const activeRequests = dedupeLatestRequestPerOwner((data || []).filter(req => !isRequestExpired(req.created_at)));
 
       for (const req of activeRequests) {
         if (req.lat == null || req.lng == null) continue;
@@ -2051,6 +2106,7 @@
       }
     }
 
+    
     async function openOffer(requestId) {
       selectedRequest = requestId;
 
@@ -2933,7 +2989,11 @@
       requestsChannel = supabaseClient
         .channel("requests-channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "walk_requests" }, async () => {
-          if (currentProfile?.role === "owner") renderOwnerHomeMap();
+          await cleanupExpiredWalkRequests();
+          if (currentProfile?.role === "owner") {
+            renderOwnerHomeMap();
+            await loadOwnerActiveRequests();
+          }
           if (currentProfile?.role === "walker") {
             if ($("walkerMapScreen").classList.contains("active")) loadNearbyRequests();
             renderProviderHomeMap();
