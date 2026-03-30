@@ -199,33 +199,6 @@
       border-radius: 12px;
       background: #fff;
       padding: 10px;
-      min-height: 48px;
-    }
-
-    .dog-choice {
-      display: flex;
-      gap: 10px;
-      border: 1px solid #ececec;
-      border-radius: 12px;
-      padding: 10px;
-      margin: 8px 0;
-      background: #fff;
-      align-items: flex-start;
-    }
-    .dog-choice input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      margin: 3px 0 0;
-      accent-color: #27ae60;
-      flex: 0 0 auto;
-    }
-    .dog-choice-photo {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
-      object-fit: cover;
-      border: 1px solid #eee;
-      flex: 0 0 auto;
     }
     .dog-choice {
       display: flex;
@@ -327,6 +300,7 @@
       <input id="loginPass" type="password" placeholder="Contraseña">
       <button onclick="handleLogin()">Entrar</button>
       <button class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
+      <button class="secondary" onclick="forgotPassword()">Olvidé mi contraseña</button>
       <p id="loginMsg" class="msg"></p>
     </div>
 
@@ -415,8 +389,6 @@
         <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
       </div>
 
-      <div id="ownerActiveRequestsCards"></div>
-
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
       </div>
@@ -487,7 +459,7 @@
 
       <div class="card">
         <p><b>Selecciona uno o varios perros</b></p>
-        <div id="walkDogsMultiSelect" class="multi-dog-box"><p class="small">Cargando perros...</p></div>
+        <div id="walkDogsMultiSelect" class="multi-dog-box"></div>
       </div>
 
       <input type="number" id="walkPriceInput" placeholder="Tarifa que propone el dueño">
@@ -590,7 +562,7 @@
 
       <div class="home-action-row">
         <button onclick="openWalkerMapScreen()">Ver solicitudes</button>
-        <button class="orange" onclick="go('buyCreditsScreen')">Comprar créditos</button>
+        <button class="orange" onclick="openBuyCreditsScreen()">Comprar créditos</button>
         <button class="secondary" onclick="activateHotelMode()" id="activateHotelBtn">Activar hotel</button>
         <button class="secondary hidden" onclick="openHotelProfileScreen()" id="hotelConfigBtn">Configurar hotel</button>
       </div>
@@ -719,13 +691,20 @@
 
     <!-- BUY CREDITS -->
     <div id="buyCreditsScreen" class="screen">
-      <h2>Comprar créditos</h2>
+      <h2 id="buyCreditsTitle">Comprar créditos</h2>
       <div class="card center">
-        <p><b>Escanea el QR y realiza el pago</b></p>
-        <a href="https://ibb.co/fdYb503M" target="_blank" rel="noopener">Ver QR de pago</a>
-        <p style="margin-top:8px;font-weight:bold">Bruno Du.</p>
-        <p class="small">Luego sube el comprobante.</p>
+        <p><b id="buyCreditsQrTitle">Método de pago configurado por el administrador</b></p>
+        <p class="small" id="buyCreditsCountryText">País: -</p>
+        <p style="margin-top:8px;font-weight:bold" id="buyCreditsMethodText">Método: -</p>
+        <img id="buyCreditsQrImage" class="wide-photo hidden" style="max-height:280px;object-fit:contain;background:#fff">
+        <a id="buyCreditsQrLink" href="#" target="_blank" rel="noopener" class="hidden">Ver QR de pago</a>
+        <p class="small" id="buyCreditsQrEmpty">El administrador aún no configuró un QR para este país.</p>
+        <p class="small" id="buyCreditsHelpText">Luego sube el comprobante.</p>
       </div>
+      <select id="creditsProviderType">
+        <option value="walker">Créditos para paseador</option>
+        <option value="hotel">Créditos para hotel</option>
+      </select>
       <input type="number" id="creditsAmount" placeholder="Cantidad de créditos (mínimo 5)">
       <div class="card">
         <p><b>Subir comprobante</b></p>
@@ -734,6 +713,51 @@
       <button class="green" onclick="sendCreditOrder()">Enviar comprobante</button>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
       <p id="buyCreditsMsg" class="msg"></p>
+    </div>
+
+
+    <!-- ADMIN HOME -->
+    <div id="adminHomeScreen" class="screen">
+      <div class="topbar">
+        <div style="flex:1">
+          <h2 style="margin:0" id="adminTitle">Administrador</h2>
+          <div class="small" id="adminWelcome">Panel de pagos y QR</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
+      </div>
+
+      <div class="card">
+        <p><b id="adminQrSectionTitle">Subir QR de pago por país</b></p>
+        <select id="adminQrCountry">
+          <option value="peru">Perú</option>
+          <option value="spain">España</option>
+          <option value="usa">Estados Unidos</option>
+          <option value="japan">Japón</option>
+        </select>
+        <select id="adminQrProviderType">
+          <option value="walker">Paseadores</option>
+          <option value="hotel">Hoteles</option>
+          <option value="all">Ambos</option>
+        </select>
+        <input id="adminQrLabel" placeholder="Texto del pago (ej. Yape, Bizum, Zelle, PayPay)">
+        <div class="card">
+          <p><b>Foto QR / medio de pago</b></p>
+          <input type="file" accept="image/*" capture="environment" id="adminQrInput">
+          <img id="adminQrPreview" class="preview-img hidden">
+        </div>
+        <button class="green" onclick="saveAdminPaymentQr()">Guardar QR</button>
+        <p id="adminQrMsg" class="msg"></p>
+      </div>
+
+      <div class="card">
+        <p><b>QR configurados</b></p>
+        <div id="adminQrList"></div>
+      </div>
+
+      <div class="card">
+        <p><b>Órdenes de créditos recientes</b></p>
+        <div id="adminCreditOrdersList"></div>
+      </div>
     </div>
 
     <!-- NOTIFICATIONS -->
@@ -813,6 +837,7 @@
 
     let ownerLat = null;
     let ownerLng = null;
+    let ownerGpsWatchId = null;
     let providerLat = null;
     let providerLng = null;
 
@@ -829,7 +854,6 @@
     let chatMessagesChannel = null;
 
     let providerGpsWatchId = null;
-    let ownerGpsWatchId = null;
     let walkTrackWatchId = null;
     let walkerRefreshInterval = null;
     let ownerMapRefreshInterval = null;
@@ -848,87 +872,62 @@
     let callCamEnabled = true;
     let barkAudioContext = null;
     let incomingBarkInterval = null;
-
+    const COUNTRY_DEFAULT_LANGUAGE = { peru: "es", spain: "es", usa: "en", japan: "ja" };
+    const COUNTRY_LABELS = { peru: "Perú", spain: "España", usa: "Estados Unidos", japan: "Japón" };
+    const LANGUAGE_LABELS = { es: "Español", en: "English", ja: "日本語" };
     const I18N = {
       es: {
-        loginEmail:'Correo electrónico', loginPass:'Contraseña', loginEnter:'Entrar', loginCreate:'Crear cuenta',
-        signupTitle:'Crear cuenta', fullName:'Nombre completo', document:'Número DNI / documento', accountType:'Tipo de cuenta', owner:'Dueño', walker:'Paseador', register:'Registrarme', back:'Volver',
-        verifyTitle:'Verificar correo', verifySent:'Te enviamos un código a:', verifyPlaceholder:'Escribe el código', verifyConfirm:'Confirmar código', verifyResend:'Reenviar código',
-        completeTitle:'Completar perfil', selfie:'Selfie', documentPhoto:'Documento', finishProfile:'Terminar perfil',
-        ownerTitle:'Dueño', registerDog:'Registrar perro', requestWalk:'Pedir paseo', findHotel:'Buscar hotel', hotelRequests:'Hotel solicitudes', notifications:'Notificaciones',
-        addDogTitle:'Registrar perro', dogName:'Nombre del perro', size:'Tamaño', sociable:'¿Sociable?', controllable:'¿Es controlable?', responds:'¿Responde a su nombre?', personality:'Personalidad', dogNotes:'Recomendaciones para el paseador', dogPhoto:'Foto del perro', saveDog:'Guardar perro',
-        walkTitle:'Pedir paseo', chooseDogs:'Selecciona uno o varios perros', ownerTariff:'Tarifa que propone el dueño', walkTime:'Tiempo del paseo', walkNotes:'Notas para el paseador', publishRequest:'Publicar solicitud'
+        loginTitle: "LADRAME", loginEmail: "Correo electrónico", loginPass: "Contraseña", loginEnter: "Entrar", loginCreate: "Crear cuenta",
+        signupTitle: "Crear cuenta", signupName: "Nombre completo", signupEmail: "Correo electrónico", signupDni: "Número DNI / documento", signupPass: "Contraseña",
+        signupRole: "Tipo de cuenta", roleOwner: "Dueño", roleWalker: "Paseador", countryPlaceholder: "Selecciona país", verifyIdentityTitle: "Verificación de identidad",
+        verifyIdentityText: "Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.", signupButton: "Registrarme", back: "Volver",
+        verifyTitle: "Verificar correo", verifySent: "Te enviamos un código a:", verifyInput: "Escribe el código", verifyConfirm: "Confirmar código", verifyResend: "Reenviar código",
+        completeTitle: "Completar perfil", selfie: "Selfie", document: "Documento", finishProfile: "Terminar perfil", logout: "Salir",
+        ownerTitle: "Dueño", ownerHello: "Hola", registerDog: "Registrar perro", requestWalk: "Pedir paseo", findHotel: "Buscar hotel", requests: "Solicitudes", hotelRequests: "Hotel solicitudes", notifications: "Notificaciones",
+        dogTitle: "Registrar perro", dogName: "Nombre del perro", dogNotes: "Recomendaciones para el paseador", saveDog: "Guardar perro", dogPhoto: "Foto del perro",
+        walkTitle: "Pedir paseo", walkChooseDogs: "Selecciona uno o varios perros", walkOwnerPrice: "Tarifa que propone el dueño", walkNotes: "Notas para el paseador", publishWalk: "Publicar solicitud",
+        hotelsTitle: "Hoteles cercanos", hotelsUpTo: "Hasta 8 km", hotelRequestTitle: "Solicitar hotel", hotelRequestNotes: "Notas para el hotel", hotelPublish: "Publicar solicitud de hotel",
+        providerTitle: "Paseador", providerCredits: "Créditos disponibles paseo", providerMaxTariff: "Tarifa máxima:", viewRequests: "Ver solicitudes", buyCredits: "Comprar créditos", activateHotel: "Activar hotel", configHotel: "Configurar hotel",
+        nearbyRequests: "Solicitudes cercanas", sendOfferTitle: "Enviar oferta", walkerOfferPrice: "Tarifa que propone el paseador", sendOffer: "Enviar oferta",
+        hotelConfigTitle: "Configurar hotel", hotelName: "Nombre del hotel", hotelDescription: "Describe tu hotel", hotelAddress: "Dirección o referencia", hotelBasePrice: "Precio base por día", hotelCheckIn: "Check-in desde (ej. 08:00)", hotelCheckOut: "Check-out hasta (ej. 18:00)", hotelHours: "Horas de paseo por día", hotelTimes: "Veces de paseo por día", hotelMainPhoto: "Foto principal", saveHotel: "Guardar hotel",
+        buyCreditsTitle: "Comprar créditos", buyCreditsQrTitle: "Método de pago configurado por el administrador", buyCreditsHelpText: "Luego sube el comprobante.", creditsAmount: "Cantidad de créditos (mínimo 5)", uploadProof: "Subir comprobante", sendProof: "Enviar comprobante",
+        adminTitle: "Administrador", adminWelcome: "Panel de pagos y QR", adminQrSectionTitle: "Subir QR de pago por país"
       },
       en: {
-        loginEmail:'Email', loginPass:'Password', loginEnter:'Sign in', loginCreate:'Create account',
-        signupTitle:'Create account', fullName:'Full name', document:'Document / ID number', accountType:'Account type', owner:'Owner', walker:'Walker', register:'Sign up', back:'Back',
-        verifyTitle:'Verify email', verifySent:'We sent a code to:', verifyPlaceholder:'Enter the code', verifyConfirm:'Confirm code', verifyResend:'Resend code',
-        completeTitle:'Complete profile', selfie:'Selfie', documentPhoto:'Document', finishProfile:'Finish profile',
-        ownerTitle:'Owner', registerDog:'Register dog', requestWalk:'Request walk', findHotel:'Find hotel', hotelRequests:'Hotel requests', notifications:'Notifications',
-        addDogTitle:'Register dog', dogName:'Dog name', size:'Size', sociable:'Sociable?', controllable:'Controllable?', responds:'Responds to name?', personality:'Personality', dogNotes:'Recommendations for the walker', dogPhoto:'Dog photo', saveDog:'Save dog',
-        walkTitle:'Request walk', chooseDogs:'Choose one or more dogs', ownerTariff:'Owner proposed fare', walkTime:'Walk duration', walkNotes:'Notes for the walker', publishRequest:'Publish request'
+        loginTitle: "LADRAME", loginEmail: "Email", loginPass: "Password", loginEnter: "Sign in", loginCreate: "Create account",
+        signupTitle: "Create account", signupName: "Full name", signupEmail: "Email", signupDni: "ID / document number", signupPass: "Password",
+        signupRole: "Account type", roleOwner: "Owner", roleWalker: "Walker", countryPlaceholder: "Select country", verifyIdentityTitle: "Identity verification",
+        verifyIdentityText: "Create your account and verify your email first. Then we will ask for selfie and ID only once.", signupButton: "Register", back: "Back",
+        verifyTitle: "Verify email", verifySent: "We sent a code to:", verifyInput: "Enter the code", verifyConfirm: "Confirm code", verifyResend: "Resend code",
+        completeTitle: "Complete profile", selfie: "Selfie", document: "Document", finishProfile: "Finish profile", logout: "Log out",
+        ownerTitle: "Owner", ownerHello: "Hello", registerDog: "Register dog", requestWalk: "Request walk", findHotel: "Find hotel", requests: "Requests", hotelRequests: "Hotel requests", notifications: "Notifications",
+        dogTitle: "Register dog", dogName: "Dog name", dogNotes: "Recommendations for the walker", saveDog: "Save dog", dogPhoto: "Dog photo",
+        walkTitle: "Request walk", walkChooseDogs: "Select one or more dogs", walkOwnerPrice: "Owner proposed fare", walkNotes: "Notes for the walker", publishWalk: "Publish request",
+        hotelsTitle: "Nearby hotels", hotelsUpTo: "Up to 8 km", hotelRequestTitle: "Request hotel", hotelRequestNotes: "Notes for the hotel", hotelPublish: "Publish hotel request",
+        providerTitle: "Walker", providerCredits: "Available walking credits", providerMaxTariff: "Maximum fare:", viewRequests: "View requests", buyCredits: "Buy credits", activateHotel: "Enable hotel", configHotel: "Configure hotel",
+        nearbyRequests: "Nearby requests", sendOfferTitle: "Send offer", walkerOfferPrice: "Walker proposed fare", sendOffer: "Send offer",
+        hotelConfigTitle: "Configure hotel", hotelName: "Hotel name", hotelDescription: "Describe your hotel", hotelAddress: "Address or reference", hotelBasePrice: "Base price per day", hotelCheckIn: "Check-in from (e.g. 08:00)", hotelCheckOut: "Check-out until (e.g. 18:00)", hotelHours: "Walking hours per day", hotelTimes: "Walk times per day", hotelMainPhoto: "Main photo", saveHotel: "Save hotel",
+        buyCreditsTitle: "Buy credits", buyCreditsQrTitle: "Payment method configured by admin", buyCreditsHelpText: "Then upload the payment proof.", creditsAmount: "Credit amount (minimum 5)", uploadProof: "Upload proof", sendProof: "Send proof",
+        adminTitle: "Admin", adminWelcome: "Payments and QR panel", adminQrSectionTitle: "Upload payment QR by country"
       },
       ja: {
-        loginEmail:'メールアドレス', loginPass:'パスワード', loginEnter:'ログイン', loginCreate:'アカウント作成',
-        signupTitle:'アカウント作成', fullName:'氏名', document:'身分証番号', accountType:'アカウント種別', owner:'飼い主', walker:'ウォーカー', register:'登録', back:'戻る',
-        verifyTitle:'メール認証', verifySent:'コードを送信しました:', verifyPlaceholder:'コードを入力', verifyConfirm:'コード確認', verifyResend:'再送信',
-        completeTitle:'プロフィールを完了', selfie:'セルフィー', documentPhoto:'身分証', finishProfile:'プロフィール完了',
-        ownerTitle:'飼い主', registerDog:'犬を登録', requestWalk:'散歩を依頼', findHotel:'ホテルを探す', hotelRequests:'ホテル依頼', notifications:'通知',
-        addDogTitle:'犬を登録', dogName:'犬の名前', size:'サイズ', sociable:'社交的?', controllable:'制御可能?', responds:'名前に反応?', personality:'性格', dogNotes:'ウォーカーへの注意', dogPhoto:'犬の写真', saveDog:'保存',
-        walkTitle:'散歩を依頼', chooseDogs:'1匹以上選択', ownerTariff:'希望料金', walkTime:'散歩時間', walkNotes:'ウォーカーへのメモ', publishRequest:'依頼を公開'
+        loginTitle: "LADRAME", loginEmail: "メールアドレス", loginPass: "パスワード", loginEnter: "ログイン", loginCreate: "アカウント作成",
+        signupTitle: "アカウント作成", signupName: "氏名", signupEmail: "メールアドレス", signupDni: "身分証番号", signupPass: "パスワード",
+        signupRole: "アカウント種別", roleOwner: "飼い主", roleWalker: "ウォーカー", countryPlaceholder: "国を選択", verifyIdentityTitle: "本人確認",
+        verifyIdentityText: "まずアカウントを作成してメール認証してください。その後、セルフィーと身分証を一度だけアップロードします。", signupButton: "登録", back: "戻る",
+        verifyTitle: "メール認証", verifySent: "確認コードを送信しました:", verifyInput: "コードを入力", verifyConfirm: "コード確認", verifyResend: "再送信",
+        completeTitle: "プロフィールを完了", selfie: "セルフィー", document: "身分証", finishProfile: "プロフィール完了", logout: "ログアウト",
+        ownerTitle: "飼い主", ownerHello: "こんにちは", registerDog: "犬を登録", requestWalk: "散歩を依頼", findHotel: "ホテルを探す", requests: "依頼一覧", hotelRequests: "ホテル依頼", notifications: "通知",
+        dogTitle: "犬を登録", dogName: "犬の名前", dogNotes: "ウォーカーへの注意事項", saveDog: "保存", dogPhoto: "犬の写真",
+        walkTitle: "散歩を依頼", walkChooseDogs: "1匹以上選択", walkOwnerPrice: "希望料金", walkNotes: "ウォーカーへのメモ", publishWalk: "依頼を公開",
+        hotelsTitle: "近くのホテル", hotelsUpTo: "8km以内", hotelRequestTitle: "ホテルを依頼", hotelRequestNotes: "ホテルへのメモ", hotelPublish: "ホテル依頼を公開",
+        providerTitle: "ウォーカー", providerCredits: "利用可能クレジット", providerMaxTariff: "最大料金:", viewRequests: "依頼を見る", buyCredits: "クレジット購入", activateHotel: "ホテル有効化", configHotel: "ホテル設定",
+        nearbyRequests: "近くの依頼", sendOfferTitle: "オファー送信", walkerOfferPrice: "提案料金", sendOffer: "オファー送信",
+        hotelConfigTitle: "ホテル設定", hotelName: "ホテル名", hotelDescription: "ホテル説明", hotelAddress: "住所または目印", hotelBasePrice: "1日基本料金", hotelCheckIn: "チェックイン開始 (例 08:00)", hotelCheckOut: "チェックアウト終了 (例 18:00)", hotelHours: "1日の散歩時間", hotelTimes: "1日の散歩回数", hotelMainPhoto: "メイン写真", saveHotel: "ホテル保存",
+        buyCreditsTitle: "クレジット購入", buyCreditsQrTitle: "管理者が設定した支払い方法", buyCreditsHelpText: "その後、支払い証明をアップロードしてください。", creditsAmount: "クレジット数量 (最低5)", uploadProof: "証明をアップロード", sendProof: "証明送信",
+        adminTitle: "管理者", adminWelcome: "支払いとQR管理", adminQrSectionTitle: "国別QRをアップロード"
       }
     };
-
-    function currentLang() {
-      const raw = currentProfile?.language || $("signupLanguage")?.value || 'es';
-      return raw === 'jp' ? 'ja' : raw;
-    }
-
-    function applyTranslations(lang = currentLang()) {
-      const t = I18N[lang] || I18N.es;
-      if ($('loginEmail')) $('loginEmail').placeholder = t.loginEmail;
-      if ($('loginPass')) $('loginPass').placeholder = t.loginPass;
-      if (document.querySelector('#loginScreen button:nth-of-type(1)')) document.querySelector('#loginScreen button:nth-of-type(1)').textContent = t.loginEnter;
-      if (document.querySelector('#loginScreen button:nth-of-type(2)')) document.querySelector('#loginScreen button:nth-of-type(2)').textContent = t.loginCreate;
-      if (document.querySelector('#signupScreen h2')) document.querySelector('#signupScreen h2').textContent = t.signupTitle;
-      if ($('signupName')) $('signupName').placeholder = t.fullName;
-      if ($('signupEmail')) $('signupEmail').placeholder = t.loginEmail;
-      if ($('signupDNI')) $('signupDNI').placeholder = t.document;
-      if ($('signupPass')) $('signupPass').placeholder = t.loginPass;
-      if (document.querySelector('#signupRole option[value=""]')) document.querySelector('#signupRole option[value=""]').textContent = t.accountType;
-      if (document.querySelector('#signupRole option[value="owner"]')) document.querySelector('#signupRole option[value="owner"]').textContent = t.owner;
-      if (document.querySelector('#signupRole option[value="walker"]')) document.querySelector('#signupRole option[value="walker"]').textContent = t.walker;
-      if (document.querySelector('#signupScreen .green')) document.querySelector('#signupScreen .green').textContent = t.register;
-      if (document.querySelector('#signupScreen .secondary')) document.querySelector('#signupScreen .secondary').textContent = t.back;
-      if (document.querySelector('#verifyCodeScreen h2')) document.querySelector('#verifyCodeScreen h2').textContent = t.verifyTitle;
-      if (document.querySelector('#verifyCodeScreen .card p')) document.querySelector('#verifyCodeScreen .card p').textContent = t.verifySent;
-      if ($('signupCodeInput')) $('signupCodeInput').placeholder = t.verifyPlaceholder;
-      if (document.querySelector('#verifyCodeScreen button.green')) document.querySelector('#verifyCodeScreen button.green').textContent = t.verifyConfirm;
-      if (document.querySelector('#verifyCodeScreen button.secondary')) document.querySelector('#verifyCodeScreen button.secondary').textContent = t.verifyResend;
-      if (document.querySelector('#completeProfileScreen h2')) document.querySelector('#completeProfileScreen h2').textContent = t.completeTitle;
-      if (document.querySelector('#completeProfileScreen .card:nth-of-type(2) p b')) document.querySelector('#completeProfileScreen .card:nth-of-type(2) p b').textContent = t.selfie;
-      if (document.querySelector('#completeProfileScreen .card:nth-of-type(3) p b')) document.querySelector('#completeProfileScreen .card:nth-of-type(3) p b').textContent = t.documentPhoto;
-      if (document.querySelector('#completeProfileScreen .green')) document.querySelector('#completeProfileScreen .green').textContent = t.finishProfile;
-      if (document.querySelector('#ownerHomeScreen h2')) document.querySelector('#ownerHomeScreen h2').textContent = t.ownerTitle;
-      const ownerBtns = document.querySelectorAll('#ownerHomeScreen .home-action-row button');
-      if (ownerBtns[0]) ownerBtns[0].textContent = t.registerDog;
-      if (ownerBtns[1]) ownerBtns[1].textContent = t.requestWalk;
-      if (ownerBtns[2]) ownerBtns[2].textContent = t.findHotel;
-      if (ownerBtns[3]) ownerBtns[3].textContent = t.hotelRequests;
-      if (ownerBtns[4]) ownerBtns[4].textContent = t.notifications;
-      if (document.querySelector('#addDogScreen h2')) document.querySelector('#addDogScreen h2').textContent = t.addDogTitle;
-      if ($('dogNameInput')) $('dogNameInput').placeholder = t.dogName;
-      if ($('dogNotesInput')) $('dogNotesInput').placeholder = t.dogNotes;
-      if (document.querySelector('#addDogScreen .card p b')) document.querySelector('#addDogScreen .card p b').textContent = t.dogPhoto;
-      if (document.querySelector('#addDogScreen .green')) document.querySelector('#addDogScreen .green').textContent = t.saveDog;
-      if (document.querySelector('#createWalkScreen h2')) document.querySelector('#createWalkScreen h2').textContent = t.walkTitle;
-      if (document.querySelector('#createWalkScreen .card p b')) document.querySelector('#createWalkScreen .card p b').textContent = t.chooseDogs;
-      if ($('walkPriceInput')) $('walkPriceInput').placeholder = t.ownerTariff;
-      if ($('walkNotesInput')) $('walkNotesInput').placeholder = t.walkNotes;
-      if (document.querySelector('#createWalkScreen .green')) document.querySelector('#createWalkScreen .green').textContent = t.publishRequest;
-      if (document.querySelector('#createWalkScreen .secondary')) document.querySelector('#createWalkScreen .secondary').textContent = t.back;
-      if (document.querySelector('#walkTimeInput option[value=""]')) document.querySelector('#walkTimeInput option[value=""]').textContent = t.walkTime;
-    }
 
     function syncGlobalState() {
       window.supabaseClient = supabaseClient;
@@ -945,23 +944,47 @@
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
-
-      const signupCountry = $("signupCountry");
-      if (signupCountry) {
-        signupCountry.addEventListener("change", () => {
-          const c = signupCountry.value;
-          if (c === "usa") $("signupLanguage").value = "en";
-          else if (c === "japan") $("signupLanguage").value = "ja";
-          else $("signupLanguage").value = "es";
-          applyTranslations($("signupLanguage").value);
-        });
-      }
+      bindPreview("adminQrInput", "adminQrPreview");
+      $("signupCountry")?.addEventListener("change", handleSignupCountryChange);
       $("signupLanguage")?.addEventListener("change", () => applyTranslations($("signupLanguage").value));
-      applyTranslations($("signupLanguage")?.value || 'es');
+      $("creditsProviderType")?.addEventListener("change", renderPaymentQrForCurrentUser);
+      applyTranslations($("signupLanguage")?.value || "es");
       boot();
     });
 
     function $(id) { return document.getElementById(id); }
+
+    function syncLanguageFromCountry() {
+      const country = $("signupCountry")?.value;
+      const lang = $("signupLanguage");
+      if (!lang) return;
+      if (country === "usa") lang.value = "en";
+      else if (country === "japan") lang.value = "ja";
+      else if (country === "peru" || country === "spain") lang.value = "es";
+      applySignupLanguagePreview();
+    }
+
+    function applySignupLanguagePreview() {
+      const lang = $("signupLanguage")?.value || "es";
+      const loginBtn = document.querySelector('#loginScreen button');
+      const createBtn = document.querySelector('#loginScreen .secondary');
+      const signupTitle = document.querySelector('#signupScreen h2');
+      if (!loginBtn || !createBtn || !signupTitle) return;
+      if (lang === "en") {
+        loginBtn.textContent = "Sign in";
+        createBtn.textContent = "Create account";
+        signupTitle.textContent = "Create account";
+      } else if (lang === "ja") {
+        loginBtn.textContent = "ログイン";
+        createBtn.textContent = "アカウント作成";
+        signupTitle.textContent = "アカウント作成";
+      } else {
+        loginBtn.textContent = "Entrar";
+        createBtn.textContent = "Crear cuenta";
+        signupTitle.textContent = "Crear cuenta";
+      }
+    }
+
 
     function bindPreview(inputId, imgId) {
       const input = $(inputId);
@@ -1016,6 +1039,111 @@
       return (value || "").replace(/\D/g, "");
     }
 
+    function normalizeLanguageCode(value) {
+      if (value === "jp") return "ja";
+      if (!value) return "es";
+      return value;
+    }
+
+    function t(key) {
+      const lang = normalizeLanguageCode(currentProfile?.language || $("signupLanguage")?.value || "es");
+      return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+    }
+
+    function handleSignupCountryChange() {
+      const country = $("signupCountry").value;
+      const newLang = COUNTRY_DEFAULT_LANGUAGE[country] || "es";
+      $("signupLanguage").value = newLang;
+      applyTranslations(newLang);
+    }
+
+    function applyTranslations(lang) {
+      lang = normalizeLanguageCode(lang || "es");
+      const dict = I18N[lang] || I18N.es;
+      const loginTitle = document.querySelector('#loginScreen .logo');
+      if (loginTitle) loginTitle.innerHTML = 'LADRA<span>ME</span>';
+      $("loginEmail").placeholder = dict.loginEmail;
+      $("loginPass").placeholder = dict.loginPass;
+      document.querySelector('#loginScreen button:nth-of-type(1)').textContent = dict.loginEnter;
+      document.querySelector('#loginScreen button:nth-of-type(2)').textContent = dict.loginCreate;
+      document.querySelector('#signupScreen h2').textContent = dict.signupTitle;
+      $("signupName").placeholder = dict.signupName;
+      $("signupEmail").placeholder = dict.signupEmail;
+      $("signupDNI").placeholder = dict.signupDni;
+      $("signupPass").placeholder = dict.signupPass;
+      $("signupRole").options[0].text = dict.signupRole;
+      $("signupRole").options[1].text = dict.roleOwner;
+      $("signupRole").options[2].text = dict.roleWalker;
+      $("signupCountry").options[0].text = dict.countryPlaceholder;
+      document.querySelector('#signupScreen .card b').textContent = dict.verifyIdentityTitle;
+      document.querySelector('#signupScreen .card .small').textContent = dict.verifyIdentityText;
+      document.querySelector('#signupScreen button.green').textContent = dict.signupButton;
+      document.querySelector('#signupScreen button.secondary').textContent = dict.back;
+      document.querySelector('#verifyCodeScreen h2').textContent = dict.verifyTitle;
+      document.querySelector('#verifyCodeScreen .card p').textContent = dict.verifySent;
+      $("signupCodeInput").placeholder = dict.verifyInput;
+      document.querySelector('#verifyCodeScreen button.green').textContent = dict.verifyConfirm;
+      document.querySelector('#verifyCodeScreen button.secondary').textContent = dict.verifyResend;
+      document.querySelectorAll('#verifyCodeScreen button.secondary')[1].textContent = dict.back;
+      document.querySelector('#completeProfileScreen h2').textContent = dict.completeTitle;
+      document.querySelectorAll('#completeProfileScreen .card p b')[0].textContent = dict.selfie;
+      document.querySelectorAll('#completeProfileScreen .card p b')[1].textContent = dict.document;
+      document.querySelector('#completeProfileScreen button.green').textContent = dict.finishProfile;
+      document.querySelector('#completeProfileScreen button.secondary').textContent = dict.logout;
+      document.querySelector('#ownerHomeScreen h2').textContent = dict.ownerTitle;
+      document.querySelector('#addDogScreen h2').textContent = dict.dogTitle;
+      $("dogNameInput").placeholder = dict.dogName;
+      $("dogNotesInput").placeholder = dict.dogNotes;
+      document.querySelector('#addDogScreen .card b').textContent = dict.dogPhoto;
+      document.querySelector('#addDogScreen button.green').textContent = dict.saveDog;
+      document.querySelector('#addDogScreen button.secondary').textContent = dict.back;
+      document.querySelector('#createWalkScreen h2').textContent = dict.walkTitle;
+      document.querySelector('#createWalkScreen .card p b').textContent = dict.walkChooseDogs;
+      $("walkPriceInput").placeholder = dict.walkOwnerPrice;
+      $("walkNotesInput").placeholder = dict.walkNotes;
+      document.querySelector('#createWalkScreen button.green').textContent = dict.publishWalk;
+      document.querySelector('#createWalkScreen button.secondary').textContent = dict.back;
+      document.querySelector('#hotelSearchScreen h2').textContent = dict.hotelsTitle;
+      document.querySelector('#hotelSearchScreen .small').textContent = dict.hotelsUpTo;
+      document.querySelector('#hotelRequestScreen h2').textContent = dict.hotelRequestTitle;
+      $("hotelRequestNotes").placeholder = dict.hotelRequestNotes;
+      document.querySelector('#hotelRequestScreen button.green').textContent = dict.hotelPublish;
+      document.querySelector('#hotelRequestScreen button.secondary').textContent = dict.back;
+      document.querySelector('#providerHomeScreen h2').textContent = dict.providerTitle;
+      document.querySelector('#providerHomeScreen .card p b').textContent = dict.providerCredits;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[0].textContent = dict.viewRequests;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[1].textContent = dict.buyCredits;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[2].textContent = dict.activateHotel;
+      document.querySelectorAll('#providerHomeScreen .home-action-row button')[3].textContent = dict.configHotel;
+      document.querySelector('#walkerMapScreen h2').textContent = dict.nearbyRequests;
+      document.querySelector('#sendOfferScreen h2').textContent = dict.sendOfferTitle;
+      $("offerPriceInput").placeholder = dict.walkerOfferPrice;
+      document.querySelector('#sendOfferScreen button.green').textContent = dict.sendOffer;
+      document.querySelector('#sendOfferScreen button.secondary').textContent = dict.back;
+      document.querySelector('#hotelProfileScreen h2').textContent = dict.hotelConfigTitle;
+      $("hotelNameInput").placeholder = dict.hotelName;
+      $("hotelDescriptionInput").placeholder = dict.hotelDescription;
+      $("hotelAddressInput").placeholder = dict.hotelAddress;
+      $("hotelPriceInput").placeholder = dict.hotelBasePrice;
+      $("hotelCheckInFromInput").placeholder = dict.hotelCheckIn;
+      $("hotelCheckOutUntilInput").placeholder = dict.hotelCheckOut;
+      $("hotelWalkHoursDayInput").placeholder = dict.hotelHours;
+      $("hotelWalkTimesDayInput").placeholder = dict.hotelTimes;
+      document.querySelector('#hotelProfileScreen .card b').textContent = dict.hotelMainPhoto;
+      document.querySelector('#hotelProfileScreen button.green').textContent = dict.saveHotel;
+      document.querySelector('#hotelProfileScreen button.secondary').textContent = dict.back;
+      $("buyCreditsTitle").textContent = dict.buyCreditsTitle;
+      $("buyCreditsQrTitle").textContent = dict.buyCreditsQrTitle;
+      $("buyCreditsHelpText").textContent = dict.buyCreditsHelpText;
+      $("creditsAmount").placeholder = dict.creditsAmount;
+      document.querySelector('#buyCreditsScreen .card:last-of-type b').textContent = dict.uploadProof;
+      document.querySelector('#buyCreditsScreen button.green').textContent = dict.sendProof;
+      document.querySelector('#buyCreditsScreen button.secondary').textContent = dict.back;
+      $("adminTitle").textContent = dict.adminTitle;
+      $("adminWelcome").textContent = dict.adminWelcome;
+      $("adminQrSectionTitle").textContent = dict.adminQrSectionTitle;
+    }
+
     function getDogRiskClass(personality) {
       const p = (personality || "").toLowerCase();
       if (p.includes("agresivo")) return "dog-red";
@@ -1059,54 +1187,6 @@
 
     function isOfferCardExpired(createdAt) {
       return requestAgeMs(createdAt) >= 1 * 60 * 1000;
-    }
-
-    async function cleanupExpiredWalkRequests() {
-      try {
-        await supabaseClient
-          .from("walk_requests")
-          .update({ status: "expired" })
-          .eq("status", "open")
-          .lt("created_at", new Date(Date.now() - 7 * 60 * 1000).toISOString());
-      } catch (_) {}
-    }
-
-    async function cleanupOwnerDuplicateOpenRequests() {
-      if (!currentUser) return;
-      const { data } = await supabaseClient
-        .from("walk_requests")
-        .select("id, created_at")
-        .eq("owner_id", currentUser.id)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-
-      const extras = (data || []).slice(1).map(r => r.id);
-      if (extras.length) {
-        await supabaseClient
-          .from("walk_requests")
-          .update({ status: "expired" })
-          .in("id", extras);
-      }
-    }
-
-    function dedupeLatestRequestPerOwner(requests) {
-      const seen = new Set();
-      const out = [];
-      for (const req of (requests || [])) {
-        const key = req.owner_id || req.id;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push(req);
-      }
-      return out;
-    }
-
-
-    function formatRemaining(ms) {
-      const total = Math.max(0, Math.ceil(ms / 1000));
-      const min = Math.floor(total / 60);
-      const sec = total % 60;
-      return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
     }
 
 
@@ -1207,13 +1287,17 @@
       const dni = normalizeDni($("signupDNI").value);
       const password = $("signupPass").value;
       const role = $("signupRole").value;
-      const language = $("signupLanguage").value;
+      let language = $("signupLanguage").value;
       const country = $("signupCountry").value;
 
-      if (!name || !email || !dni || !password || !role || !country || !language) {
+      if (!name || !email || !dni || !password || !role || !country) {
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
+
+      if (country === "usa") language = "en";
+      else if (country === "japan") language = "ja";
+      else language = "es";
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
@@ -1237,6 +1321,36 @@
         return;
       }
 
+      setPendingVerificationEmail(email);
+      $("verifyEmailText").textContent = email;
+      go("verifyCodeScreen");
+    }
+
+      showMsg("signupMsg", "Creando cuenta...");
+
+      pendingSignupData = { name, email, dni, role, language, country };
+      localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
+
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            pending_name: name,
+            pending_dni: dni,
+            pending_role: role,
+            pending_language: language,
+            pending_country: country
+          }
+        }
+      });
+
+      if (error) {
+        showMsg("signupMsg", error.message);
+        return;
+      }
+
+      showMsg("signupMsg", "");
       setPendingVerificationEmail(email);
       $("verifyEmailText").textContent = email;
       go("verifyCodeScreen");
@@ -1279,6 +1393,23 @@
       go("completeProfileScreen");
     }
 
+
+    async function forgotPassword() {
+      const email = $("loginEmail").value.trim();
+      if (!email) {
+        showMsg("loginMsg", "Escribe tu correo primero");
+        return;
+      }
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname
+      });
+      if (error) {
+        showMsg("loginMsg", error.message);
+        return;
+      }
+      showMsg("loginMsg", "Te enviamos un enlace para restablecer tu contraseña");
+    }
+
     async function resendSignupCode() {
       if (!pendingVerificationEmail) {
         showMsg("verifyCodeMsg", "No se encontró el correo");
@@ -1307,8 +1438,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1320,10 +1451,21 @@
         return;
       }
 
-      const selfieUrl = await uploadSelectedFile(selfieFile, "avatars");
-      const dniUrl = await uploadSelectedFile(dniFile, "avatars");
+      showMsg("completeProfileMsg", "Subiendo archivos...");
 
-      const { error } = await supabaseClient.from("users").insert({
+      const selfieUrl = await uploadSelectedFile(selfieFile, "avatars");
+      if (!selfieUrl) {
+        showMsg("completeProfileMsg", "No se pudo subir la selfie");
+        return;
+      }
+
+      const dniUrl = await uploadSelectedFile(dniFile, "avatars");
+      if (!dniUrl) {
+        showMsg("completeProfileMsg", "No se pudo subir el documento");
+        return;
+      }
+
+      const payload = {
         id: user.id,
         name: pendingSignupData.name,
         email: user.email,
@@ -1333,7 +1475,23 @@
         dni_photo_url: dniUrl,
         country: pendingSignupData.country,
         language: pendingSignupData.language
-      });
+      };
+
+      const { data: existingUser } = await supabaseClient
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      let error = null;
+
+      if (existingUser) {
+        const response = await supabaseClient.from("users").update(payload).eq("id", user.id);
+        error = response.error;
+      } else {
+        const response = await supabaseClient.from("users").insert(payload);
+        error = response.error;
+      }
 
       if (error) {
         showMsg("completeProfileMsg", error.message);
@@ -1342,6 +1500,13 @@
 
       localStorage.removeItem("ladrame_pending_signup_data");
       pendingSignupData = null;
+      $("completeSelfieInput").value = "";
+      $("completeDniInput").value = "";
+      $("completeSelfiePreview").classList.add("hidden");
+      $("completeDniPreview").classList.add("hidden");
+      $("completeSelfiePreview").removeAttribute("src");
+      $("completeDniPreview").removeAttribute("src");
+      showMsg("completeProfileMsg", "");
       boot();
     }
 
@@ -1370,15 +1535,15 @@
       chatMessagesChannel = null;
       callChannel = null;
 
-      if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       if (ownerGpsWatchId) navigator.geolocation.clearWatch(ownerGpsWatchId);
+      if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       if (walkTrackWatchId) navigator.geolocation.clearWatch(walkTrackWatchId);
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
       if (liveWalkInterval) clearInterval(liveWalkInterval);
 
-      providerGpsWatchId = null;
       ownerGpsWatchId = null;
+      providerGpsWatchId = null;
       walkTrackWatchId = null;
       walkerRefreshInterval = null;
       ownerMapRefreshInterval = null;
@@ -1419,6 +1584,7 @@
       currentUser = user;
       syncGlobalState();
       const profile = await loadCurrentProfile();
+      if (profile?.language) applyTranslations(profile.language);
 
       if (!profile) {
         const raw = localStorage.getItem("ladrame_pending_signup_data");
@@ -1440,6 +1606,18 @@
         return;
       }
 
+      if (!profile.selfie_url || !profile.dni_photo_url || profile.profile_completed === false) {
+        $("completeProfileInfo").innerHTML = `
+          <p><b>Nombre:</b> ${profile?.name || "-"}</p>
+          <p><b>Correo:</b> ${profile?.email || user.email || "-"}</p>
+          <p><b>DNI:</b> ${profile?.dni || "-"}</p>
+          <p><b>Rol:</b> ${getCurrentRoleLabel(profile?.role)}</p>
+          <p><b>País:</b> ${profile?.country || "-"}</p>
+        `;
+        go("completeProfileScreen");
+        return;
+      }
+
       routeUser(profile);
       subscribeNotifications();
       subscribeRequestsRealtime();
@@ -1452,32 +1630,30 @@
     }
 
     function routeUser(profile) {
-      applyTranslations(profile.language || "es");
+      applyTranslations(profile?.language || "es");
       if (profile.role === "owner") {
-        $("ownerWelcome").textContent = (currentLang()==="en"?"Hello ":currentLang()==="ja"?"こんにちは ":"Hola ") + (profile.name || "");
+        $("ownerWelcome").textContent = t("ownerHello") + " " + (profile.name || "");
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
         go("ownerHomeScreen");
 
-        cleanupExpiredWalkRequests();
-        cleanupOwnerDuplicateOpenRequests();
-        loadOwnerActiveRequests();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(async () => {
-          await cleanupExpiredWalkRequests();
-          await cleanupOwnerDuplicateOpenRequests();
-          renderOwnerHomeMap();
-          await loadOwnerActiveRequests();
-        }, 5000);
+        ownerMapRefreshInterval = setInterval(renderOwnerHomeMap, 5000);
         return;
       }
 
       if (profile.role === "walker") {
-        $("providerWelcome").textContent = (currentLang()==="en"?"Hello ":currentLang()==="ja"?"こんにちは ":"Hola ") + (profile.name || "");
+        $("providerWelcome").textContent = t("ownerHello") + " " + (profile.name || "");
         renderProviderHome();
         startProviderLiveGps();
         go("providerHomeScreen");
+        return;
+      }
+
+      if (profile.role === "admin") {
+        loadAdminDashboard();
+        go("adminHomeScreen");
         return;
       }
 
@@ -1498,7 +1674,11 @@
           renderOwnerHomeMap();
         },
         () => {},
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+      );
+    },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     }
 
@@ -1559,54 +1739,14 @@
         .select("*")
         .eq("owner_id", currentUser.id)
         .in("status", ["open", "active"])
-        .order("created_at", { ascending: false })
         .limit(10);
 
-      dedupeLatestRequestPerOwner((reqs || []).filter(r => r.status === "active" || !isRequestExpired(r.created_at))).forEach(r => {
+      (reqs || []).forEach(r => {
         if (r.lat == null || r.lng == null) return;
         ownerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(r.lng), Number(r.lat)]).addTo(ownerHomeMap));
       });
     }
 
-
-    async function loadOwnerActiveRequests() {
-      const box = $("ownerActiveRequestsCards");
-      if (!box) return;
-
-      await cleanupExpiredWalkRequests();
-      await cleanupOwnerDuplicateOpenRequests();
-
-      const { data, error } = await supabaseClient
-        .from("walk_requests_with_dogs")
-        .select("*")
-        .eq("owner_id", currentUser.id)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-
-      if (error) return;
-
-      const activeRequests = dedupeLatestRequestPerOwner((data || []).filter(req => !isRequestExpired(req.created_at)));
-      box.innerHTML = "";
-
-      if (!activeRequests.length) return;
-
-      const req = activeRequests[0];
-      const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-      const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
-
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <p><b>Solicitud activa</b></p>
-        <p class="small">Tarifa: S/${req.tariff || "-"}</p>
-        <p class="small">Tiempo: ${req.time || 0} min</p>
-        <p class="small">Expira en ${formatRemaining(remainMs)}</p>
-        ${dogs.length ? `<p class="small">Perros: ${dogs.map(d => d.name).join(", ")}</p>` : ""}
-      `;
-      box.appendChild(card);
-    }
-
-    
     function ensureProviderHomeMap() {
       if (!providerHomeMap) {
         providerHomeMap = new mapboxgl.Map({
@@ -1732,20 +1872,15 @@
         .eq("owner_id", currentUser.id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        $("ownerDogsList").innerHTML = `<p class="small">${error.message}</p>`;
-        $("walkDogsMultiSelect").innerHTML = `<p class="small">${error.message}</p>`;
-        return;
-      }
+      if (error) return;
 
       $("ownerDogsList").innerHTML = "";
       $("walkDogsMultiSelect").innerHTML = "";
-      $("hotelDogSelect").innerHTML = `<option value="">${currentLang()==='en'?'Select dog':currentLang()==='ja'?'犬を選択':'Selecciona perro'}</option>`;
+      $("hotelDogSelect").innerHTML = `<option value="">Selecciona perro</option>`;
 
       if (!data || data.length === 0) {
-        const emptyText = currentLang()==='en'?'You have no registered dogs.':currentLang()==='ja'?'登録された犬がいません。':'No tienes perros registrados.';
-        $("ownerDogsList").innerHTML = `<p class="small">${emptyText}</p>`;
-        $("walkDogsMultiSelect").innerHTML = `<p class="small">${emptyText}</p>`;
+        $("ownerDogsList").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
+        $("walkDogsMultiSelect").innerHTML = `<p class="small">No tienes perros registrados.</p>`;
         return;
       }
 
@@ -1766,11 +1901,10 @@
         `;
         $("ownerDogsList").appendChild(card);
 
-        const option = document.createElement("label");
+        const option = document.createElement("div");
         option.className = "dog-choice";
         option.innerHTML = `
           <input type="checkbox" class="walk-dog-checkbox" value="${dog.id}">
-          ${photo ? `<img src="${photo}" class="dog-choice-photo">` : `<div class="dog-choice-photo" style="display:flex;align-items:center;justify-content:center;background:#f5f5f5">🐶</div>`}
           <div style="flex:1">
             <p style="margin:0"><b>${dog.name}</b></p>
             <p class="small" style="margin:4px 0 0">Tamaño: ${dog.size || "-"}</p>
@@ -1874,7 +2008,6 @@
     }
 
     async function openCreateWalkScreen() {
-      $("walkDogsMultiSelect").innerHTML = `<p class="small">${currentLang()==='en' ? 'Loading dogs...' : currentLang()==='ja' ? '犬を読み込み中...' : 'Cargando perros...'}</p>`;
       await loadDogs();
       getOwnerLocation();
       go("createWalkScreen");
@@ -1907,7 +2040,6 @@
         return;
       }
 
-      await cleanupExpiredWalkRequests();
       await supabaseClient
         .from("walk_requests")
         .update({ status: "expired" })
@@ -2057,8 +2189,6 @@
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
 
-      await cleanupExpiredWalkRequests();
-
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -2067,11 +2197,18 @@
 
       if (error) return;
 
-      const activeRequests = dedupeLatestRequestPerOwner((data || []).filter(req => !isRequestExpired(req.created_at)));
+      const now = Date.now();
+      const uniqueByOwner = new Map();
+
+      for (const req of (data || [])) {
+        if (req.lat == null || req.lng == null) continue;
+        if (now - new Date(req.created_at).getTime() >= 7 * 60 * 1000) continue;
+        if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
+      }
+
+      const activeRequests = Array.from(uniqueByOwner.values());
 
       for (const req of activeRequests) {
-        if (req.lat == null || req.lng == null) continue;
-
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
@@ -2081,7 +2218,6 @@
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
 
         const div = document.createElement("div");
         div.className = "card";
@@ -2089,7 +2225,7 @@
           <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
           <p class="small">Tarifa del dueño: S/${req.tariff}</p>
           <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
-          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
+          <p class="small">Expira en: ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
           <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
           <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
@@ -2106,7 +2242,28 @@
       }
     }
 
-    
+        walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
+
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          ${buildDogsHtml(dogs)}
+          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
+        `;
+        $("requestsList").appendChild(div);
+      }
+
+      if (providerLat != null && providerLng != null) {
+        walkerMap.setCenter([providerLng, providerLat]);
+      }
+    }
+
     async function openOffer(requestId) {
       selectedRequest = requestId;
 
@@ -2114,12 +2271,34 @@
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("id", requestId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        showMsg("offerMsg", error.message);
+      if (error || !data) {
+        showMsg("offerMsg", "La solicitud ya no está disponible");
+        await loadNearbyRequests();
         return;
       }
+
+      if (data.status !== "open" || isRequestExpired(data.created_at)) {
+        showMsg("offerMsg", "La solicitud expiró");
+        await loadNearbyRequests();
+        return;
+      }
+
+      const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
+
+      $("offerRequestInfo").innerHTML = `
+        <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+        <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
+        <p><b>Tiempo:</b> ${data.time || 0} min</p>
+        ${buildDogsHtml(dogs)}
+        <p class="small">Debes enviar tu propia tarifa.</p>
+      `;
+
+      $("offerPriceInput").value = "";
+      showMsg("offerMsg", "");
+      go("sendOfferScreen");
+    }
 
       const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
 
@@ -2151,20 +2330,21 @@
         .from("walk_requests")
         .select("*")
         .eq("id", selectedRequest)
-        .single();
+        .maybeSingle();
 
       if (reqError || !req) {
-        showMsg("offerMsg", "No se pudo cargar la solicitud");
-        return;
-      }
-
-      if (req.status !== "open" || isRequestExpired(req.created_at)) {
-        showMsg("offerMsg", "La solicitud ya expiró");
+        showMsg("offerMsg", "La solicitud ya no está disponible");
         await loadNearbyRequests();
         return;
       }
 
-      const { data: existingPending } = await supabaseClient
+      if (req.status !== "open" || isRequestExpired(req.created_at)) {
+        showMsg("offerMsg", "La solicitud expiró");
+        await loadNearbyRequests();
+        return;
+      }
+
+      const { data: existingOffer } = await supabaseClient
         .from("offers")
         .select("id")
         .eq("request_id", selectedRequest)
@@ -2172,8 +2352,8 @@
         .eq("status", "pending")
         .maybeSingle();
 
-      if (existingPending?.id) {
-        showMsg("offerMsg", "Ya enviaste una oferta a esta solicitud");
+      if (existingOffer?.id) {
+        showMsg("offerMsg", "Ya enviaste una oferta");
         return;
       }
 
@@ -2199,7 +2379,45 @@
       setTimeout(async () => {
         go("walkerMapScreen");
         await loadNearbyRequests();
-      }, 700);
+      }, 500);
+    }
+      if (!price || price <= 0) {
+        showMsg("offerMsg", "Tarifa inválida");
+        return;
+      }
+
+      const { data: req, error: reqError } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("id", selectedRequest)
+        .single();
+
+      if (reqError || !req) {
+        showMsg("offerMsg", "No se pudo cargar la solicitud");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("offers")
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
+
+      if (error) {
+        showMsg("offerMsg", error.message);
+        return;
+      }
+
+      await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
+      showMsg("offerMsg", "Oferta enviada");
+      await loadWalkerCredits();
+      setTimeout(() => go("providerHomeScreen"), 700);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
@@ -2241,7 +2459,14 @@
       if (error) return;
       $("ownerRequestsList").innerHTML = "";
 
-      const activeRequests = (data || []).filter(req => !isRequestExpired(req.created_at));
+      const activeRequests = [];
+      const seen = new Set();
+      for (const req of (data || [])) {
+        if (isRequestExpired(req.created_at)) continue;
+        if (seen.has(req.id)) continue;
+        seen.add(req.id);
+        activeRequests.push(req);
+      }
 
       if (!activeRequests.length) {
         $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes activas.</p>`;
@@ -2251,7 +2476,6 @@
 
       for (const req of activeRequests) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const remainMs = Math.max(0, (7 * 60 * 1000) - requestAgeMs(req.created_at));
 
         const card = document.createElement("div");
         card.className = "card";
@@ -2260,7 +2484,7 @@
           <p class="small">Estado: ${req.status || "-"}</p>
           <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
           <p class="small">Tiempo: ${req.time || 0} min</p>
-          <p class="small">Expira en ${formatRemaining(remainMs)}</p>
+          <p class="small">Expira en: ${Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000))} min</p>
           ${buildDogsHtml(dogs)}
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
@@ -2283,6 +2507,52 @@
         } else {
           for (const ofr of activeOffers) {
             const profile = await getWalkerProfileSummary(ofr.walker_id);
+            const offerCard = document.createElement("div");
+            offerCard.className = "card";
+            offerCard.innerHTML = `
+              <p><b>${profile.user?.name || "Paseador"}</b></p>
+              <p class="small">Tarifa ofrecida: S/${ofr.price}</p>
+              <p class="small">Paseos completados: ${profile.completedWalks || 0}</p>
+              <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+              <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+            `;
+            offerBox.appendChild(offerCard);
+          }
+        }
+      }
+
+      go("ownerRequestsScreen");
+    }
+
+      for (const req of data) {
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Estado: ${req.status || "-"}</p>
+          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          ${buildDogsHtml(dogs)}
+          <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
+        `;
+        $("ownerRequestsList").appendChild(card);
+
+        const { data: offers } = await supabaseClient
+          .from("offers")
+          .select("*")
+          .eq("request_id", req.id)
+          .order("created_at", { ascending: false });
+
+        const offerBox = $(`offers-${req.id}`);
+        offerBox.innerHTML = "";
+
+        if (!offers || offers.length === 0) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
+        } else {
+          for (const ofr of offers) {
+            const profile = await getWalkerProfileSummary(ofr.walker_id);
 
             const commentsHtml = profile.comments.length
               ? profile.comments.map(r => `
@@ -2293,23 +2563,29 @@
               `).join("")
               : `<p class="small">Sin comentarios todavía.</p>`;
 
-            const div = document.createElement("div");
-            div.className = "card";
-            div.innerHTML = `
+            const offerCard = document.createElement("div");
+            offerCard.className = "card";
+            offerCard.innerHTML = `
               <div class="profile-mini">
-                <img class="avatar-small" src="${profile.user?.selfie_url || ''}" onerror="this.style.display='none'">
-                <div>
+                ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+                <div style="flex:1">
                   <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
-                  <p class="small" style="margin:4px 0 0">Paseos completados: ${profile.completedWalks || 0}</p>
+                  <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
+                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
+                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
                 </div>
               </div>
-              <p class="small" style="margin-top:8px">Tarifa ofrecida: S/${ofr.price}</p>
-              <p class="small">Expira en ${formatRemaining(Math.max(0, 60000 - requestAgeMs(ofr.created_at)))}</p>
-              ${commentsHtml}
-              <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-              <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+
+              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
+              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
+              <div>${commentsHtml}</div>
+
+              ${ofr.status === "pending" ? `
+                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+              ` : ""}
             `;
-            offerBox.appendChild(div);
+            offerBox.appendChild(offerCard);
           }
         }
       }
@@ -2834,6 +3110,46 @@
       setTimeout(() => go("providerHotelRequestsScreen"), 700);
     }
 
+    async function openBuyCreditsScreen() {
+      const defaultType = currentProfile?.hotel_enabled ? "hotel" : "walker";
+      if ($("creditsProviderType")) $("creditsProviderType").value = defaultType;
+      await renderPaymentQrForCurrentUser();
+      go("buyCreditsScreen");
+    }
+
+    async function getPaymentQrForCountry(country, providerType) {
+      const { data, error } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("*")
+        .eq("country", country)
+        .in("provider_type", [providerType, "all"])
+        .order("updated_at", { ascending: false });
+      if (error) return null;
+      return data && data.length ? data[0] : null;
+    }
+
+    async function renderPaymentQrForCurrentUser() {
+      const providerType = $("creditsProviderType")?.value || "walker";
+      const country = currentProfile?.country || "peru";
+      $("buyCreditsCountryText").textContent = `País: ${COUNTRY_LABELS[country] || country}`;
+      const qr = await getPaymentQrForCountry(country, providerType);
+      const img = $("buyCreditsQrImage");
+      const link = $("buyCreditsQrLink");
+      const empty = $("buyCreditsQrEmpty");
+      $("buyCreditsMethodText").textContent = `Método: ${qr?.label || "-"}`;
+      if (qr?.image_url) {
+        img.src = qr.image_url;
+        img.classList.remove("hidden");
+        link.href = qr.image_url;
+        link.classList.remove("hidden");
+        empty.classList.add("hidden");
+      } else {
+        img.classList.add("hidden");
+        link.classList.add("hidden");
+        empty.classList.remove("hidden");
+      }
+    }
+
     async function loadWalkerCredits() {
       const { data } = await supabaseClient
         .from("provider_wallets")
@@ -2861,6 +3177,8 @@
     async function sendCreditOrder() {
       const amount = Number($("creditsAmount").value || 0);
       const file = $("paymentProof").files?.[0];
+      const providerType = $("creditsProviderType").value || "walker";
+      const paymentQr = await getPaymentQrForCountry(currentProfile?.country || "peru", providerType);
 
       if (!amount || amount < 5) {
         showMsg("buyCreditsMsg", "La compra mínima es 5");
@@ -2886,7 +3204,7 @@
           credits: amount,
           status: "pending",
           payment_proof_url: proofUrl,
-          provider_type: "walker"
+          provider_type: providerType
         });
 
       if (error) {
@@ -2894,13 +3212,13 @@
         return;
       }
 
-      await sendTelegramAlert(currentProfile?.name || "Usuario", currentProfile?.country || "peru", amount, proofUrl);
+      await sendTelegramAlert(currentProfile?.name || "Usuario", currentProfile?.country || "peru", amount, proofUrl, providerType, paymentQr?.label || "");
       await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.");
       showMsg("buyCreditsMsg", "Comprobante enviado");
       setTimeout(() => go("providerHomeScreen"), 700);
     }
 
-    async function sendTelegramAlert(name, country, amount, proofUrl) {
+    async function sendTelegramAlert(name, country, amount, proofUrl, providerType = "walker", paymentLabel = "") {
       try {
         await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-telegram-alert", {
           method: "POST",
@@ -2909,10 +3227,82 @@
             walkerName: name,
             country,
             amount,
-            proofUrl
+            proofUrl,
+            providerType,
+            paymentLabel
           })
         });
       } catch {}
+    }
+
+    async function saveAdminPaymentQr() {
+      const country = $("adminQrCountry").value;
+      const providerType = $("adminQrProviderType").value;
+      const label = $("adminQrLabel").value.trim();
+      const file = $("adminQrInput").files?.[0];
+      if (!country || !providerType || !label || !file) {
+        showMsg("adminQrMsg", "Completa país, tipo, etiqueta y foto");
+        return;
+      }
+      showMsg("adminQrMsg", "Subiendo QR...");
+      const imageUrl = await uploadSelectedFile(file, "service-evidence");
+      if (!imageUrl) {
+        showMsg("adminQrMsg", "No se pudo subir el QR");
+        return;
+      }
+      const payload = {
+        country,
+        provider_type: providerType,
+        label,
+        image_url: imageUrl,
+        updated_by: currentUser.id,
+        updated_at: new Date().toISOString()
+      };
+      const { data: existing } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("id")
+        .eq("country", country)
+        .eq("provider_type", providerType)
+        .maybeSingle();
+      const res = existing
+        ? await supabaseClient.from("admin_payment_qrs").update(payload).eq("id", existing.id)
+        : await supabaseClient.from("admin_payment_qrs").insert(payload);
+      if (res.error) {
+        showMsg("adminQrMsg", res.error.message);
+        return;
+      }
+      showMsg("adminQrMsg", "QR guardado");
+      $("adminQrInput").value = "";
+      $("adminQrPreview").classList.add("hidden");
+      await loadAdminDashboard();
+    }
+
+    async function loadAdminDashboard() {
+      $("adminWelcome").textContent = `Panel de ${currentProfile?.name || "administrador"}`;
+      const { data: qrs } = await supabaseClient
+        .from("admin_payment_qrs")
+        .select("*")
+        .order("updated_at", { ascending: false });
+      $("adminQrList").innerHTML = (qrs || []).length ? (qrs || []).map(item => `
+        <div class="card">
+          <p><b>${COUNTRY_LABELS[item.country] || item.country}</b> · ${item.provider_type}</p>
+          <p class="small">${item.label || "-"}</p>
+          ${item.image_url ? `<img src="${item.image_url}" class="wide-photo">` : ""}
+        </div>
+      `).join("") : `<p class="small">No hay QR cargados.</p>`;
+
+      const { data: orders } = await supabaseClient
+        .from("credit_orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      $("adminCreditOrdersList").innerHTML = (orders || []).length ? (orders || []).map(order => `
+        <div class="card">
+          <p><b>${order.provider_type || "walker"}</b> · ${order.amount} créditos</p>
+          <p class="small">Estado: ${order.status || "pending"}</p>
+          ${order.payment_proof_url ? `<a href="${order.payment_proof_url}" target="_blank" rel="noopener">Ver comprobante</a>` : ""}
+        </div>
+      `).join("") : `<p class="small">No hay órdenes recientes.</p>`;
     }
 
     async function createNotification(userId, title, message) {
@@ -2989,11 +3379,7 @@
       requestsChannel = supabaseClient
         .channel("requests-channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "walk_requests" }, async () => {
-          await cleanupExpiredWalkRequests();
-          if (currentProfile?.role === "owner") {
-            renderOwnerHomeMap();
-            await loadOwnerActiveRequests();
-          }
+          if (currentProfile?.role === "owner") renderOwnerHomeMap();
           if (currentProfile?.role === "walker") {
             if ($("walkerMapScreen").classList.contains("active")) loadNearbyRequests();
             renderProviderHomeMap();
