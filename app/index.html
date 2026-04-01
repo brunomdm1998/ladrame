@@ -285,6 +285,21 @@
     }
     .center { text-align: center; }
 
+    .floating-card {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 18px;
+      z-index: 20;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #e8edf3;
+      border-radius: 18px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.16);
+      padding: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .floating-card.hidden { display: none !important; }
+
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -311,7 +326,6 @@
         <option value="es">Español</option>
         <option value="en">English</option>
         <option value="jp">日本語</option>
-        <option value="pe">Perú</option>
       </select>
 
       <select id="signupCountry">
@@ -334,15 +348,8 @@
       </select>
 
       <div class="card">
-        <p><b>Selfie de verificación</b></p>
-        <input type="file" accept="image/*" capture="user" id="selfieInput">
-        <img id="selfiePreview" class="preview-img hidden">
-      </div>
-
-      <div class="card">
-        <p><b>Foto del DNI / documento</b></p>
-        <input type="file" accept="image/*" capture="environment" id="dniInput">
-        <img id="dniPreview" class="preview-img hidden">
+        <p><b>Verificación de identidad</b></p>
+        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -404,8 +411,7 @@
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-        <button onclick="loadOwnerRequests()">Solicitudes</button>
-      </div>
+              </div>
 
       <div class="home-action-row">
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
@@ -587,6 +593,7 @@
       <div id="walkerMap"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
+      <div id="walkerFloatingCard" class="floating-card hidden"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
     </div>
 
@@ -799,7 +806,6 @@
     let editingDogId = null;
 
     let selectedRequest = null;
-    let walkerVisibleRequests = new Map();
     let selectedHotelRequest = null;
     let selectedWalk = null;
     let selectedHotelBooking = null;
@@ -898,6 +904,37 @@
     function clearPendingVerificationEmail() {
       pendingVerificationEmail = "";
       localStorage.removeItem("ladrame_pending_verification_email");
+    }
+
+    function requestAgeMs(createdAt) {
+      return Date.now() - new Date(createdAt).getTime();
+    }
+
+    function isRequestExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
+    }
+
+    function getDismissedRequestIds() {
+      try {
+        return JSON.parse(localStorage.getItem(`ladrame_dismissed_requests_${currentUser?.id || "guest"}`) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setDismissedRequestIds(ids) {
+      localStorage.setItem(`ladrame_dismissed_requests_${currentUser?.id || "guest"}`, JSON.stringify(ids));
+    }
+
+    function addDismissedRequestId(requestId) {
+      const ids = new Set(getDismissedRequestIds());
+      ids.add(requestId);
+      setDismissedRequestIds(Array.from(ids));
+    }
+
+    function removeDismissedRequestId(requestId) {
+      const ids = getDismissedRequestIds().filter(id => id !== requestId);
+      setDismissedRequestIds(ids);
     }
 
     function normalizeDni(value) {
@@ -1036,16 +1073,9 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
-      const selfie = $("selfieInput").files?.[0];
-      const dniPhoto = $("dniInput").files?.[0];
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
-        return;
-      }
-
-      if (!selfie || !dniPhoto) {
-        showMsg("signupMsg", "Debes subir selfie y documento");
         return;
       }
 
@@ -1141,8 +1171,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1858,10 +1888,7 @@
       loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
-      walkerRefreshInterval = setInterval(async () => {
-        await loadNearbyRequests();
-        renderProviderHomeMap();
-      }, 5000);
+      walkerRefreshInterval = setInterval(loadNearbyRequests, 5000);
     }
 
     function getDistanceKm(lat1, lon1, lat2, lon2) {
@@ -1882,6 +1909,8 @@
       walkerRequestMarkers.forEach(m => m.remove());
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
+      const floating = $("walkerFloatingCard");
+      if (floating) floating.classList.add("hidden");
 
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
@@ -1891,16 +1920,29 @@
 
       if (error) return;
 
-      const now = Date.now();
+      const allOpen = (data || []).filter(req => !isRequestExpired(req.created_at));
       const uniqueByOwner = new Map();
-
-      for (const req of (data || [])) {
-        const expired = now - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
-        if (expired) continue;
+      for (const req of allOpen) {
         if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
       }
 
-      const activeRequests = Array.from(uniqueByOwner.values());
+      let activeRequests = Array.from(uniqueByOwner.values());
+      const requestIds = activeRequests.map(r => r.id);
+      let myOffers = [];
+      if (requestIds.length) {
+        const { data: myOffersData } = await supabaseClient
+          .from("offers")
+          .select("request_id,status")
+          .eq("walker_id", currentUser.id)
+          .in("request_id", requestIds);
+        myOffers = myOffersData || [];
+      }
+
+      const hiddenIds = new Set(getDismissedRequestIds());
+      for (const ofr of myOffers) {
+        if (["pending", "accepted", "rejected"].includes(ofr.status)) hiddenIds.add(ofr.request_id);
+      }
+      activeRequests = activeRequests.filter(req => !hiddenIds.has(req.id));
 
       for (const req of activeRequests) {
         if (req.lat == null || req.lng == null) continue;
@@ -1914,27 +1956,48 @@
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
 
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = `
           <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
           <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min · Expira en ${minsLeft} min</p>
           <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
-          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
+            <button class="secondary" onclick="dismissRequest('${req.id}')">Ocultar</button>
+          </div>
         `;
         $("requestsList").appendChild(div);
       }
 
       if (!activeRequests.length) {
         $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
+      } else if (floating) {
+        const req = activeRequests[0];
+        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
+        floating.innerHTML = `
+          <p style="margin:0 0 6px"><b>Solicitud activa cerca de ti</b></p>
+          <p class="small" style="margin:0 0 8px">Dueño ofrece S/${req.tariff} · ${req.time || 0} min · ${minsLeft} min restantes</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
+            <button class="secondary" onclick="dismissRequest('${req.id}')">Ocultar</button>
+          </div>
+        `;
+        floating.classList.remove("hidden");
       }
 
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
+    }
+
+    async function dismissRequest(requestId) {
+      addDismissedRequestId(requestId);
+      await loadNearbyRequests();
     }
 
     async function openOffer(requestId) {
@@ -2035,6 +2098,7 @@
       }
 
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
+      addDismissedRequestId(selectedRequest);
       showMsg("offerMsg", "Oferta enviada");
       setTimeout(async () => {
         go("walkerMapScreen");
