@@ -285,26 +285,6 @@
     }
     .center { text-align: center; }
 
-    .floating-request-card {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 72px;
-      z-index: 20;
-      background: rgba(255,255,255,.98);
-      border: 1px solid #e8edf4;
-      border-radius: 18px;
-      box-shadow: 0 12px 32px rgba(0,0,0,.16);
-      padding: 12px;
-      backdrop-filter: blur(8px);
-      animation: slideUpFade .25s ease;
-    }
-    .floating-request-card.hidden { display:none !important; }
-    .floating-mini-dogs { display:flex; gap:8px; overflow-x:auto; padding-top:6px; }
-    .floating-mini-dog { min-width:64px; text-align:center; }
-    .floating-mini-dog img { width:52px; height:52px; border-radius:12px; object-fit:cover; border:1px solid #eee; display:block; margin:0 auto 4px; }
-    @keyframes slideUpFade { from { opacity:0; transform:translateY(12px);} to { opacity:1; transform:translateY(0);} }
-
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -330,7 +310,8 @@
       <select id="signupLanguage">
         <option value="es">Español</option>
         <option value="en">English</option>
-        <option value="ja">日本語</option>
+        <option value="jp">日本語</option>
+        <option value="pe">Perú</option>
       </select>
 
       <select id="signupCountry">
@@ -353,8 +334,15 @@
       </select>
 
       <div class="card">
-        <p><b>Verificación de identidad</b></p>
-        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
+        <p><b>Selfie de verificación</b></p>
+        <input type="file" accept="image/*" capture="user" id="selfieInput">
+        <img id="selfiePreview" class="preview-img hidden">
+      </div>
+
+      <div class="card">
+        <p><b>Foto del DNI / documento</b></p>
+        <input type="file" accept="image/*" capture="environment" id="dniInput">
+        <img id="dniPreview" class="preview-img hidden">
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -408,8 +396,6 @@
         <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
       </div>
 
-      <div id="ownerActiveCards"></div>
-
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
       </div>
@@ -418,6 +404,7 @@
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
+        <button onclick="loadOwnerRequests()">Solicitudes</button>
       </div>
 
       <div class="home-action-row">
@@ -597,8 +584,7 @@
     <!-- WALKER MAP -->
     <div id="walkerMapScreen" class="screen">
       <h2>Solicitudes cercanas</h2>
-      <div id="walkerMap" style="position:relative"></div>
-      <div id="walkerFloatingCard" class="floating-request-card hidden"></div>
+      <div id="walkerMap"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
@@ -813,6 +799,7 @@
     let editingDogId = null;
 
     let selectedRequest = null;
+    let walkerVisibleRequests = new Map();
     let selectedHotelRequest = null;
     let selectedWalk = null;
     let selectedHotelBooking = null;
@@ -859,10 +846,6 @@
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
-      $("signupCountry")?.addEventListener("change", () => {
-        const lang = getPreferredLanguageForCountry($("signupCountry").value);
-        if ($("signupLanguage")) $("signupLanguage").value = lang;
-      });
       boot();
     });
 
@@ -919,16 +902,6 @@
 
     function normalizeDni(value) {
       return (value || "").replace(/\D/g, "");
-    }
-
-    function getPreferredLanguageForCountry(country) {
-      if (country === "usa") return "en";
-      if (country === "japan") return "ja";
-      return "es";
-    }
-
-    function isOlderThanMinutes(dateValue, minutes) {
-      return Date.now() - new Date(dateValue).getTime() >= minutes * 60 * 1000;
     }
 
     function getDogRiskClass(personality) {
@@ -1063,11 +1036,18 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
+      const selfie = $("selfieInput").files?.[0];
+      const dniPhoto = $("dniInput").files?.[0];
+
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
         return;
       }
 
+      if (!selfie || !dniPhoto) {
+        showMsg("signupMsg", "Debes subir selfie y documento");
+        return;
+      }
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
@@ -1310,7 +1290,6 @@
         $("ownerWelcome").textContent = "Hola " + (profile.name || "");
         loadDogs();
         updateHotelDogSelect();
-        loadOwnerRequests();
         startOwnerLiveGps();
         go("ownerHomeScreen");
 
@@ -1781,12 +1760,6 @@
         .eq("owner_id", currentUser.id)
         .eq("status", "open");
 
-      await supabaseClient
-        .from("walk_requests")
-        .update({ status: "expired" })
-        .eq("owner_id", currentUser.id)
-        .eq("status", "open");
-
       const { data: requestInserted, error } = await supabaseClient
         .from("walk_requests")
         .insert({
@@ -1879,27 +1852,16 @@
       }
     }
 
-    function getDismissedRequestIds() {
-      try { return JSON.parse(localStorage.getItem("ladrame_dismissed_requests") || "[]"); } catch { return []; }
-    }
-
-    function saveDismissedRequestIds(ids) {
-      localStorage.setItem("ladrame_dismissed_requests", JSON.stringify(ids));
-    }
-
-    function dismissRequestLocally(requestId) {
-      const ids = new Set(getDismissedRequestIds());
-      ids.add(requestId);
-      saveDismissedRequestIds(Array.from(ids));
-    }
-
     function openWalkerMapScreen() {
       go("walkerMapScreen");
       ensureWalkerMap();
       loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
-      walkerRefreshInterval = setInterval(loadNearbyRequests, 5000);
+      walkerRefreshInterval = setInterval(async () => {
+        await loadNearbyRequests();
+        renderProviderHomeMap();
+      }, 5000);
     }
 
     function getDistanceKm(lat1, lon1, lat2, lon2) {
@@ -1920,8 +1882,6 @@
       walkerRequestMarkers.forEach(m => m.remove());
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
-      const floating = $("walkerFloatingCard");
-      if (floating) { floating.innerHTML = ""; floating.classList.add("hidden"); }
 
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
@@ -1931,86 +1891,50 @@
 
       if (error) return;
 
-      const dismissed = new Set(getDismissedRequestIds());
       const now = Date.now();
       const uniqueByOwner = new Map();
+
       for (const req of (data || [])) {
-        if (dismissed.has(req.id)) continue;
-        if (now - new Date(req.created_at).getTime() >= 7 * 60 * 1000) continue;
+        const expired = now - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
+        if (expired) continue;
         if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
       }
 
-      const requestIds = Array.from(uniqueByOwner.values()).map(r => r.id);
-      let myOffers = [];
-      if (requestIds.length) {
-        const { data: myOffersData } = await supabaseClient
-          .from("offers")
-          .select("request_id,status")
-          .eq("walker_id", currentUser.id)
-          .in("request_id", requestIds);
-        myOffers = myOffersData || [];
-      }
-      const hiddenRequestIds = new Set(myOffers.filter(o => ["pending","accepted","rejected","cancelled"].includes(o.status)).map(o => o.request_id));
-      const activeRequests = Array.from(uniqueByOwner.values()).filter(req => !hiddenRequestIds.has(req.id));
+      const activeRequests = Array.from(uniqueByOwner.values());
 
       for (const req of activeRequests) {
         if (req.lat == null || req.lng == null) continue;
+
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
           if (distance > 3) continue;
         }
+
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
+
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+          ${buildDogsHtml(dogs)}
+          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
+        `;
+        $("requestsList").appendChild(div);
+      }
+
+      if (!activeRequests.length) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
       }
 
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
-
-      if (!activeRequests.length) {
-        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-        return;
-      }
-
-      const req = activeRequests[0];
-      const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-      let distance = null;
-      if (providerLat != null && providerLng != null) {
-        distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
-      }
-      const minsLeft = Math.max(0, 7 - Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000));
-      const dogsMini = dogs.map(d => `
-        <div class="floating-mini-dog">
-          ${d.photo_url ? `<img src="${d.photo_url}">` : `<div style="width:52px;height:52px;border-radius:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">🐶</div>`}
-          <div class="small">${d.name || "Perro"}</div>
-        </div>
-      `).join("");
-
-      const cardHtml = `
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-          <div style="flex:1;">
-            <p style="margin:0 0 4px 0;"><b>Solicitud cercana</b></p>
-            <p class="small" style="margin:0;">Tarifa dueño: S/${req.tariff} · ${req.time || 0} min</p>
-            <p class="small" style="margin:4px 0 0 0;">${distance != null ? `Distancia: ${distance.toFixed(2)} km · ` : ""}Expira en ${minsLeft} min</p>
-          </div>
-          <button type="button" class="secondary" style="width:auto;padding:8px 10px;margin:0;" onclick="dismissRequest('${req.id}')">Cerrar</button>
-        </div>
-        <div class="floating-mini-dogs">${dogsMini}</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px;">
-          <button type="button" onclick="openOffer('${req.id}')">Enviar mi tarifa</button>
-        </div>
-      `;
-
-      if (floating) {
-        floating.innerHTML = cardHtml;
-        floating.classList.remove("hidden");
-      }
-      $("requestsList").innerHTML = `<div class="card"><p class="small">Usa la tarjeta flotante sobre el mapa para responder.</p></div>`;
-    }
-
-    async function dismissRequest(requestId) {
-      dismissRequestLocally(requestId);
-      await loadNearbyRequests();
     }
 
     async function openOffer(requestId) {
@@ -2028,7 +1952,8 @@
         return;
       }
 
-      if (data.status !== "open" || isOlderThanMinutes(data.created_at, 7)) {
+      const expired = Date.now() - new Date(data.created_at).getTime() >= 7 * 60 * 1000;
+      if (data.status !== "open" || expired) {
         showMsg("offerMsg", "La solicitud expiró");
         await loadNearbyRequests();
         return;
@@ -2072,7 +1997,8 @@
         return;
       }
 
-      if (req.status !== "open" || isOlderThanMinutes(req.created_at, 7)) {
+      const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
+      if (req.status !== "open" || expired) {
         showMsg("offerMsg", "La solicitud expiró");
         await loadNearbyRequests();
         return;
@@ -2080,50 +2006,40 @@
 
       const { data: existingOffer } = await supabaseClient
         .from("offers")
-        .select("id,status")
+        .select("id")
         .eq("request_id", selectedRequest)
         .eq("walker_id", currentUser.id)
+        .eq("status", "pending")
         .maybeSingle();
 
-      if (existingOffer?.id && existingOffer.status === "pending") {
+      if (existingOffer?.id) {
         showMsg("offerMsg", "Ya enviaste una oferta");
         return;
       }
 
-      if (existingOffer?.id) {
-        const { error: updateError } = await supabaseClient
-          .from("offers")
-          .update({ price, offer_time: req.time, status: "pending" })
-          .eq("id", existingOffer.id);
-        if (updateError) {
-          showMsg("offerMsg", updateError.message);
-          return;
-        }
-      } else {
-        const { error } = await supabaseClient
-          .from("offers")
-          .insert({
-            request_id: selectedRequest,
-            walker_id: currentUser.id,
-            owner_id: req.owner_id,
-            dog_id: req.dog_id,
-            price,
-            offer_time: req.time,
-            status: "pending"
-          });
-        if (error) {
-          showMsg("offerMsg", error.message);
-          return;
-        }
+      const { error } = await supabaseClient
+        .from("offers")
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
+
+      if (error) {
+        showMsg("offerMsg", error.message);
+        return;
       }
 
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
-      dismissRequestLocally(selectedRequest);
       showMsg("offerMsg", "Oferta enviada");
       setTimeout(async () => {
         go("walkerMapScreen");
         await loadNearbyRequests();
-      }, 400);
+      }, 500);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
@@ -2989,17 +2905,6 @@
       walkTimerInterval = setInterval(render, 1000);
     }
 
-
-    async function drawRouteToOwner(walkerLng, walkerLat, ownerLngValue, ownerLatValue) {
-      if (!liveMap || ownerLngValue == null || ownerLatValue == null || walkerLng == null || walkerLat == null) return;
-      if (liveMap.getSource("walk-route")) {
-        liveMap.getSource("walk-route").setData({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: [[walkerLng, walkerLat], [ownerLngValue, ownerLatValue]] }
-        });
-      }
-    }
-
     async function ensureLiveMap() {
       if (!liveMap) {
         liveMap = new mapboxgl.Map({
@@ -3096,9 +3001,6 @@
         liveWalkerMarker.setLngLat([Number(latest[0].lng), Number(latest[0].lat)]);
         liveDogMarker.setLngLat([Number(latest[0].lng), Number(latest[0].lat)]);
         liveMap.setCenter([Number(latest[0].lng), Number(latest[0].lat)]);
-        if (role === "walker" && !walk.dog_received_at && ownerLat != null && ownerLng != null) {
-          await drawRouteToOwner(Number(latest[0].lng), Number(latest[0].lat), ownerLng, ownerLat);
-        }
       }
 
       if (walk.dog_received_at) {
@@ -3167,9 +3069,6 @@
 
         providerLat = lat;
         providerLng = lng;
-        if (liveMap && ownerLat != null && ownerLng != null) {
-          await drawRouteToOwner(lng, lat, ownerLng, ownerLat);
-        }
         await upsertWalkerLocation(lat, lng);
       }, () => {}, {
         enableHighAccuracy: true,
@@ -3197,9 +3096,6 @@
         dog_received_at: nowIso
       }).eq("id", selectedWalk);
 
-      if (liveMap?.getSource("walk-route")) {
-        liveMap.getSource("walk-route").setData({ type:"Feature", geometry:{ type:"LineString", coordinates: [] } });
-      }
       startWalkTimerFromDate(nowIso, requestedWalkMinutes);
       alert("Recojo confirmado");
     }
