@@ -1707,6 +1707,8 @@
         return;
       }
 
+      await supabaseClient.rpc("assign_walk_request_targets", { p_request_id: requestInserted.id });
+
       await createNotification(currentUser.id, "Solicitud publicada", `Publicaste una solicitud por S/${price} durante ${time} min.`);
 
       try {
@@ -1856,48 +1858,68 @@ function openWalkerMapScreen() {
       if (mapStack) mapStack.innerHTML = "";
       if (homeStack) homeStack.innerHTML = "";
 
-      const { data, error } = await supabaseClient
+      const { data: targets, error: targetsError } = await supabaseClient
+        .from("walk_request_targets")
+        .select("request_id,distance_km,status")
+        .eq("walker_id", currentUser.id)
+        .eq("status", "pending")
+        .order("delivered_at", { ascending: false });
+
+      if (targetsError) {
+        $("requestsList").innerHTML = `<p class="small">No se pudieron cargar tus solicitudes.</p>`;
+        return;
+      }
+
+      const requestIds = (targets || []).map(t => t.request_id);
+      if (!requestIds.length) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
+        if (currentProfile?.hotel_enabled) {
+          const { data: hotelReqs } = await supabaseClient
+            .from("hotel_requests")
+            .select("*")
+            .eq("status", "open")
+            .order("created_at", { ascending: false });
+          for (const req of (hotelReqs || [])) {
+            const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
+            const { data: owner } = await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle();
+            const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
+            const html = walkerHotelRequestCardHtml(req, dog, owner, dogPhoto);
+            const div = document.createElement("div");
+            div.className = "card";
+            div.innerHTML = html;
+            $("requestsList").appendChild(div);
+            if (mapStack) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; mapStack.appendChild(c); }
+          }
+        }
+        return;
+      }
+
+      const { data: requests, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
+        .in("id", requestIds)
         .eq("status", "open")
         .order("created_at", { ascending: false });
 
-      if (error) return;
+      if (error) {
+        $("requestsList").innerHTML = `<p class="small">No se pudieron cargar tus solicitudes.</p>`;
+        return;
+      }
 
-      const uniqueByOwner = new Map();
-      for (const req of (data || [])) {
-        if (req.lat == null || req.lng == null) continue;
+      const targetMap = new Map((targets || []).map(t => [t.request_id, t]));
+      const visibleRequests = (requests || []).filter(req => {
+        if (req.lat == null || req.lng == null) return false;
         const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
-        if (expired) continue;
-        if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
-      }
-
-      const requests = Array.from(uniqueByOwner.values());
-      const requestIds = requests.map(r => r.id);
-      let myOffers = [];
-      if (requestIds.length) {
-        const { data: myOffersData } = await supabaseClient
-          .from("offers")
-          .select("request_id,status,created_at")
-          .eq("walker_id", currentUser.id)
-          .in("request_id", requestIds);
-        myOffers = myOffersData || [];
-      }
-
-      const hiddenRequestIds = new Set();
-      for (const o of myOffers) {
-        if (o.status === "pending") hiddenRequestIds.add(o.request_id);
-        if (["accepted", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
-      }
-
-      const visibleRequests = requests.filter(req => !hiddenRequestIds.has(req.id));
+        return !expired;
+      });
 
       for (const req of visibleRequests) {
-        let distance = null;
-        if (providerLat != null && providerLng != null) {
+        const target = targetMap.get(req.id);
+        let distance = target?.distance_km != null ? Number(target.distance_km) : null;
+        if (distance == null && providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
-          if (distance > 3) continue;
         }
+        if (distance != null && distance > 5) continue;
 
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
@@ -1949,16 +1971,30 @@ function openWalkerMapScreen() {
     }
 
     async function dismissRequest(requestId) {
-      const existing = JSON.parse(localStorage.getItem("ladrame_walk_dismissed") || "[]");
-      if (!existing.includes(requestId)) {
-        existing.push(requestId);
-        localStorage.setItem("ladrame_walk_dismissed", JSON.stringify(existing));
+      const { error } = await supabaseClient.rpc("dismiss_walk_target", { p_request_id: requestId });
+      if (error) {
+        alert(error.message);
+        return;
       }
       await loadNearbyRequests();
     }
 
     async function openOffer(requestId) {
       selectedRequest = requestId;
+
+      const { data: target } = await supabaseClient
+        .from("walk_request_targets")
+        .select("request_id,status")
+        .eq("walker_id", currentUser.id)
+        .eq("request_id", requestId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!target) {
+        showMsg("offerMsg", "La solicitud ya no está disponible");
+        await loadNearbyRequests();
+        return;
+      }
 
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
@@ -1968,6 +2004,7 @@ function openWalkerMapScreen() {
 
       if (error || !data) {
         showMsg("offerMsg", "La solicitud ya no está disponible");
+        await loadNearbyRequests();
         return;
       }
 
@@ -2039,8 +2076,6 @@ function openWalkerMapScreen() {
         if (error) { showMsg("offerMsg", error.message); return; }
       }
 
-      const dismissed = JSON.parse(localStorage.getItem("ladrame_walk_dismissed") || "[]").filter(id => id !== selectedRequest);
-      localStorage.setItem("ladrame_walk_dismissed", JSON.stringify(dismissed));
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
       setTimeout(async () => {
