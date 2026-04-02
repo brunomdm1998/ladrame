@@ -285,6 +285,28 @@
     }
     .center { text-align: center; }
 
+    .floating-stack {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 18px;
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 46%;
+      overflow-y: auto;
+      pointer-events: none;
+    }
+    .floating-stack .card {
+      pointer-events: auto;
+      margin: 0;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #e8edf3;
+      box-shadow: 0 12px 28px rgba(0,0,0,.16);
+      backdrop-filter: blur(8px);
+    }
+
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -311,7 +333,6 @@
         <option value="es">Español</option>
         <option value="en">English</option>
         <option value="jp">日本語</option>
-        <option value="pe">Perú</option>
       </select>
 
       <select id="signupCountry">
@@ -334,15 +355,8 @@
       </select>
 
       <div class="card">
-        <p><b>Selfie de verificación</b></p>
-        <input type="file" accept="image/*" capture="user" id="selfieInput">
-        <img id="selfiePreview" class="preview-img hidden">
-      </div>
-
-      <div class="card">
-        <p><b>Foto del DNI / documento</b></p>
-        <input type="file" accept="image/*" capture="environment" id="dniInput">
-        <img id="dniPreview" class="preview-img hidden">
+        <p><b>Verificación de identidad</b></p>
+        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -398,6 +412,7 @@
 
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
+        <div id="ownerFloatingOffers" class="floating-stack"></div>
       </div>
 
       <div class="home-action-row">
@@ -585,6 +600,7 @@
     <div id="walkerMapScreen" class="screen">
       <h2>Solicitudes cercanas</h2>
       <div id="walkerMap"></div>
+      <div id="walkerFloatingStack" class="floating-stack"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
@@ -932,18 +948,6 @@
 
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    function requestAgeMs(createdAt) {
-      return Date.now() - new Date(createdAt).getTime();
-    }
-
-    function isWalkRequestExpired(createdAt) {
-      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
-    }
-
-    function isWalkerOfferExpired(createdAt) {
-      return requestAgeMs(createdAt) >= 30 * 1000;
     }
 
     async function compressImageIfNeeded(file, maxWidth = 1000, quality = 0.78) {
@@ -1298,6 +1302,7 @@
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
+        loadOwnerRequests();
         go("ownerHomeScreen");
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
@@ -1805,10 +1810,10 @@
       loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
-      walkerRefreshInterval = setInterval(async () => {
-        await loadNearbyRequests();
+      walkerRefreshInterval = setInterval(() => {
+        loadNearbyRequests();
         renderProviderHomeMap();
-      }, 3000);
+      }, 5000);
     }
 
     function getDistanceKm(lat1, lon1, lat2, lon2) {
@@ -1830,11 +1835,8 @@
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
 
-      const floating = $("walkerFloatingCard");
-      if (floating) {
-        floating.classList.add("hidden");
-        floating.innerHTML = "";
-      }
+      const stack = $("walkerFloatingStack");
+      if (stack) stack.innerHTML = "";
 
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
@@ -1866,8 +1868,8 @@
 
       const hiddenRequestIds = new Set();
       for (const o of myOffers) {
-        if (o.status === 'pending' && !isWalkerOfferExpired(o.created_at)) hiddenRequestIds.add(o.request_id);
-        if (["accepted", "rejected", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
+        if (o.status === "pending" && !isWalkerOfferExpired(o.created_at)) hiddenRequestIds.add(o.request_id);
+        if (["accepted", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
       }
 
       const visibleRequests = requests.filter(req => !hiddenRequestIds.has(req.id));
@@ -1878,73 +1880,37 @@
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
           if (distance > 3) continue;
         }
-        walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
-      }
 
-      const first = visibleRequests.find(req => {
-        if (providerLat == null || providerLng == null) return true;
-        return getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng)) <= 3;
-      });
+        walkerRequestMarkers.push(
+          createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap)
+        );
 
-      if (!first) {
-        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-        if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
-        return;
-      }
-
-      const dogs = await getRequestDogsWithPhotos(first.id, first.owner_id);
-      let distance = null;
-      if (providerLat != null && providerLng != null) distance = getDistanceKm(providerLat, providerLng, Number(first.lat), Number(first.lng));
-
-      if (floating) {
-        floating.innerHTML = `
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
           <p style="margin:0 0 6px"><b>Solicitud activa</b></p>
-          <p class="small" style="margin:0">Tarifa del dueño: S/${first.tariff}</p>
-          <p class="small" style="margin:4px 0 0">Tiempo: ${first.time || 0} min</p>
-          <p class="small" style="margin:4px 0 0">Expira en ${Math.max(0, 7 - Math.floor(requestAgeMs(first.created_at)/60000))} min</p>
-          <p class="small" style="margin:4px 0 8px">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ''}</p>
+          <p class="small" style="margin:0">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small" style="margin:4px 0 0">Tiempo: ${req.time || 0} min</p>
+          <p class="small" style="margin:4px 0 0">Expira en ${minsLeft} min</p>
+          <p class="small" style="margin:4px 0 8px">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button onclick="openOffer('${first.id}')">Enviar tarifa</button>
-            <button class="secondary" onclick="dismissRequest('${first.id}')">Ocultar</button>
+            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
+            <button class="secondary" onclick="dismissRequest('${req.id}')">Rechazar</button>
           </div>
         `;
-        floating.classList.remove("hidden");
+        if (stack) stack.appendChild(card);
       }
 
-      $("requestsList").innerHTML = "";
       if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
-    }
 
-    async function dismissRequest(requestId) {
-      const { data: req } = await supabaseClient
-        .from("walk_requests")
-        .select("owner_id,dog_id,time")
-        .eq("id", requestId)
-        .maybeSingle();
-      if (!req) return;
-
-      const { data: existing } = await supabaseClient
-        .from("offers")
-        .select("id")
-        .eq("request_id", requestId)
-        .eq("walker_id", currentUser.id)
-        .maybeSingle();
-
-      if (existing?.id) {
-        await supabaseClient.from("offers").update({ status: "dismissed" }).eq("id", existing.id);
+      if (!stack || !stack.children.length) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
       } else {
-        await supabaseClient.from("offers").insert({
-          request_id: requestId,
-          walker_id: currentUser.id,
-          owner_id: req.owner_id,
-          dog_id: req.dog_id,
-          price: 0,
-          offer_time: req.time,
-          status: "dismissed"
-        });
+        $("requestsList").innerHTML = "";
       }
-      await loadNearbyRequests();
     }
 
     async function openOffer(requestId) {
@@ -1954,17 +1920,10 @@
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("id", requestId)
-        .maybeSingle();
+        .single();
 
-      if (error || !data) {
-        showMsg("offerMsg", "La solicitud ya no está disponible");
-        await loadNearbyRequests();
-        return;
-      }
-
-      if (data.status !== "open" || isWalkRequestExpired(data.created_at)) {
-        showMsg("offerMsg", "La solicitud expiró");
-        await loadNearbyRequests();
+      if (error) {
+        showMsg("offerMsg", error.message);
         return;
       }
 
@@ -1975,7 +1934,7 @@
         <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
         <p><b>Tiempo:</b> ${data.time || 0} min</p>
         ${buildDogsHtml(dogs)}
-        <p class="small">Tu oferta durará 30 segundos. Si expira, puedes enviar otra.</p>
+        <p class="small">Debes enviar tu propia tarifa.</p>
       `;
 
       $("offerPriceInput").value = "";
@@ -1998,67 +1957,34 @@
         .from("walk_requests")
         .select("*")
         .eq("id", selectedRequest)
-        .maybeSingle();
+        .single();
 
       if (reqError || !req) {
-        showMsg("offerMsg", "La solicitud ya no está disponible");
-        await loadNearbyRequests();
+        showMsg("offerMsg", "No se pudo cargar la solicitud");
         return;
       }
 
-      if (req.status !== "open" || isWalkRequestExpired(req.created_at)) {
-        showMsg("offerMsg", "La solicitud expiró");
-        await loadNearbyRequests();
-        return;
-      }
-
-      const { data: existingOffer } = await supabaseClient
+      const { error } = await supabaseClient
         .from("offers")
-        .select("id,status,created_at")
-        .eq("request_id", selectedRequest)
-        .eq("walker_id", currentUser.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
 
-      if (existingOffer?.id && existingOffer.status === "pending" && !isWalkerOfferExpired(existingOffer.created_at)) {
-        showMsg("offerMsg", "Tu oferta sigue activa. Espera 30 segundos o cancélala.");
+      if (error) {
+        showMsg("offerMsg", error.message);
         return;
-      }
-
-      if (existingOffer?.id) {
-        const { error: updateError } = await supabaseClient
-          .from("offers")
-          .update({ price, offer_time: req.time, status: "pending" })
-          .eq("id", existingOffer.id);
-        if (updateError) {
-          showMsg("offerMsg", updateError.message);
-          return;
-        }
-      } else {
-        const { error } = await supabaseClient
-          .from("offers")
-          .insert({
-            request_id: selectedRequest,
-            walker_id: currentUser.id,
-            owner_id: req.owner_id,
-            dog_id: req.dog_id,
-            price,
-            offer_time: req.time,
-            status: "pending"
-          });
-        if (error) {
-          showMsg("offerMsg", error.message);
-          return;
-        }
       }
 
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
-      showMsg("offerMsg", "Oferta enviada por 30 segundos");
-      setTimeout(async () => {
-        go("walkerMapScreen");
-        await loadNearbyRequests();
-      }, 400);
+      showMsg("offerMsg", "Oferta enviada");
+      await loadWalkerCredits();
+      setTimeout(() => go("providerHomeScreen"), 700);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
@@ -2097,29 +2023,21 @@
         .order("created_at", { ascending: false });
 
       if (error) return;
+
+      const ownerFloating = $("ownerFloatingOffers");
+      if (ownerFloating) ownerFloating.innerHTML = "";
       $("ownerRequestsList").innerHTML = "";
 
       const activeRequests = (data || []).filter(req => !isWalkRequestExpired(req.created_at) && ["open","active"].includes(req.status));
 
       if (!activeRequests.length) {
+        if (ownerFloating) ownerFloating.innerHTML = "";
         $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
-        go("ownerRequestsScreen");
         return;
       }
 
       for (const req of activeRequests) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Estado: ${req.status || "-"}</p>
-          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
-          <p class="small">Tiempo: ${req.time || 0} min</p>
-          ${buildDogsHtml(dogs)}
-          <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
-        `;
-        $("ownerRequestsList").appendChild(card);
 
         const { data: offers } = await supabaseClient
           .from("offers")
@@ -2127,37 +2045,50 @@
           .eq("request_id", req.id)
           .order("created_at", { ascending: false });
 
-        const offerBox = $(`offers-${req.id}`);
-        offerBox.innerHTML = "";
         const activeOffers = (offers || []).filter(ofr => ofr.status === "pending" && !isWalkerOfferExpired(ofr.created_at));
 
-        if (!activeOffers.length) {
-          offerBox.innerHTML = `<p class="small">Sin ofertas activas.</p>`;
-        } else {
-          for (const ofr of activeOffers) {
-            const profile = await getWalkerProfileSummary(ofr.walker_id);
-            const offerCard = document.createElement("div");
-            offerCard.className = "card";
-            offerCard.innerHTML = `
-              <div class="profile-mini">
-                ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-                <div style="flex:1">
-                  <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
-                  <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
-                </div>
+        if (!activeOffers.length) continue;
+
+        for (const ofr of activeOffers) {
+          const profile = await getWalkerProfileSummary(ofr.walker_id);
+          const offerHtml = `
+            <div class="profile-mini">
+              ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+              <div style="flex:1">
+                <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+                <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
+                <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
               </div>
-              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Expira en ${Math.max(0, 30 - Math.floor(requestAgeMs(ofr.created_at)/1000))} seg</p>
+            </div>
+            <p class="small" style="margin:8px 0 0">Tu tarifa: S/${req.tariff || "-"}</p>
+            <p style="margin-top:8px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
+            <p class="small">Expira en ${Math.max(0, 30 - Math.floor(requestAgeMs(ofr.created_at)/1000))} seg</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
               <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-            `;
-            offerBox.appendChild(offerCard);
-          }
+            </div>
+          `;
+          const floatCard = document.createElement("div");
+          floatCard.className = "card";
+          floatCard.innerHTML = offerHtml;
+          if (ownerFloating) ownerFloating.appendChild(floatCard);
+
+          const reqCard = document.createElement("div");
+          reqCard.className = "card";
+          reqCard.innerHTML = `
+            <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+            <p class="small">Estado: ${req.status || "-"}</p>
+            <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
+            <p class="small">Tiempo: ${req.time || 0} min</p>
+            ${buildDogsHtml(dogs)}
+            <div class="card" style="margin-top:8px;">${offerHtml}</div>
+          `;
+          $("ownerRequestsList").appendChild(reqCard);
         }
       }
 
-      go("ownerRequestsScreen");
+      if (ownerFloating && !ownerFloating.children.length) ownerFloating.innerHTML = "";
+      if (!$("ownerRequestsList").children.length) $("ownerRequestsList").innerHTML = `<p class="small">Sin ofertas activas.</p>`;
     }
 
     async function acceptOffer(offerId) {
@@ -2846,15 +2777,9 @@
 
       offersChannel = supabaseClient
         .channel("offers-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, async ({ new: offer, old: oldOffer }) => {
-          const ownerId = offer?.owner_id || oldOffer?.owner_id;
-          const walkerId = offer?.walker_id || oldOffer?.walker_id;
-
-          if (currentProfile?.role === "owner" && ownerId === currentUser.id) {
-            await loadOwnerRequests();
-          }
-          if (currentProfile?.role === "walker" && walkerId === currentUser.id) {
-            await loadNearbyRequests();
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
+          if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
+            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
           }
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
