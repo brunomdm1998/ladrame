@@ -285,28 +285,6 @@
     }
     .center { text-align: center; }
 
-    .floating-stack {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 18px;
-      z-index: 25;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 46%;
-      overflow-y: auto;
-      pointer-events: none;
-    }
-    .floating-stack .card {
-      pointer-events: auto;
-      margin: 0;
-      background: rgba(255,255,255,.98);
-      border: 1px solid #e8edf3;
-      box-shadow: 0 12px 28px rgba(0,0,0,.16);
-      backdrop-filter: blur(8px);
-    }
-
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -333,6 +311,7 @@
         <option value="es">Español</option>
         <option value="en">English</option>
         <option value="jp">日本語</option>
+        <option value="pe">Perú</option>
       </select>
 
       <select id="signupCountry">
@@ -355,8 +334,15 @@
       </select>
 
       <div class="card">
-        <p><b>Verificación de identidad</b></p>
-        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
+        <p><b>Selfie de verificación</b></p>
+        <input type="file" accept="image/*" capture="user" id="selfieInput">
+        <img id="selfiePreview" class="preview-img hidden">
+      </div>
+
+      <div class="card">
+        <p><b>Foto del DNI / documento</b></p>
+        <input type="file" accept="image/*" capture="environment" id="dniInput">
+        <img id="dniPreview" class="preview-img hidden">
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -412,7 +398,6 @@
 
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
-        <div id="ownerFloatingOffers" class="floating-stack"></div>
       </div>
 
       <div class="home-action-row">
@@ -600,7 +585,6 @@
     <div id="walkerMapScreen" class="screen">
       <h2>Solicitudes cercanas</h2>
       <div id="walkerMap"></div>
-      <div id="walkerFloatingStack" class="floating-stack"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
@@ -1302,7 +1286,6 @@
         loadDogs();
         updateHotelDogSelect();
         getOwnerLocation();
-        loadOwnerRequests();
         go("ownerHomeScreen");
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
@@ -1610,6 +1593,38 @@
       `).join("");
     }
 
+    function requestAgeMs(createdAt) {
+      return Date.now() - new Date(createdAt).getTime();
+    }
+
+    function isRequestExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
+    }
+
+    function getDismissedRequestIds() {
+      try {
+        return JSON.parse(localStorage.getItem("ladrame_dismissed_requests") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function addDismissedRequestId(requestId) {
+      const ids = new Set(getDismissedRequestIds());
+      ids.add(requestId);
+      localStorage.setItem("ladrame_dismissed_requests", JSON.stringify(Array.from(ids)));
+    }
+
+    function removeDismissedRequestId(requestId) {
+      const ids = new Set(getDismissedRequestIds());
+      ids.delete(requestId);
+      localStorage.setItem("ladrame_dismissed_requests", JSON.stringify(Array.from(ids)));
+    }
+
+    function clearDismissedRequestIds() {
+      localStorage.removeItem("ladrame_dismissed_requests");
+    }
+
     async function saveDog() {
       const name = $("dogNameInput").value.trim();
       const size = $("dogSizeInput").value;
@@ -1835,9 +1850,6 @@
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
 
-      const stack = $("walkerFloatingStack");
-      if (stack) stack.innerHTML = "";
-
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -1846,70 +1858,34 @@
 
       if (error) return;
 
-      const uniqueByOwner = new Map();
       for (const req of (data || [])) {
         if (req.lat == null || req.lng == null) continue;
-        if (isWalkRequestExpired(req.created_at)) continue;
-        if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
-      }
 
-      const requests = Array.from(uniqueByOwner.values());
-      const requestIds = requests.map(r => r.id);
-      let myOffers = [];
-
-      if (requestIds.length) {
-        const { data: myOffersData } = await supabaseClient
-          .from("offers")
-          .select("request_id,status,created_at")
-          .eq("walker_id", currentUser.id)
-          .in("request_id", requestIds);
-        myOffers = myOffersData || [];
-      }
-
-      const hiddenRequestIds = new Set();
-      for (const o of myOffers) {
-        if (o.status === "pending" && !isWalkerOfferExpired(o.created_at)) hiddenRequestIds.add(o.request_id);
-        if (["accepted", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
-      }
-
-      const visibleRequests = requests.filter(req => !hiddenRequestIds.has(req.id));
-
-      for (const req of visibleRequests) {
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
           if (distance > 3) continue;
         }
 
-        walkerRequestMarkers.push(
-          createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap)
-        );
+        walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
 
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <p style="margin:0 0 6px"><b>Solicitud activa</b></p>
-          <p class="small" style="margin:0">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small" style="margin:4px 0 0">Tiempo: ${req.time || 0} min</p>
-          <p class="small" style="margin:4px 0 0">Expira en ${minsLeft} min</p>
-          <p class="small" style="margin:4px 0 8px">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
           ${buildDogsHtml(dogs)}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
-            <button class="secondary" onclick="dismissRequest('${req.id}')">Rechazar</button>
-          </div>
+          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
         `;
-        if (stack) stack.appendChild(card);
+        $("requestsList").appendChild(div);
       }
 
-      if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
-
-      if (!stack || !stack.children.length) {
-        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-      } else {
-        $("requestsList").innerHTML = "";
+      if (providerLat != null && providerLng != null) {
+        walkerMap.setCenter([providerLng, providerLat]);
       }
     }
 
@@ -1957,34 +1933,63 @@
         .from("walk_requests")
         .select("*")
         .eq("id", selectedRequest)
-        .single();
+        .maybeSingle();
 
       if (reqError || !req) {
-        showMsg("offerMsg", "No se pudo cargar la solicitud");
+        showMsg("offerMsg", "La solicitud ya no está disponible");
+        await loadNearbyRequests();
         return;
       }
 
-      const { error } = await supabaseClient
+      if (req.status !== "open" || isRequestExpired(req.created_at)) {
+        showMsg("offerMsg", "La solicitud expiró");
+        await loadNearbyRequests();
+        return;
+      }
+
+      const { data: existingOffer } = await supabaseClient
         .from("offers")
-        .insert({
-          request_id: selectedRequest,
-          walker_id: currentUser.id,
-          owner_id: req.owner_id,
-          dog_id: req.dog_id,
-          price,
-          offer_time: req.time,
-          status: "pending"
-        });
+        .select("id,status")
+        .eq("request_id", selectedRequest)
+        .eq("walker_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOffer?.id && existingOffer.status === "pending") {
+        showMsg("offerMsg", "Ya enviaste una oferta");
+        return;
+      }
+
+      const payload = {
+        request_id: selectedRequest,
+        walker_id: currentUser.id,
+        owner_id: req.owner_id,
+        dog_id: req.dog_id,
+        price,
+        offer_time: req.time,
+        status: "pending"
+      };
+
+      let error = null;
+      if (existingOffer?.id) {
+        ({ error } = await supabaseClient.from("offers").update(payload).eq("id", existingOffer.id));
+      } else {
+        ({ error } = await supabaseClient.from("offers").insert(payload));
+      }
 
       if (error) {
         showMsg("offerMsg", error.message);
         return;
       }
 
+      addDismissedRequestId(selectedRequest);
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
-      await loadWalkerCredits();
-      setTimeout(() => go("providerHomeScreen"), 700);
+      setTimeout(async () => {
+        go("walkerMapScreen");
+        await loadNearbyRequests();
+      }, 400);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
@@ -2023,16 +2028,14 @@
         .order("created_at", { ascending: false });
 
       if (error) return;
-
+      $("ownerRequestsList").innerHTML = "";
       const ownerFloating = $("ownerFloatingOffers");
       if (ownerFloating) ownerFloating.innerHTML = "";
-      $("ownerRequestsList").innerHTML = "";
 
-      const activeRequests = (data || []).filter(req => !isWalkRequestExpired(req.created_at) && ["open","active"].includes(req.status));
+      const activeRequests = (data || []).filter(req => req.status === "open" && !isRequestExpired(req.created_at));
 
       if (!activeRequests.length) {
-        if (ownerFloating) ownerFloating.innerHTML = "";
-        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
+        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes activas.</p>`;
         return;
       }
 
@@ -2045,13 +2048,26 @@
           .eq("request_id", req.id)
           .order("created_at", { ascending: false });
 
-        const activeOffers = (offers || []).filter(ofr => ofr.status === "pending" && !isWalkerOfferExpired(ofr.created_at));
+        const activeOffers = (offers || []).filter(ofr => ofr.status === "pending");
+        const reqCard = document.createElement("div");
+        reqCard.className = "card";
+        reqCard.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          ${buildDogsHtml(dogs)}
+          <div id="offers-${req.id}"><p class="small">${activeOffers.length ? 'Cargando ofertas...' : 'Sin ofertas activas.'}</p></div>
+        `;
+        $("ownerRequestsList").appendChild(reqCard);
 
-        if (!activeOffers.length) continue;
+        const offerBox = $("offers-${req.id}");
+        offerBox.innerHTML = "";
 
         for (const ofr of activeOffers) {
           const profile = await getWalkerProfileSummary(ofr.walker_id);
-          const offerHtml = `
+          const offerCard = document.createElement("div");
+          offerCard.className = "card";
+          offerCard.innerHTML = `
             <div class="profile-mini">
               ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
               <div style="flex:1">
@@ -2060,35 +2076,29 @@
                 <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
               </div>
             </div>
-            <p class="small" style="margin:8px 0 0">Tu tarifa: S/${req.tariff || "-"}</p>
-            <p style="margin-top:8px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-            <p class="small">Expira en ${Math.max(0, 30 - Math.floor(requestAgeMs(ofr.created_at)/1000))} seg</p>
+            <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
               <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
             </div>
           `;
-          const floatCard = document.createElement("div");
-          floatCard.className = "card";
-          floatCard.innerHTML = offerHtml;
-          if (ownerFloating) ownerFloating.appendChild(floatCard);
+          offerBox.appendChild(offerCard);
 
-          const reqCard = document.createElement("div");
-          reqCard.className = "card";
-          reqCard.innerHTML = `
-            <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-            <p class="small">Estado: ${req.status || "-"}</p>
-            <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
-            <p class="small">Tiempo: ${req.time || 0} min</p>
-            ${buildDogsHtml(dogs)}
-            <div class="card" style="margin-top:8px;">${offerHtml}</div>
-          `;
-          $("ownerRequestsList").appendChild(reqCard);
+          if (ownerFloating) {
+            const floatingCard = document.createElement("div");
+            floatingCard.className = "card";
+            floatingCard.innerHTML = `
+              <p style="margin:0 0 6px"><b>Nueva oferta para tu solicitud</b></p>
+              <p class="small" style="margin:0 0 6px">${profile.user?.name || "Paseador"} ofrece S/${ofr.price}</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+              </div>
+            `;
+            ownerFloating.appendChild(floatingCard);
+          }
         }
       }
-
-      if (ownerFloating && !ownerFloating.children.length) ownerFloating.innerHTML = "";
-      if (!$("ownerRequestsList").children.length) $("ownerRequestsList").innerHTML = `<p class="small">Sin ofertas activas.</p>`;
     }
 
     async function acceptOffer(offerId) {
