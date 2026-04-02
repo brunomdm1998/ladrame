@@ -555,6 +555,7 @@
 
       <div class="home-map-wrap">
         <div id="providerHomeMap"></div>
+        <div id="providerFloatingStack" class="floating-stack"></div>
       </div>
 
       <div class="card">
@@ -585,6 +586,7 @@
     <div id="walkerMapScreen" class="screen">
       <h2>Solicitudes cercanas</h2>
       <div id="walkerMap"></div>
+      <div id="walkerFloatingStack" class="floating-stack"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
@@ -1415,6 +1417,7 @@
       }
 
       renderProviderHomeMap();
+      await loadNearbyRequests();
     }
 
     async function renderProviderHomeMap() {
@@ -1591,38 +1594,6 @@
           <p class="small">Recomendaciones: ${dog.recommendations || "-"}</p>
         </div>
       `).join("");
-    }
-
-    function requestAgeMs(createdAt) {
-      return Date.now() - new Date(createdAt).getTime();
-    }
-
-    function isRequestExpired(createdAt) {
-      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
-    }
-
-    function getDismissedRequestIds() {
-      try {
-        return JSON.parse(localStorage.getItem("ladrame_dismissed_requests") || "[]");
-      } catch {
-        return [];
-      }
-    }
-
-    function addDismissedRequestId(requestId) {
-      const ids = new Set(getDismissedRequestIds());
-      ids.add(requestId);
-      localStorage.setItem("ladrame_dismissed_requests", JSON.stringify(Array.from(ids)));
-    }
-
-    function removeDismissedRequestId(requestId) {
-      const ids = new Set(getDismissedRequestIds());
-      ids.delete(requestId);
-      localStorage.setItem("ladrame_dismissed_requests", JSON.stringify(Array.from(ids)));
-    }
-
-    function clearDismissedRequestIds() {
-      localStorage.removeItem("ladrame_dismissed_requests");
     }
 
     async function saveDog() {
@@ -1819,14 +1790,44 @@
       }
     }
 
-    function openWalkerMapScreen() {
+    function walkerRequestCardHtml(req, dogs, distance) {
+      const minsLeft = Math.max(0, 7 - Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000));
+      return `
+        <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+        <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+        <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
+        <p class="small">Expira en ${minsLeft} min</p>
+        <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
+        ${buildDogsHtml(dogs)}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
+          <button class="secondary" onclick="dismissRequest('${req.id}')">Rechazar</button>
+        </div>
+      `;
+    }
+
+    function walkerHotelRequestCardHtml(req, dog, owner, dogPhoto) {
+      return `
+        <p><b>Solicitud de hotel</b></p>
+        <p class="small">Dueño: ${owner?.name || "-"}</p>
+        <p class="small">Perro: ${dog?.name || "Perro"}</p>
+        ${dogPhoto ? `<img src="${dogPhoto}" class="wide-photo">` : ""}
+        <p class="small">Check-in: ${req.check_in_date}</p>
+        <p class="small">Check-out: ${req.check_out_date}</p>
+        <p class="small">Horas paseo/día: ${req.walk_hours_per_day || 0}</p>
+        <p class="small">Veces paseo/día: ${req.walk_times_per_day || 0}</p>
+        <button class="orange" onclick="openHotelOfferScreen('${req.id}')">Enviar tarifa hotel</button>
+      `;
+    }
+
+function openWalkerMapScreen() {
       go("walkerMapScreen");
       ensureWalkerMap();
       loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
-      walkerRefreshInterval = setInterval(() => {
-        loadNearbyRequests();
+      walkerRefreshInterval = setInterval(async () => {
+        await loadNearbyRequests();
         renderProviderHomeMap();
       }, 5000);
     }
@@ -1850,6 +1851,11 @@
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
 
+      const mapStack = $("walkerFloatingStack");
+      const homeStack = $("providerFloatingStack");
+      if (mapStack) mapStack.innerHTML = "";
+      if (homeStack) homeStack.innerHTML = "";
+
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -1858,9 +1864,35 @@
 
       if (error) return;
 
+      const uniqueByOwner = new Map();
       for (const req of (data || [])) {
         if (req.lat == null || req.lng == null) continue;
+        const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
+        if (expired) continue;
+        if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
+      }
 
+      const requests = Array.from(uniqueByOwner.values());
+      const requestIds = requests.map(r => r.id);
+      let myOffers = [];
+      if (requestIds.length) {
+        const { data: myOffersData } = await supabaseClient
+          .from("offers")
+          .select("request_id,status,created_at")
+          .eq("walker_id", currentUser.id)
+          .in("request_id", requestIds);
+        myOffers = myOffersData || [];
+      }
+
+      const hiddenRequestIds = new Set();
+      for (const o of myOffers) {
+        if (o.status === "pending") hiddenRequestIds.add(o.request_id);
+        if (["accepted", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
+      }
+
+      const visibleRequests = requests.filter(req => !hiddenRequestIds.has(req.id));
+
+      for (const req of visibleRequests) {
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
@@ -1868,25 +1900,61 @@
         }
 
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
-
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const html = walkerRequestCardHtml(req, dogs, distance);
 
         const div = document.createElement("div");
         div.className = "card";
-        div.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min</p>
-          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
-          ${buildDogsHtml(dogs)}
-          <button onclick="openOffer('${req.id}')">Responder con mi tarifa</button>
-        `;
+        div.innerHTML = html;
         $("requestsList").appendChild(div);
+
+        const floatCard = document.createElement("div");
+        floatCard.className = "card";
+        floatCard.innerHTML = html;
+        if (mapStack) mapStack.appendChild(floatCard);
+
+        const homeCard = document.createElement("div");
+        homeCard.className = "card";
+        homeCard.innerHTML = html;
+        if (homeStack) homeStack.appendChild(homeCard);
+      }
+
+      if (currentProfile?.hotel_enabled) {
+        const { data: hotelReqs } = await supabaseClient
+          .from("hotel_requests")
+          .select("*")
+          .eq("status", "open")
+          .order("created_at", { ascending: false });
+
+        for (const req of (hotelReqs || [])) {
+          const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
+          const { data: owner } = await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle();
+          const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
+          const html = walkerHotelRequestCardHtml(req, dog, owner, dogPhoto);
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = html;
+          $("requestsList").appendChild(div);
+          if (mapStack) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; mapStack.appendChild(c); }
+        }
+      }
+
+      if (!$("requestsList").innerHTML.trim()) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
       }
 
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
+    }
+
+    async function dismissRequest(requestId) {
+      const existing = JSON.parse(localStorage.getItem("ladrame_walk_dismissed") || "[]");
+      if (!existing.includes(requestId)) {
+        existing.push(requestId);
+        localStorage.setItem("ladrame_walk_dismissed", JSON.stringify(existing));
+      }
+      await loadNearbyRequests();
     }
 
     async function openOffer(requestId) {
@@ -1896,10 +1964,10 @@
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("id", requestId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        showMsg("offerMsg", error.message);
+      if (error || !data) {
+        showMsg("offerMsg", "La solicitud ya no está disponible");
         return;
       }
 
@@ -1935,15 +2003,14 @@
         .eq("id", selectedRequest)
         .maybeSingle();
 
-      if (reqError || !req) {
+      if (reqError || !req || req.status !== "open") {
         showMsg("offerMsg", "La solicitud ya no está disponible");
-        await loadNearbyRequests();
         return;
       }
 
-      if (req.status !== "open" || isRequestExpired(req.created_at)) {
+      const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
+      if (expired) {
         showMsg("offerMsg", "La solicitud expiró");
-        await loadNearbyRequests();
         return;
       }
 
@@ -1952,8 +2019,6 @@
         .select("id,status")
         .eq("request_id", selectedRequest)
         .eq("walker_id", currentUser.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
         .maybeSingle();
 
       if (existingOffer?.id && existingOffer.status === "pending") {
@@ -1961,63 +2026,27 @@
         return;
       }
 
-      const payload = {
-        request_id: selectedRequest,
-        walker_id: currentUser.id,
-        owner_id: req.owner_id,
-        dog_id: req.dog_id,
-        price,
-        offer_time: req.time,
-        status: "pending"
-      };
-
-      let error = null;
       if (existingOffer?.id) {
-        ({ error } = await supabaseClient.from("offers").update(payload).eq("id", existingOffer.id));
+        const { error } = await supabaseClient
+          .from("offers")
+          .update({ price, offer_time: req.time, status: "pending", created_at: new Date().toISOString() })
+          .eq("id", existingOffer.id);
+        if (error) { showMsg("offerMsg", error.message); return; }
       } else {
-        ({ error } = await supabaseClient.from("offers").insert(payload));
+        const { error } = await supabaseClient
+          .from("offers")
+          .insert({ request_id: selectedRequest, walker_id: currentUser.id, owner_id: req.owner_id, dog_id: req.dog_id, price, offer_time: req.time, status: "pending" });
+        if (error) { showMsg("offerMsg", error.message); return; }
       }
 
-      if (error) {
-        showMsg("offerMsg", error.message);
-        return;
-      }
-
-      addDismissedRequestId(selectedRequest);
+      const dismissed = JSON.parse(localStorage.getItem("ladrame_walk_dismissed") || "[]").filter(id => id !== selectedRequest);
+      localStorage.setItem("ladrame_walk_dismissed", JSON.stringify(dismissed));
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
       setTimeout(async () => {
-        go("walkerMapScreen");
+        go("providerHomeScreen");
         await loadNearbyRequests();
       }, 400);
-    }
-
-    async function getWalkerProfileSummary(walkerUserId) {
-      const result = { user: null, walker: null, completedWalks: 0, comments: [] };
-
-      const { data: user } = await supabaseClient.from("users").select("*").eq("id", walkerUserId).maybeSingle();
-      result.user = user || null;
-
-      const { data: walker } = await supabaseClient.from("walkers").select("*").eq("user_id", walkerUserId).maybeSingle();
-      result.walker = walker || null;
-
-      const { data: completed } = await supabaseClient
-        .from("walks")
-        .select("id")
-        .eq("walker_id", walkerUserId)
-        .in("status", ["completed", "finished"]);
-
-      result.completedWalks = completed ? completed.length : 0;
-
-      const { data: reviews } = await supabaseClient
-        .from("reviews")
-        .select("*")
-        .eq("reviewee_id", walkerUserId)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      result.comments = reviews || [];
-      return result;
     }
 
     async function loadOwnerRequests() {
@@ -2025,233 +2054,70 @@
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("owner_id", currentUser.id)
+        .eq("status", "open")
         .order("created_at", { ascending: false });
 
       if (error) return;
       $("ownerRequestsList").innerHTML = "";
-      const ownerFloating = $("ownerFloatingOffers");
-      if (ownerFloating) ownerFloating.innerHTML = "";
+      const floating = $("ownerFloatingOffers");
+      if (floating) floating.innerHTML = "";
 
-      const activeRequests = (data || []).filter(req => req.status === "open" && !isRequestExpired(req.created_at));
+      const activeReqs = (data || []).filter(req => Date.now() - new Date(req.created_at).getTime() < 7 * 60 * 1000);
 
-      if (!activeRequests.length) {
-        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes activas.</p>`;
+      if (!activeReqs.length) {
+        $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
+        go("ownerRequestsScreen");
         return;
       }
 
-      for (const req of activeRequests) {
+      for (const req of activeReqs) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          ${buildDogsHtml(dogs)}
+          <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
+        `;
+        $("ownerRequestsList").appendChild(card);
 
         const { data: offers } = await supabaseClient
           .from("offers")
           .select("*")
           .eq("request_id", req.id)
+          .eq("status", "pending")
           .order("created_at", { ascending: false });
 
-        const activeOffers = (offers || []).filter(ofr => ofr.status === "pending");
-        const reqCard = document.createElement("div");
-        reqCard.className = "card";
-        reqCard.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
-          <p class="small">Tiempo: ${req.time || 0} min</p>
-          ${buildDogsHtml(dogs)}
-          <div id="offers-${req.id}"><p class="small">${activeOffers.length ? 'Cargando ofertas...' : 'Sin ofertas activas.'}</p></div>
-        `;
-        $("ownerRequestsList").appendChild(reqCard);
-
-        const offerBox = $("offers-${req.id}");
+        const offerBox = $("offers-" + req.id);
         offerBox.innerHTML = "";
+        const activeOffers = (offers || []).filter(ofr => req.status === "open");
 
-        for (const ofr of activeOffers) {
-          const profile = await getWalkerProfileSummary(ofr.walker_id);
-          const offerCard = document.createElement("div");
-          offerCard.className = "card";
-          offerCard.innerHTML = `
-            <div class="profile-mini">
-              ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
-              <div style="flex:1">
-                <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
-                <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-                <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
-              </div>
-            </div>
-            <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-              <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-            </div>
-          `;
-          offerBox.appendChild(offerCard);
-
-          if (ownerFloating) {
-            const floatingCard = document.createElement("div");
-            floatingCard.className = "card";
-            floatingCard.innerHTML = `
-              <p style="margin:0 0 6px"><b>Nueva oferta para tu solicitud</b></p>
-              <p class="small" style="margin:0 0 6px">${profile.user?.name || "Paseador"} ofrece S/${ofr.price}</p>
+        if (!activeOffers.length) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas activas.</p>`;
+        } else {
+          for (const ofr of activeOffers) {
+            const profile = await getWalkerProfileSummary(ofr.walker_id);
+            const html = `
+              <p><b>${profile.user?.name || "Paseador"}</b></p>
+              <p class="small">Tarifa ofrecida: S/${ofr.price}</p>
+              <p class="small">Paseos completados: ${profile.completedWalks || 0}</p>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
                 <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
               </div>
             `;
-            ownerFloating.appendChild(floatingCard);
+            const offerCard = document.createElement("div");
+            offerCard.className = "card";
+            offerCard.innerHTML = html;
+            offerBox.appendChild(offerCard);
+            if (floating) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; floating.appendChild(c); }
           }
         }
       }
-    }
 
-    async function acceptOffer(offerId) {
-      const { error } = await supabaseClient.rpc("accept_offer", { p_offer_id: offerId });
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      const { data: accepted } = await supabaseClient
-        .from("offers")
-        .select("*")
-        .eq("id", offerId)
-        .single();
-
-      if (accepted?.walker_id) {
-        await createNotification(accepted.walker_id, "Oferta aceptada", "Tu oferta fue aceptada. El paseo ya está activo.");
-      }
-
-      const { data: walk } = await supabaseClient
-        .from("walks")
-        .select("*")
-        .eq("owner_id", currentUser.id)
-        .eq("walker_id", accepted.walker_id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (walk?.id) {
-        await openLiveWalk(walk.id, "owner");
-      } else {
-        loadOwnerRequests();
-      }
-    }
-
-    async function rejectOffer(offerId) {
-      const { error } = await supabaseClient.from("offers").update({ status: "rejected" }).eq("id", offerId);
-      if (error) {
-        alert(error.message);
-        return;
-      }
-      loadOwnerRequests();
-    }
-
-    function ensureHotelsMap() {
-      if (!hotelsMap) {
-        hotelsMap = new mapboxgl.Map({
-          container: "hotelsMap",
-          style: "mapbox://styles/mapbox/streets-v11",
-          center: [-77.0428, -12.0464],
-          zoom: 12
-        });
-      }
-      hotelsMap.resize();
-    }
-
-    async function openHotelSearchScreen() {
-      if (ownerLat == null || ownerLng == null) {
-        getOwnerLocation();
-        await sleep(1000);
-      }
-
-      ensureHotelsMap();
-      go("hotelSearchScreen");
-      await loadNearbyHotels();
-    }
-
-    async function loadNearbyHotels() {
-      ensureHotelsMap();
-      hotelMarkers.forEach(m => m.remove());
-      hotelMarkers = [];
-      $("hotelsList").innerHTML = "";
-
-      if (ownerLat == null || ownerLng == null) {
-        $("hotelsList").innerHTML = `<p class="small">Activa ubicación para buscar hoteles.</p>`;
-        return;
-      }
-
-      hotelsMap.setCenter([ownerLng, ownerLat]);
-      hotelMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(hotelsMap));
-
-      const { data, error } = await supabaseClient.rpc("nearby_hotels", {
-        user_lat: ownerLat,
-        user_lng: ownerLng
-      });
-
-      if (error) {
-        $("hotelsList").innerHTML = `<p class="small">${error.message}</p>`;
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        $("hotelsList").innerHTML = `<p class="small">No hay hoteles hasta 8 km.</p>`;
-        return;
-      }
-
-      for (const hotel of data) {
-        hotelMarkers.push(createEmojiMarker("🏨").setLngLat([Number(hotel.lng), Number(hotel.lat)]).addTo(hotelsMap));
-
-        const { data: photos } = await supabaseClient
-          .from("hotel_photos")
-          .select("*")
-          .eq("hotel_profile_id", hotel.id)
-          .limit(1);
-
-        const photoUrl = photos && photos.length ? photos[0].photo_url : null;
-
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <p><b>${hotel.hotel_name || "Hotel"}</b></p>
-          ${photoUrl ? `<img src="${photoUrl}" class="wide-photo">` : ""}
-          <p class="small">Dirección: ${hotel.address || "-"}</p>
-          <p class="small">Precio base: S/${hotel.base_price_per_day || "-"}</p>
-          <p class="small">Distancia: ${Number(hotel.distance || 0).toFixed(2)} km</p>
-          <button class="orange" onclick="go('hotelRequestScreen')">Pedir estadía</button>
-        `;
-        $("hotelsList").appendChild(div);
-      }
-    }
-
-    async function createHotelRequest() {
-      const dogId = $("hotelDogSelect").value;
-      const checkIn = $("hotelCheckInDate").value;
-      const checkOut = $("hotelCheckOutDate").value;
-      const walkHours = Number($("hotelWalkHoursPerDay").value || 0);
-      const walkTimes = Number($("hotelWalkTimesPerDay").value || 0);
-      const notes = $("hotelRequestNotes").value.trim();
-
-      if (!dogId || !checkIn || !checkOut) {
-        showMsg("hotelRequestMsg", "Completa los campos obligatorios");
-        return;
-      }
-
-      const { error } = await supabaseClient.from("hotel_requests").insert({
-        owner_id: currentUser.id,
-        dog_id: dogId,
-        check_in_date: checkIn,
-        check_out_date: checkOut,
-        notes,
-        walk_hours_per_day: walkHours,
-        walk_times_per_day: walkTimes,
-        status: "open"
-      });
-
-      if (error) {
-        showMsg("hotelRequestMsg", error.message);
-        return;
-      }
-
-      await createNotification(currentUser.id, "Solicitud hotel publicada", "Tu solicitud de hotel fue publicada.");
-      showMsg("hotelRequestMsg", "Solicitud publicada");
-      setTimeout(() => go("hotelSearchScreen"), 700);
+      go("ownerRequestsScreen");
     }
 
     async function loadOwnerHotelRequests() {
@@ -2787,14 +2653,20 @@
 
       offersChannel = supabaseClient
         .channel("offers-channel")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
+        .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
-            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
+            await loadOwnerRequests();
+          }
+          if (currentProfile?.role === "walker") {
+            await loadNearbyRequests();
           }
         })
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
+        .on("postgres_changes", { event: "*", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
-            await createNotification(currentUser.id, "Nueva oferta de hotel", `Recibiste una oferta por S/${offer.offered_price_per_day} al día.`);
+            await loadOwnerHotelRequests();
+          }
+          if (currentProfile?.hotel_enabled) {
+            await loadHotelRequestsForProvider();
           }
         })
         .subscribe();
