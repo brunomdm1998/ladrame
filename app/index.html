@@ -285,21 +285,6 @@
     }
     .center { text-align: center; }
 
-    .floating-card {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 18px;
-      z-index: 20;
-      background: rgba(255,255,255,.98);
-      border: 1px solid #e8edf3;
-      border-radius: 18px;
-      box-shadow: 0 12px 28px rgba(0,0,0,.16);
-      padding: 12px;
-      backdrop-filter: blur(8px);
-    }
-    .floating-card.hidden { display: none !important; }
-
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -326,6 +311,7 @@
         <option value="es">Español</option>
         <option value="en">English</option>
         <option value="jp">日本語</option>
+        <option value="pe">Perú</option>
       </select>
 
       <select id="signupCountry">
@@ -348,8 +334,15 @@
       </select>
 
       <div class="card">
-        <p><b>Verificación de identidad</b></p>
-        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
+        <p><b>Selfie de verificación</b></p>
+        <input type="file" accept="image/*" capture="user" id="selfieInput">
+        <img id="selfiePreview" class="preview-img hidden">
+      </div>
+
+      <div class="card">
+        <p><b>Foto del DNI / documento</b></p>
+        <input type="file" accept="image/*" capture="environment" id="dniInput">
+        <img id="dniPreview" class="preview-img hidden">
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -411,7 +404,8 @@
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-              </div>
+        <button onclick="loadOwnerRequests()">Solicitudes</button>
+      </div>
 
       <div class="home-action-row">
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
@@ -593,7 +587,6 @@
       <div id="walkerMap"></div>
       <div class="small center" style="margin-top:8px">🚶 tú · 📣 solicitud</div>
       <div id="requestsList"></div>
-      <div id="walkerFloatingCard" class="floating-card hidden"></div>
       <button class="secondary" onclick="go('providerHomeScreen')">Volver</button>
     </div>
 
@@ -802,8 +795,6 @@
     let ownerLng = null;
     let providerLat = null;
     let providerLng = null;
-    let ownerGpsWatchId = null;
-    let editingDogId = null;
 
     let selectedRequest = null;
     let selectedHotelRequest = null;
@@ -906,37 +897,6 @@
       localStorage.removeItem("ladrame_pending_verification_email");
     }
 
-    function requestAgeMs(createdAt) {
-      return Date.now() - new Date(createdAt).getTime();
-    }
-
-    function isRequestExpired(createdAt) {
-      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
-    }
-
-    function getDismissedRequestIds() {
-      try {
-        return JSON.parse(localStorage.getItem(`ladrame_dismissed_requests_${currentUser?.id || "guest"}`) || "[]");
-      } catch {
-        return [];
-      }
-    }
-
-    function setDismissedRequestIds(ids) {
-      localStorage.setItem(`ladrame_dismissed_requests_${currentUser?.id || "guest"}`, JSON.stringify(ids));
-    }
-
-    function addDismissedRequestId(requestId) {
-      const ids = new Set(getDismissedRequestIds());
-      ids.add(requestId);
-      setDismissedRequestIds(Array.from(ids));
-    }
-
-    function removeDismissedRequestId(requestId) {
-      const ids = getDismissedRequestIds().filter(id => id !== requestId);
-      setDismissedRequestIds(ids);
-    }
-
     function normalizeDni(value) {
       return (value || "").replace(/\D/g, "");
     }
@@ -972,6 +932,18 @@
 
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function requestAgeMs(createdAt) {
+      return Date.now() - new Date(createdAt).getTime();
+    }
+
+    function isWalkRequestExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 7 * 60 * 1000;
+    }
+
+    function isWalkerOfferExpired(createdAt) {
+      return requestAgeMs(createdAt) >= 30 * 1000;
     }
 
     async function compressImageIfNeeded(file, maxWidth = 1000, quality = 0.78) {
@@ -1073,9 +1045,16 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
+      const selfie = $("selfieInput").files?.[0];
+      const dniPhoto = $("dniInput").files?.[0];
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
+        return;
+      }
+
+      if (!selfie || !dniPhoto) {
+        showMsg("signupMsg", "Debes subir selfie y documento");
         return;
       }
 
@@ -1171,8 +1150,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1234,14 +1213,12 @@
       chatMessagesChannel = null;
       callChannel = null;
 
-      if (ownerGpsWatchId) navigator.geolocation.clearWatch(ownerGpsWatchId);
       if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       if (walkTrackWatchId) navigator.geolocation.clearWatch(walkTrackWatchId);
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
       if (liveWalkInterval) clearInterval(liveWalkInterval);
 
-      ownerGpsWatchId = null;
       providerGpsWatchId = null;
       walkTrackWatchId = null;
       walkerRefreshInterval = null;
@@ -1320,7 +1297,7 @@
         $("ownerWelcome").textContent = "Hola " + (profile.name || "");
         loadDogs();
         updateHotelDogSelect();
-        startOwnerLiveGps();
+        getOwnerLocation();
         go("ownerHomeScreen");
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
@@ -1339,33 +1316,17 @@
       go("loginScreen");
     }
 
-    function startOwnerLiveGps() {
+    async function getOwnerLocation() {
       if (!navigator.geolocation) return;
-
-      if (ownerGpsWatchId) {
-        navigator.geolocation.clearWatch(ownerGpsWatchId);
-      }
-
-      ownerGpsWatchId = navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         pos => {
           ownerLat = pos.coords.latitude;
           ownerLng = pos.coords.longitude;
-          if (ownerHomeMap) ownerHomeMap.setCenter([ownerLng, ownerLat]);
           renderOwnerHomeMap();
         },
-        err => {
-          console.log("GPS dueño error:", err);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        }
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
       );
-    }
-
-    async function getOwnerLocation() {
-      startOwnerLiveGps();
     }
 
     async function getProviderLocationOnce() {
@@ -1539,18 +1500,15 @@
         providerLng = pos.coords.longitude;
         await upsertWalkerLocation(providerLat, providerLng);
 
-        if (providerHomeMap) providerHomeMap.setCenter([providerLng, providerLat]);
         if ($("providerHomeScreen").classList.contains("active")) renderProviderHomeMap();
         if ($("walkerMapScreen").classList.contains("active")) {
           initWalkerMap();
           loadNearbyRequests();
         }
-      }, err => {
-        console.log("GPS paseador error:", err);
-      }, {
+      }, () => {}, {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
+        timeout: 10000,
+        maximumAge: 3000
       });
     }
 
@@ -1578,19 +1536,15 @@
 
         const card = document.createElement("div");
         card.className = "card";
-        card.style.display = "flex";
-        card.style.alignItems = "center";
-        card.style.gap = "10px";
         card.innerHTML = `
-          ${photo ? `<img src="${photo}" style="width:56px;height:56px;border-radius:12px;object-fit:cover;border:1px solid #eee;">` : `<div style="width:56px;height:56px;border-radius:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;">🐶</div>`}
-          <div style="flex:1;min-width:0;">
-            <p style="margin:0"><b>${dog.name}</b></p>
-            <p class="small" style="margin:4px 0 0">${dog.size || "-"} · ${dog.personality || "-"}</p>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px;width:92px;">
-            <button type="button" onclick="editDog('${dog.id}')" style="padding:8px;min-height:auto;">Editar</button>
-            <button type="button" class="red" onclick="deleteDog('${dog.id}')" style="padding:8px;min-height:auto;">Eliminar</button>
-          </div>
+          <p><b>${dog.name}</b></p>
+          ${photo ? `<img src="${photo}" class="wide-photo">` : ""}
+          <p class="small">Tamaño: ${dog.size || "-"}</p>
+          <p class="small">Sociable: ${dog.sociable || "-"}</p>
+          <p class="small">Controlable: ${dog.controllable || "-"}</p>
+          <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
+          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+          <p class="small" style="margin-top:8px">${dog.recommendations || ""}</p>
         `;
         $("ownerDogsList").appendChild(card);
 
@@ -1612,33 +1566,6 @@
         opt.textContent = dog.name;
         $("hotelDogSelect").appendChild(opt);
       }
-    }
-
-    async function editDog(dogId) {
-      const { data: dog } = await supabaseClient
-        .from("dogs")
-        .select("*")
-        .eq("id", dogId)
-        .eq("owner_id", currentUser.id)
-        .maybeSingle();
-
-      if (!dog) return;
-      editingDogId = dog.id;
-      $("dogNameInput").value = dog.name || "";
-      $("dogSizeInput").value = dog.size || "";
-      $("dogSociableInput").value = dog.sociable || "";
-      $("dogControllableInput").value = dog.controllable || "";
-      $("dogRespondsInput").value = dog.responds_to_name || "";
-      $("dogPersonalityInput").value = dog.personality || "";
-      $("dogNotesInput").value = dog.recommendations || "";
-      showMsg("dogMsg", "Editando perro");
-      go("addDogScreen");
-    }
-
-    async function deleteDog(dogId) {
-      if (!confirm("¿Eliminar este perro?")) return;
-      await supabaseClient.from("dogs").delete().eq("id", dogId).eq("owner_id", currentUser.id);
-      await loadDogs();
     }
 
     function updateHotelDogSelect() {
@@ -1693,35 +1620,18 @@
         return;
       }
 
-      let error;
-      if (editingDogId) {
-        ({ error } = await supabaseClient
-          .from("dogs")
-          .update({
-            name,
-            size,
-            sociable,
-            controllable,
-            responds_to_name: responds,
-            personality,
-            recommendations: notes
-          })
-          .eq("id", editingDogId)
-          .eq("owner_id", currentUser.id));
-      } else {
-        ({ error } = await supabaseClient
-          .from("dogs")
-          .insert({
-            owner_id: currentUser.id,
-            name,
-            size,
-            sociable,
-            controllable,
-            responds_to_name: responds,
-            personality,
-            recommendations: notes
-          }));
-      }
+      const { error } = await supabaseClient
+        .from("dogs")
+        .insert({
+          owner_id: currentUser.id,
+          name,
+          size,
+          sociable,
+          controllable,
+          responds_to_name: responds,
+          personality,
+          recommendations: notes
+        });
 
       if (error) {
         showMsg("dogMsg", error.message);
@@ -1739,24 +1649,14 @@
         }
       }
 
-      showMsg("dogMsg", editingDogId ? "Perro actualizado" : "Perro guardado");
-      editingDogId = null;
-      $("dogNameInput").value = "";
-      $("dogSizeInput").value = "";
-      $("dogSociableInput").value = "";
-      $("dogControllableInput").value = "";
-      $("dogRespondsInput").value = "";
-      $("dogPersonalityInput").value = "";
-      $("dogNotesInput").value = "";
-      $("dogPhotoInput").value = "";
-      $("dogPreview").classList.add("hidden");
+      showMsg("dogMsg", "Perro guardado");
       await loadDogs();
-      setTimeout(() => go("ownerHomeScreen"), 500);
+      setTimeout(() => go("ownerHomeScreen"), 700);
     }
 
-    async function openCreateWalkScreen() {
-      await loadDogs();
-      startOwnerLiveGps();
+    function openCreateWalkScreen() {
+      loadDogs();
+      getOwnerLocation();
       go("createWalkScreen");
     }
 
@@ -1770,25 +1670,22 @@
         showMsg("walkMsg", "Selecciona al menos un perro");
         return;
       }
+
       if (!price || price <= 0) {
         showMsg("walkMsg", "Ingresa una tarifa válida");
         return;
       }
+
       if (!time || time <= 0) {
         showMsg("walkMsg", "Selecciona el tiempo del paseo");
         return;
       }
+
       if (ownerLat == null || ownerLng == null) {
         showMsg("walkMsg", "Activa tu ubicación primero");
-        startOwnerLiveGps();
+        getOwnerLocation();
         return;
       }
-
-      await supabaseClient
-        .from("walk_requests")
-        .update({ status: "expired" })
-        .eq("owner_id", currentUser.id)
-        .eq("status", "open");
 
       const { data: requestInserted, error } = await supabaseClient
         .from("walk_requests")
@@ -1813,12 +1710,32 @@
 
       const links = dogIds.map(dogId => ({ request_id: requestInserted.id, dog_id: dogId }));
       const { error: linkError } = await supabaseClient.from("walk_request_dogs").insert(links);
+
       if (linkError) {
         showMsg("walkMsg", linkError.message);
         return;
       }
 
       await createNotification(currentUser.id, "Solicitud publicada", `Publicaste una solicitud por S/${price} durante ${time} min.`);
+
+      try {
+        await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-push-walk", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            lat: ownerLat,
+            lng: ownerLng,
+            request_id: requestInserted.id,
+            tariff: price,
+            time: time
+          })
+        });
+      } catch (pushError) {
+        console.log("Error enviando push walk:", pushError);
+      }
+
       showMsg("walkMsg", "Solicitud publicada");
       setTimeout(() => go("ownerHomeScreen"), 700);
     }
@@ -1888,7 +1805,10 @@
       loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
-      walkerRefreshInterval = setInterval(loadNearbyRequests, 5000);
+      walkerRefreshInterval = setInterval(async () => {
+        await loadNearbyRequests();
+        renderProviderHomeMap();
+      }, 3000);
     }
 
     function getDistanceKm(lat1, lon1, lat2, lon2) {
@@ -1909,8 +1829,12 @@
       walkerRequestMarkers.forEach(m => m.remove());
       walkerRequestMarkers = [];
       $("requestsList").innerHTML = "";
+
       const floating = $("walkerFloatingCard");
-      if (floating) floating.classList.add("hidden");
+      if (floating) {
+        floating.classList.add("hidden");
+        floating.innerHTML = "";
+      }
 
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
@@ -1920,83 +1844,106 @@
 
       if (error) return;
 
-      const allOpen = (data || []).filter(req => !isRequestExpired(req.created_at));
       const uniqueByOwner = new Map();
-      for (const req of allOpen) {
+      for (const req of (data || [])) {
+        if (req.lat == null || req.lng == null) continue;
+        if (isWalkRequestExpired(req.created_at)) continue;
         if (!uniqueByOwner.has(req.owner_id)) uniqueByOwner.set(req.owner_id, req);
       }
 
-      let activeRequests = Array.from(uniqueByOwner.values());
-      const requestIds = activeRequests.map(r => r.id);
+      const requests = Array.from(uniqueByOwner.values());
+      const requestIds = requests.map(r => r.id);
       let myOffers = [];
+
       if (requestIds.length) {
         const { data: myOffersData } = await supabaseClient
           .from("offers")
-          .select("request_id,status")
+          .select("request_id,status,created_at")
           .eq("walker_id", currentUser.id)
           .in("request_id", requestIds);
         myOffers = myOffersData || [];
       }
 
-      const hiddenIds = new Set(getDismissedRequestIds());
-      for (const ofr of myOffers) {
-        if (["pending", "accepted", "rejected"].includes(ofr.status)) hiddenIds.add(ofr.request_id);
+      const hiddenRequestIds = new Set();
+      for (const o of myOffers) {
+        if (o.status === 'pending' && !isWalkerOfferExpired(o.created_at)) hiddenRequestIds.add(o.request_id);
+        if (["accepted", "rejected", "dismissed", "cancelled"].includes(o.status)) hiddenRequestIds.add(o.request_id);
       }
-      activeRequests = activeRequests.filter(req => !hiddenIds.has(req.id));
 
-      for (const req of activeRequests) {
-        if (req.lat == null || req.lng == null) continue;
+      const visibleRequests = requests.filter(req => !hiddenRequestIds.has(req.id));
 
+      for (const req of visibleRequests) {
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
           if (distance > 3) continue;
         }
-
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
-
-        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
-
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
-          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo solicitado: ${req.time || 0} min · Expira en ${minsLeft} min</p>
-          <p class="small">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ""}</p>
-          ${buildDogsHtml(dogs)}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
-            <button class="secondary" onclick="dismissRequest('${req.id}')">Ocultar</button>
-          </div>
-        `;
-        $("requestsList").appendChild(div);
       }
 
-      if (!activeRequests.length) {
+      const first = visibleRequests.find(req => {
+        if (providerLat == null || providerLng == null) return true;
+        return getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng)) <= 3;
+      });
+
+      if (!first) {
         $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-      } else if (floating) {
-        const req = activeRequests[0];
-        const minsLeft = Math.max(0, 7 - Math.floor(requestAgeMs(req.created_at) / 60000));
+        if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
+        return;
+      }
+
+      const dogs = await getRequestDogsWithPhotos(first.id, first.owner_id);
+      let distance = null;
+      if (providerLat != null && providerLng != null) distance = getDistanceKm(providerLat, providerLng, Number(first.lat), Number(first.lng));
+
+      if (floating) {
         floating.innerHTML = `
-          <p style="margin:0 0 6px"><b>Solicitud activa cerca de ti</b></p>
-          <p class="small" style="margin:0 0 8px">Dueño ofrece S/${req.tariff} · ${req.time || 0} min · ${minsLeft} min restantes</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button onclick="openOffer('${req.id}')">Enviar tarifa</button>
-            <button class="secondary" onclick="dismissRequest('${req.id}')">Ocultar</button>
+          <p style="margin:0 0 6px"><b>Solicitud activa</b></p>
+          <p class="small" style="margin:0">Tarifa del dueño: S/${first.tariff}</p>
+          <p class="small" style="margin:4px 0 0">Tiempo: ${first.time || 0} min</p>
+          <p class="small" style="margin:4px 0 0">Expira en ${Math.max(0, 7 - Math.floor(requestAgeMs(first.created_at)/60000))} min</p>
+          <p class="small" style="margin:4px 0 8px">${distance != null ? `Distancia: ${distance.toFixed(2)} km` : ''}</p>
+          ${buildDogsHtml(dogs)}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+            <button onclick="openOffer('${first.id}')">Enviar tarifa</button>
+            <button class="secondary" onclick="dismissRequest('${first.id}')">Ocultar</button>
           </div>
         `;
         floating.classList.remove("hidden");
       }
 
-      if (providerLat != null && providerLng != null) {
-        walkerMap.setCenter([providerLng, providerLat]);
-      }
+      $("requestsList").innerHTML = "";
+      if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
     }
 
     async function dismissRequest(requestId) {
-      addDismissedRequestId(requestId);
+      const { data: req } = await supabaseClient
+        .from("walk_requests")
+        .select("owner_id,dog_id,time")
+        .eq("id", requestId)
+        .maybeSingle();
+      if (!req) return;
+
+      const { data: existing } = await supabaseClient
+        .from("offers")
+        .select("id")
+        .eq("request_id", requestId)
+        .eq("walker_id", currentUser.id)
+        .maybeSingle();
+
+      if (existing?.id) {
+        await supabaseClient.from("offers").update({ status: "dismissed" }).eq("id", existing.id);
+      } else {
+        await supabaseClient.from("offers").insert({
+          request_id: requestId,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price: 0,
+          offer_time: req.time,
+          status: "dismissed"
+        });
+      }
       await loadNearbyRequests();
     }
 
@@ -2015,8 +1962,7 @@
         return;
       }
 
-      const expired = Date.now() - new Date(data.created_at).getTime() >= 7 * 60 * 1000;
-      if (data.status !== "open" || expired) {
+      if (data.status !== "open" || isWalkRequestExpired(data.created_at)) {
         showMsg("offerMsg", "La solicitud expiró");
         await loadNearbyRequests();
         return;
@@ -2029,7 +1975,7 @@
         <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
         <p><b>Tiempo:</b> ${data.time || 0} min</p>
         ${buildDogsHtml(dogs)}
-        <p class="small">Debes enviar tu propia tarifa.</p>
+        <p class="small">Tu oferta durará 30 segundos. Si expira, puedes enviar otra.</p>
       `;
 
       $("offerPriceInput").value = "";
@@ -2060,8 +2006,7 @@
         return;
       }
 
-      const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
-      if (req.status !== "open" || expired) {
+      if (req.status !== "open" || isWalkRequestExpired(req.created_at)) {
         showMsg("offerMsg", "La solicitud expiró");
         await loadNearbyRequests();
         return;
@@ -2069,41 +2014,51 @@
 
       const { data: existingOffer } = await supabaseClient
         .from("offers")
-        .select("id")
+        .select("id,status,created_at")
         .eq("request_id", selectedRequest)
         .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (existingOffer?.id) {
-        showMsg("offerMsg", "Ya enviaste una oferta");
+      if (existingOffer?.id && existingOffer.status === "pending" && !isWalkerOfferExpired(existingOffer.created_at)) {
+        showMsg("offerMsg", "Tu oferta sigue activa. Espera 30 segundos o cancélala.");
         return;
       }
 
-      const { error } = await supabaseClient
-        .from("offers")
-        .insert({
-          request_id: selectedRequest,
-          walker_id: currentUser.id,
-          owner_id: req.owner_id,
-          dog_id: req.dog_id,
-          price,
-          offer_time: req.time,
-          status: "pending"
-        });
-
-      if (error) {
-        showMsg("offerMsg", error.message);
-        return;
+      if (existingOffer?.id) {
+        const { error: updateError } = await supabaseClient
+          .from("offers")
+          .update({ price, offer_time: req.time, status: "pending" })
+          .eq("id", existingOffer.id);
+        if (updateError) {
+          showMsg("offerMsg", updateError.message);
+          return;
+        }
+      } else {
+        const { error } = await supabaseClient
+          .from("offers")
+          .insert({
+            request_id: selectedRequest,
+            walker_id: currentUser.id,
+            owner_id: req.owner_id,
+            dog_id: req.dog_id,
+            price,
+            offer_time: req.time,
+            status: "pending"
+          });
+        if (error) {
+          showMsg("offerMsg", error.message);
+          return;
+        }
       }
 
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
-      addDismissedRequestId(selectedRequest);
-      showMsg("offerMsg", "Oferta enviada");
+      showMsg("offerMsg", "Oferta enviada por 30 segundos");
       setTimeout(async () => {
         go("walkerMapScreen");
         await loadNearbyRequests();
-      }, 500);
+      }, 400);
     }
 
     async function getWalkerProfileSummary(walkerUserId) {
@@ -2144,15 +2099,16 @@
       if (error) return;
       $("ownerRequestsList").innerHTML = "";
 
-      if (!data || data.length === 0) {
+      const activeRequests = (data || []).filter(req => !isWalkRequestExpired(req.created_at) && ["open","active"].includes(req.status));
+
+      if (!activeRequests.length) {
         $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
         go("ownerRequestsScreen");
         return;
       }
 
-      for (const req of data) {
+      for (const req of activeRequests) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
@@ -2173,22 +2129,13 @@
 
         const offerBox = $(`offers-${req.id}`);
         offerBox.innerHTML = "";
+        const activeOffers = (offers || []).filter(ofr => ofr.status === "pending" && !isWalkerOfferExpired(ofr.created_at));
 
-        if (!offers || offers.length === 0) {
-          offerBox.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
+        if (!activeOffers.length) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas activas.</p>`;
         } else {
-          for (const ofr of offers) {
+          for (const ofr of activeOffers) {
             const profile = await getWalkerProfileSummary(ofr.walker_id);
-
-            const commentsHtml = profile.comments.length
-              ? profile.comments.map(r => `
-                <div class="comment-box">
-                  <div class="small"><b>${r.rating || 0}/5</b></div>
-                  <div class="small">${r.comment || "Sin comentario"}</div>
-                </div>
-              `).join("")
-              : `<p class="small">Sin comentarios todavía.</p>`;
-
             const offerCard = document.createElement("div");
             offerCard.className = "card";
             offerCard.innerHTML = `
@@ -2197,19 +2144,13 @@
                 <div style="flex:1">
                   <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
                   <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
-                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
                   <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
                 </div>
               </div>
-
               <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
-              <div>${commentsHtml}</div>
-
-              ${ofr.status === "pending" ? `
-                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-              ` : ""}
+              <p class="small">Expira en ${Math.max(0, 30 - Math.floor(requestAgeMs(ofr.created_at)/1000))} seg</p>
+              <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+              <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
             `;
             offerBox.appendChild(offerCard);
           }
@@ -2905,9 +2846,15 @@
 
       offersChannel = supabaseClient
         .channel("offers-channel")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
-          if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
-            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
+        .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, async ({ new: offer, old: oldOffer }) => {
+          const ownerId = offer?.owner_id || oldOffer?.owner_id;
+          const walkerId = offer?.walker_id || oldOffer?.walker_id;
+
+          if (currentProfile?.role === "owner" && ownerId === currentUser.id) {
+            await loadOwnerRequests();
+          }
+          if (currentProfile?.role === "walker" && walkerId === currentUser.id) {
+            await loadNearbyRequests();
           }
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
