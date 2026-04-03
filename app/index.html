@@ -1435,15 +1435,48 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       });
     }
 
-    function getProviderLocationOnce() {
-      return new Promise(resolve => {
-        if (!navigator.geolocation) return resolve(null);
+    async function getSavedWalkerCoords() {
+      if (!currentUser?.id) return null;
+      try {
+        const { data } = await supabaseClient
+          .from("walkers")
+          .select("lat,lng")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        if (data?.lat != null && data?.lng != null) {
+          return { lat: Number(data.lat), lng: Number(data.lng) };
+        }
+      } catch (e) {
+        console.error("getSavedWalkerCoords", e);
+      }
+      return null;
+    }
+
+    async function getProviderLocationOnce() {
+      if (!navigator.geolocation) return await getSavedWalkerCoords();
+
+      const tryGet = (opts) => new Promise(resolve => {
         navigator.geolocation.getCurrentPosition(
           pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 10000 }
+          async () => resolve(null),
+          opts
         );
       });
+
+      let coords = await tryGet({ enableHighAccuracy: true, timeout: 18000, maximumAge: 0 });
+      if (!coords) coords = await tryGet({ enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+      if (!coords) coords = await getSavedWalkerCoords();
+      if (coords) {
+        try {
+          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify(coords));
+        } catch (_) {}
+      } else {
+        try {
+          const raw = localStorage.getItem("ladrame_last_provider_coords");
+          if (raw) coords = JSON.parse(raw);
+        } catch (_) {}
+      }
+      return coords;
     }
 
     function ensureOwnerHomeMap() {
@@ -1571,21 +1604,45 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function startProviderLiveGps() {
+      const debugEl = $("walletDebugText");
       const first = await getProviderLocationOnce();
       if (first) {
-        providerLat = first.lat;
-        providerLng = first.lng;
-        await upsertWalkerPosition(first.lat, first.lng);
+        providerLat = Number(first.lat);
+        providerLng = Number(first.lng);
+        try {
+          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
+        } catch (_) {}
+        await upsertWalkerPosition(providerLat, providerLng);
         await renderProviderHomeMap();
+      } else if (debugEl && !debugEl.textContent) {
+        debugEl.textContent = "GPS pendiente de permiso";
       }
 
       if (!navigator.geolocation) return;
       if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       providerGpsWatchId = navigator.geolocation.watchPosition(async pos => {
-        providerLat = pos.coords.latitude;
-        providerLng = pos.coords.longitude;
+        providerLat = Number(pos.coords.latitude);
+        providerLng = Number(pos.coords.longitude);
+        try {
+          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
+        } catch (_) {}
         await upsertWalkerPosition(providerLat, providerLng);
-      }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+        await renderProviderHomeMap();
+        if (walkerMap && $("walkerMapScreen")?.classList.contains("active")) {
+          await renderWalkerMap();
+        }
+        if (liveMap && $("liveWalkScreen")?.classList.contains("active") && selectedWalk) {
+          await renderLiveWalkMap(selectedWalk).catch(() => {});
+        }
+      }, async err => {
+        console.error("startProviderLiveGps watchPosition", err);
+        const fallback = await getSavedWalkerCoords();
+        if (fallback) {
+          providerLat = Number(fallback.lat);
+          providerLng = Number(fallback.lng);
+          await renderProviderHomeMap();
+        }
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
     }
 
     async function upsertWalkerPosition(lat, lng) {
@@ -2442,11 +2499,20 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         const safeTariff = maxTariff == null ? safe * 10 : Math.max(0, Number(maxTariff || 0));
         if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${safeTariff.toFixed(2).replace(/\.00$/, "")}`;
         if (debugEl) debugEl.textContent = note || `Saldo cargado: ${safe}`;
+        try {
+          localStorage.setItem("ladrame_last_walker_balance", JSON.stringify({ balance: safe, maxTariff: safeTariff, note: note || "ok" }));
+        } catch (_) {}
       };
 
       try {
         const user = currentUser || await getCurrentSessionUser();
         if (!user?.id) {
+          const cached = localStorage.getItem("ladrame_last_walker_balance");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            setValue(parsed.balance || 0, parsed.maxTariff || null, "Saldo cacheado sin sesión");
+            return;
+          }
           setValue(0, 0, "Sin sesión activa");
           return;
         }
@@ -2455,19 +2521,33 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         let source = "sin fuente";
 
         try {
-          const resp1 = await supabaseClient
-            .from("provider_wallets")
-            .select("balance")
-            .eq("user_id", user.id)
-            .eq("provider_type", "walker")
-            .maybeSingle();
-          if (resp1.error) throw resp1.error;
-          if (resp1.data?.balance != null) {
-            balance = resp1.data.balance;
-            source = "provider_wallets";
+          const rpcResp = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+            p_provider_type: "walker"
+          });
+          if (!rpcResp.error && rpcResp.data != null) {
+            balance = rpcResp.data;
+            source = "rpc:get_my_provider_wallet_balance";
           }
         } catch (e) {
-          console.error("wallet strategy 1", e);
+          console.error("wallet strategy rpc", e);
+        }
+
+        if (balance == null) {
+          try {
+            const resp1 = await supabaseClient
+              .from("provider_wallets")
+              .select("balance")
+              .eq("user_id", user.id)
+              .eq("provider_type", "walker")
+              .maybeSingle();
+            if (resp1.error) throw resp1.error;
+            if (resp1.data?.balance != null) {
+              balance = resp1.data.balance;
+              source = "provider_wallets";
+            }
+          } catch (e) {
+            console.error("wallet strategy 1", e);
+          }
         }
 
         if (balance == null) {
@@ -2493,7 +2573,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             const resp2b = await supabaseClient
               .from("provider_wallet_balances")
               .select("balance")
-              .ilike("email", user.email)
+              .ilike("email", String(user.email).trim())
               .eq("provider_type", "walker")
               .maybeSingle();
             if (resp2b.error) throw resp2b.error;
@@ -2503,21 +2583,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             }
           } catch (e) {
             console.error("wallet strategy 2b", e);
-          }
-        }
-
-        if (balance == null) {
-          try {
-            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-              p_provider_type: "walker"
-            });
-            if (resp3.error) throw resp3.error;
-            if (resp3.data != null) {
-              balance = resp3.data;
-              source = "rpc:get_my_provider_wallet_balance";
-            }
-          } catch (e) {
-            console.error("wallet strategy 3", e);
           }
         }
 
@@ -2532,9 +2597,26 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           console.error("max tariff rpc", e);
         }
 
+        if (balance == null) {
+          const cached = localStorage.getItem("ladrame_last_walker_balance");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            setValue(parsed.balance || 0, maxTariff ?? parsed.maxTariff ?? null, "Saldo cacheado; no se pudo leer wallet en vivo");
+            return;
+          }
+        }
+
         setValue(balance || 0, maxTariff, `Saldo cargado desde ${source}: ${Number(balance || 0).toFixed(2)}`);
       } catch (e) {
         console.error("loadWalkerCredits fatal", e);
+        try {
+          const cached = localStorage.getItem("ladrame_last_walker_balance");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            setValue(parsed.balance || 0, parsed.maxTariff || null, "Saldo cacheado por error temporal");
+            return;
+          }
+        } catch (_) {}
         setValue(0, 0, "Error cargando saldo");
       }
     }
