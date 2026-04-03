@@ -1124,7 +1124,6 @@
 
         if (rows && rows.length) return rows[0];
 
-        // recuperación por solicitud activa del dueño
         if (currentProfile.role === "owner") {
           const { data: req } = await supabaseClient
             .from("walk_requests")
@@ -1140,6 +1139,7 @@
               .from("walks")
               .select("*")
               .eq("offer_id", req.accepted_offer_id)
+              .in("status", ["active", "pending"])
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -1151,6 +1151,7 @@
               .from("walks")
               .select("*")
               .eq("request_id", req.id)
+              .in("status", ["active", "pending"])
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -1158,7 +1159,6 @@
           }
         }
 
-        // recuperación por oferta aceptada del paseador
         if (currentProfile.role === "walker") {
           const { data: acceptedOffer } = await supabaseClient
             .from("offers")
@@ -1174,6 +1174,7 @@
               .from("walks")
               .select("*")
               .eq("offer_id", acceptedOffer.id)
+              .in("status", ["active", "pending"])
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -1270,10 +1271,34 @@
       }
     }
 
+    async function clearStaleActiveStateIfNeeded() {
+      const walk = await getMyActiveWalk();
+      if (walk) return false;
+
+      if (currentProfile?.role === "owner") {
+        const { data: activeReqs } = await supabaseClient
+          .from("walk_requests")
+          .select("id")
+          .eq("owner_id", currentUser.id)
+          .eq("status", "active");
+
+        for (const req of activeReqs || []) {
+          await supabaseClient
+            .from("walk_requests")
+            .update({ status: "cancelled", accepted_offer_id: null })
+            .eq("id", req.id);
+        }
+      }
+
+      await refreshActiveWalkCards();
+      if (typeof loadOwnerHomeRequestOverlay === 'function') await loadOwnerHomeRequestOverlay();
+      return true;
+    }
+
     async function openMyActiveWalk() {
       const walk = await getMyActiveWalk();
       if (!walk) {
-        await refreshActiveWalkCards();
+        await clearStaleActiveStateIfNeeded();
         return alert("No tienes un paseo activo");
       }
       await openLiveWalk(walk.id, currentProfile?.role === "owner" ? "owner" : "walker");
@@ -1282,7 +1307,7 @@
     async function openChatFromActiveWalkHome() {
       const walk = await getMyActiveWalk();
       if (!walk) {
-        await refreshActiveWalkCards();
+        await clearStaleActiveStateIfNeeded();
         return alert("No tienes un paseo activo");
       }
       selectedWalk = walk.id;
@@ -2448,7 +2473,10 @@
       if (walk.request_id) {
         await supabaseClient
           .from("walk_requests")
-          .update({ status: "cancelled" })
+          .update({
+            status: "cancelled",
+            accepted_offer_id: null
+          })
           .eq("id", walk.request_id);
       }
 
@@ -2460,6 +2488,7 @@
       }
 
       alert("Paseo cancelado");
+      selectedWalk = null;
       await refreshActiveWalkCards();
       if (typeof loadOwnerHomeRequestOverlay === 'function') await loadOwnerHomeRequestOverlay();
       await goBackFromLiveWalk();
@@ -2555,8 +2584,14 @@
 
     async function goBackFromLiveWalk() {
       await refreshActiveWalkCards();
-      if (currentProfile?.role === "owner") go("ownerHomeScreen");
-      else go("providerHomeScreen");
+      if (currentProfile?.role === "owner") {
+        await loadOwnerHomeRequestOverlay();
+        await renderOwnerHomeMap();
+        go("ownerHomeScreen");
+      } else {
+        await renderProviderHomeMap();
+        go("providerHomeScreen");
+      }
     }
 
     async function verifyPickupPin() {
