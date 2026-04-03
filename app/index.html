@@ -896,7 +896,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data?.publicUrl || null;
     }
 
-    window.getCurrentSessionUser = async function window.getCurrentSessionUser() {
+    window.getCurrentSessionUser = async function getCurrentSessionUser() {
       try {
         const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
         if (!sessionError && sessionData?.session?.user) return sessionData.session.user;
@@ -1557,7 +1557,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    window.renderProviderHome = async function window.renderProviderHome() {
+    window.renderProviderHome = async function renderProviderHome() {
       ensureProviderHomeMap();
       const homeStack = $("providerFloatingStack");
       if (homeStack) homeStack.innerHTML = "";
@@ -1576,7 +1576,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       await loadPendingOfferWaitingCard();
     }
 
-    window.renderProviderHomeMap = async function window.renderProviderHomeMap() {
+    window.renderProviderHomeMap = async function renderProviderHomeMap() {
       ensureProviderHomeMap();
       providerHomeMarkers.forEach(m => m.remove());
       providerHomeMarkers = [];
@@ -2491,7 +2491,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       setTimeout(() => go("providerHomeScreen"), 400);
     }
 
-    window.loadWalkerCredits = async function window.loadWalkerCredits() {
+    window.loadWalkerCredits = async function loadWalkerCredits() {
       const debugEl = $("walletDebugText");
       const setValue = (balance, maxTariff = null, note = "") => {
         const safe = Math.max(0, Number(balance || 0));
