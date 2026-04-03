@@ -324,7 +324,7 @@
     }
   </style>
 </head>
-<body data-version="final-limpio">
+<body data-version="final-fix-v32">
   <div id="phone">
 
     <div id="loginScreen" class="screen active">
@@ -557,7 +557,7 @@
         <p><b>Créditos disponibles paseo</b></p>
         <p id="walkerCredits">0</p>
         <p class="small" id="maxTariffText">Tarifa máxima: S/0</p>
-        <p class="small hidden" id="walletDebugText"></p>
+        <p class="small" id="walletDebugText">Saldo: cargando...</p>
       </div>
       <div class="card hidden" id="hotelWalletCard">
         <p><b>Créditos hotel</b></p>
@@ -733,7 +733,7 @@
     </div>
 
   </div>
-  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-limpio</div>
+  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-fix-v32</div>
 
   <script>
 mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
@@ -897,55 +897,114 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function getCurrentSessionUser() {
-      const { data, error } = await supabaseClient.auth.getUser();
-      if (error) return null;
-      return data.user || null;
+      try {
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        if (!sessionError && sessionData?.session?.user) return sessionData.session.user;
+      } catch (e) {
+        console.error("getCurrentSessionUser session", e);
+      }
+      try {
+        const { data, error } = await supabaseClient.auth.getUser();
+        if (error) {
+          console.error("getCurrentSessionUser getUser", error);
+          return null;
+        }
+        return data.user || null;
+      } catch (e) {
+        console.error("getCurrentSessionUser fatal", e);
+        return null;
+      }
     }
 
     async function handleLogin() {
-      const email = $("loginEmail").value.trim();
-      const password = $("loginPass").value.trim();
+      const email = $("loginEmail").value.trim().toLowerCase();
+      const password = $("loginPass").value;
+      const btn = $("loginBtn");
+      showMsg("loginMsg", "");
       if (!email || !password) return showMsg("loginMsg", "Completa los campos");
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) return showMsg("loginMsg", error.message);
-      await boot();
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Entrando...";
+      }
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) return showMsg("loginMsg", error.message);
+        currentUser = data?.user || await getCurrentSessionUser();
+        syncGlobalState();
+        await boot();
+      } catch (e) {
+        console.error("handleLogin", e);
+        showMsg("loginMsg", e?.message || "No se pudo iniciar sesión");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Entrar";
+        }
+      }
     }
 
     async function registerUser() {
       const name = $("signupName").value.trim();
-      const email = $("signupEmail").value.trim();
+      const email = $("signupEmail").value.trim().toLowerCase();
       const dni = normalizeDni($("signupDNI").value);
       const password = $("signupPass").value;
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
+      const btn = $("registerBtn");
 
+      showMsg("signupMsg", "");
       if (!name || !email || !dni || !password || !role || !country || !language) {
         return showMsg("signupMsg", "Completa todos los campos");
       }
+      if (password.length < 6) return showMsg("signupMsg", "La contraseña debe tener al menos 6 caracteres");
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
 
-      const { error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            pending_name: name,
-            pending_dni: dni,
-            pending_role: role,
-            pending_language: language,
-            pending_country: country
-          }
-        }
-      });
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Creando cuenta...";
+      }
 
-      if (error) return showMsg("signupMsg", error.message);
-      localStorage.setItem("ladrame_pending_verification_email", email);
-      pendingVerificationEmail = email;
-      $("verifyEmailText").textContent = email;
-      go("verifyCodeScreen");
+      try {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              pending_name: name,
+              pending_dni: dni,
+              pending_role: role,
+              pending_language: language,
+              pending_country: country
+            }
+          }
+        });
+
+        if (error) return showMsg("signupMsg", error.message);
+
+        localStorage.setItem("ladrame_pending_verification_email", email);
+        pendingVerificationEmail = email;
+        $("verifyEmailText").textContent = email;
+
+        if (data?.session?.user) {
+          currentUser = data.session.user;
+          syncGlobalState();
+        }
+
+        go("verifyCodeScreen");
+      } catch (e) {
+        console.error("registerUser", e);
+        showMsg("signupMsg", e?.message || "No se pudo crear la cuenta");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Registrarme";
+        }
+      }
     }
 
     async function verifySignupCode() {
@@ -1039,54 +1098,79 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       currentUser = await getCurrentSessionUser();
       syncGlobalState();
       if (!currentUser) return null;
-      const { data, error } = await supabaseClient.from("users").select("*").eq("id", currentUser.id).maybeSingle();
-      if (error) return null;
-      currentProfile = data;
+
+      let profile = null;
+      let profileError = null;
+
+      const byId = await supabaseClient.from("users").select("*").eq("id", currentUser.id).maybeSingle();
+      if (!byId.error && byId.data) {
+        profile = byId.data;
+      } else {
+        profileError = byId.error || null;
+      }
+
+      if (!profile && currentUser.email) {
+        const byEmail = await supabaseClient
+          .from("users")
+          .select("*")
+          .ilike("email", currentUser.email)
+          .maybeSingle();
+        if (!byEmail.error && byEmail.data) {
+          profile = byEmail.data;
+        } else if (byEmail.error) {
+          profileError = byEmail.error;
+        }
+      }
+
+      if (profileError) console.error("loadCurrentProfile", profileError);
+      currentProfile = profile;
       syncGlobalState();
-      return data;
+      return profile;
     }
 
     async function boot() {
-      const user = await getCurrentSessionUser();
-      if (!user) {
-        currentUser = null;
-        currentProfile = null;
+      try {
+        const user = await getCurrentSessionUser();
+        if (!user) {
+          currentUser = null;
+          currentProfile = null;
+          syncGlobalState();
+          go("loginScreen");
+          return;
+        }
+
+        currentUser = user;
         syncGlobalState();
-        go("loginScreen");
-        return;
-      }
+        const profile = await loadCurrentProfile();
 
-      currentUser = user;
-      syncGlobalState();
-      const profile = await loadCurrentProfile();
-
-      if (!profile) {
-        const raw = localStorage.getItem("ladrame_pending_signup_data");
-        if (raw) pendingSignupData = JSON.parse(raw);
-        if (pendingSignupData) {
+        if (!profile) {
+          const raw = localStorage.getItem("ladrame_pending_signup_data");
+          if (raw) pendingSignupData = JSON.parse(raw);
           $("completeProfileInfo").innerHTML = `
-            <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
+            <p><b>Nombre:</b> ${pendingSignupData?.name || user.user_metadata?.pending_name || user.user_metadata?.name || "-"}</p>
             <p><b>Correo:</b> ${pendingSignupData?.email || user.email || "-"}</p>
-            <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
-            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
-            <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
+            <p><b>DNI:</b> ${pendingSignupData?.dni || user.user_metadata?.pending_dni || "-"}</p>
+            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role || user.user_metadata?.pending_role)}</p>
+            <p><b>País:</b> ${pendingSignupData?.country || user.user_metadata?.pending_country || "-"}</p>
           `;
           go("completeProfileScreen");
           return;
         }
+
+        await routeUser(profile);
+        subscribeNotifications();
+        subscribeRequestsRealtime();
+        subscribeOffersRealtime();
+        subscribeWalksRealtime();
+
+        if (window.activarPush && pushActivatedForUserId !== currentUser.id) {
+          pushActivatedForUserId = currentUser.id;
+          window.activarPush();
+        }
+      } catch (e) {
+        console.error("boot", e);
+        showMsg("loginMsg", e?.message || "Error iniciando la app");
         go("loginScreen");
-        return;
-      }
-
-      await routeUser(profile);
-      subscribeNotifications();
-      subscribeRequestsRealtime();
-      subscribeOffersRealtime();
-      subscribeWalksRealtime();
-
-      if (window.activarPush && pushActivatedForUserId !== currentUser.id) {
-        pushActivatedForUserId = currentUser.id;
-        window.activarPush();
       }
     }
 
@@ -1425,7 +1509,10 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
+      const seen = new Set();
       for (const offer of pendingOffers || []) {
+        if (seen.has(offer.id)) continue;
+        seen.add(offer.id);
         const waiting = document.createElement("div");
         waiting.className = "card";
         waiting.innerHTML = `
@@ -1439,8 +1526,9 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
     async function renderProviderHome() {
       ensureProviderHomeMap();
+      const homeStack = $("providerFloatingStack");
+      if (homeStack) homeStack.innerHTML = "";
       await loadWalkerCredits();
-      setTimeout(() => { loadWalkerCredits(); }, 350);
       if (currentProfile?.hotel_enabled) {
         $("hotelWalletCard").classList.remove("hidden");
         $("hotelConfigBtn").classList.remove("hidden");
@@ -2347,23 +2435,25 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadWalkerCredits() {
-      const setValue = (balance) => {
+      const debugEl = $("walletDebugText");
+      const setValue = (balance, maxTariff = null, note = "") => {
         const safe = Math.max(0, Number(balance || 0));
         if ($("walkerCredits")) $("walkerCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
-        if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${(safe * 10).toFixed(2).replace(/\.00$/, "")}`;
+        const safeTariff = maxTariff == null ? safe * 10 : Math.max(0, Number(maxTariff || 0));
+        if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${safeTariff.toFixed(2).replace(/\.00$/, "")}`;
+        if (debugEl) debugEl.textContent = note || `Saldo cargado: ${safe}`;
       };
 
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
+        const user = currentUser || await getCurrentSessionUser();
         if (!user?.id) {
-          setValue(0);
+          setValue(0, 0, "Sin sesión activa");
           return;
         }
 
         let balance = null;
+        let source = "sin fuente";
 
-        // Estrategia 1: tabla directa
         try {
           const resp1 = await supabaseClient
             .from("provider_wallets")
@@ -2371,48 +2461,81 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             .eq("user_id", user.id)
             .eq("provider_type", "walker")
             .maybeSingle();
-          if (!resp1.error && resp1.data && resp1.data.balance != null) {
+          if (resp1.error) throw resp1.error;
+          if (resp1.data?.balance != null) {
             balance = resp1.data.balance;
+            source = "provider_wallets";
           }
         } catch (e) {
           console.error("wallet strategy 1", e);
         }
 
-        // Estrategia 2: vista por email
-        if (balance == null || Number(balance) === 0) {
+        if (balance == null) {
           try {
             const resp2 = await supabaseClient
               .from("provider_wallet_balances")
               .select("balance")
-              .eq("email", user.email)
+              .eq("user_id", user.id)
               .eq("provider_type", "walker")
               .maybeSingle();
-            if (!resp2.error && resp2.data && resp2.data.balance != null) {
+            if (resp2.error) throw resp2.error;
+            if (resp2.data?.balance != null) {
               balance = resp2.data.balance;
+              source = "provider_wallet_balances.user_id";
             }
           } catch (e) {
             console.error("wallet strategy 2", e);
           }
         }
 
-        // Estrategia 3: RPC segura
-        if (balance == null || Number(balance) === 0) {
+        if (balance == null && user.email) {
+          try {
+            const resp2b = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .ilike("email", user.email)
+              .eq("provider_type", "walker")
+              .maybeSingle();
+            if (resp2b.error) throw resp2b.error;
+            if (resp2b.data?.balance != null) {
+              balance = resp2b.data.balance;
+              source = "provider_wallet_balances.email";
+            }
+          } catch (e) {
+            console.error("wallet strategy 2b", e);
+          }
+        }
+
+        if (balance == null) {
           try {
             const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", {
               p_provider_type: "walker"
             });
-            if (!resp3.error && resp3.data != null) {
+            if (resp3.error) throw resp3.error;
+            if (resp3.data != null) {
               balance = resp3.data;
+              source = "rpc:get_my_provider_wallet_balance";
             }
           } catch (e) {
             console.error("wallet strategy 3", e);
           }
         }
 
-        setValue(balance || 0);
+        let maxTariff = null;
+        try {
+          const maxResp = await supabaseClient.rpc("get_provider_max_tariff", { p_user_id: user.id, p_provider_type: "walker" });
+          if (!maxResp.error && maxResp.data != null) {
+            maxTariff = maxResp.data;
+            source += " + rpc:get_provider_max_tariff";
+          }
+        } catch (e) {
+          console.error("max tariff rpc", e);
+        }
+
+        setValue(balance || 0, maxTariff, `Saldo cargado desde ${source}: ${Number(balance || 0).toFixed(2)}`);
       } catch (e) {
         console.error("loadWalkerCredits fatal", e);
-        setValue(0);
+        setValue(0, 0, "Error cargando saldo");
       }
     }
 
@@ -2422,8 +2545,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
       };
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
+        const user = currentUser || await getCurrentSessionUser();
         if (!user?.id) {
           setValue(0);
           return;
@@ -2440,19 +2562,31 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           if (!resp1.error && resp1.data && resp1.data.balance != null) balance = resp1.data.balance;
         } catch (e) { console.error("hotel strategy 1", e); }
 
-        if (balance == null || Number(balance) === 0) {
+        if (balance == null) {
           try {
             const resp2 = await supabaseClient
               .from("provider_wallet_balances")
               .select("balance")
-              .eq("email", user.email)
+              .eq("user_id", user.id)
               .eq("provider_type", "hotel")
               .maybeSingle();
             if (!resp2.error && resp2.data && resp2.data.balance != null) balance = resp2.data.balance;
           } catch (e) { console.error("hotel strategy 2", e); }
         }
 
-        if (balance == null || Number(balance) === 0) {
+        if (balance == null && user.email) {
+          try {
+            const resp2b = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .ilike("email", user.email)
+              .eq("provider_type", "hotel")
+              .maybeSingle();
+            if (!resp2b.error && resp2b.data && resp2b.data.balance != null) balance = resp2b.data.balance;
+          } catch (e) { console.error("hotel strategy 2b", e); }
+        }
+
+        if (balance == null) {
           try {
             const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "hotel" });
             if (!resp3.error && resp3.data != null) balance = resp3.data;
@@ -2487,8 +2621,12 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (error) return showMsg("buyCreditsMsg", error.message);
 
       await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.", "credit_order_created", "credit_orders", null);
-      showMsg("buyCreditsMsg", "Comprobante enviado");
-      setTimeout(() => go("providerHomeScreen"), 700);
+      showMsg("buyCreditsMsg", "Comprobante enviado. Se verá reflejado cuando lo apruebe el admin.");
+      await loadWalkerCredits().catch(() => {});
+      setTimeout(async () => {
+        go("providerHomeScreen");
+        await renderProviderHome().catch(() => {});
+      }, 700);
     }
 
     async function createNotification(userId, title, message, type = null, referenceTable = null, referenceId = null) {
@@ -3437,6 +3575,26 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       bindCoreButtons();
       setTimeout(bindCoreButtons, 300);
       setTimeout(bindCoreButtons, 1200);
+
+      ["loginEmail", "loginPass"].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") handleLogin();
+        });
+      });
+
+      ["signupName", "signupEmail", "signupDNI", "signupPass"].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") registerUser();
+        });
+      });
+
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user || null;
+        syncGlobalState();
+      });
+
       boot();
     });
   </script>
