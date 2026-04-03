@@ -2189,33 +2189,6 @@
       if (providerLat != null && providerLng != null) {
         walkerMap.setCenter([providerLng, providerLat]);
       }
-    }
-        walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
-        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const html = buildWalkerTargetCard(req, dogs, distance);
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = html;
-        $("requestsList").appendChild(div);
-        if (mapStack) {
-          const c = document.createElement("div");
-          c.className = "card";
-          c.innerHTML = html;
-          mapStack.appendChild(c);
-        }
-        if (homeStack) {
-          const c = document.createElement("div");
-          c.className = "card";
-          c.innerHTML = html;
-          homeStack.appendChild(c);
-        }
-      }
-
-      if (!$("requestsList").innerHTML.trim()) {
-        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-      }
-      if (providerLat != null && providerLng != null) walkerMap.setCenter([providerLng, providerLat]);
-    }
 
     async function dismissRequest(requestId) {
       const { error } = await supabaseClient.rpc("dismiss_walk_target", { p_request_id: requestId });
@@ -2808,9 +2781,6 @@
       $("pickupPinInput").value = "";
       showPrettyInfo("Recojo confirmado", "El perro fue recogido. Se descontó el 10% de la tarifa aceptada en créditos.");
       await refreshActiveWalkCards();
-      await refreshLiveWalk();
-    }).eq("id", selectedWalk);
-      $("pickupPinInput").value = "";
       await refreshLiveWalk();
     }
 
