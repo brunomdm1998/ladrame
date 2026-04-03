@@ -2461,7 +2461,7 @@
 
       alert("Paseo cancelado");
       await refreshActiveWalkCards();
-      await loadOwnerHomeRequestOverlay?.();
+      if (typeof loadOwnerHomeRequestOverlay === 'function') await loadOwnerHomeRequestOverlay();
       await goBackFromLiveWalk();
     }
 
