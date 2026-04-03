@@ -2552,13 +2552,6 @@
       }
     }
 
-      if (lastLoc?.lat != null && lastLoc?.lng != null) {
-        liveMap.setCenter([Number(lastLoc.lng), Number(lastLoc.lat)]);
-        liveWalkerMarker = createEmojiMarker("🚶").setLngLat([Number(lastLoc.lng), Number(lastLoc.lat)]).addTo(liveMap);
-      } else if (providerLat != null && providerLng != null) {
-        liveMap.setCenter([providerLng, providerLat]);
-        liveWalkerMarker = createEmojiMarker("🚶").setLngLat([providerLng, providerLat]).addTo(liveMap);
-      }
     }
 
     async function goBackFromLiveWalk() {
