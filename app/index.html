@@ -896,7 +896,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data?.publicUrl || null;
     }
 
-    async function getCurrentSessionUser() {
+    window.getCurrentSessionUser = async function getCurrentSessionUser() {
       try {
         const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
         if (!sessionError && sessionData?.session?.user) return sessionData.session.user;
@@ -916,7 +916,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    async function handleLogin() {
+    window.handleLogin = async function handleLogin() {
       const email = $("loginEmail").value.trim().toLowerCase();
       const password = $("loginPass").value;
       const btn = $("loginBtn");
@@ -945,7 +945,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    async function registerUser() {
+    window.registerUser = async function registerUser() {
       const name = $("signupName").value.trim();
       const email = $("signupEmail").value.trim().toLowerCase();
       const dni = normalizeDni($("signupDNI").value);
@@ -1557,7 +1557,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    async function renderProviderHome() {
+    window.renderProviderHome = async function renderProviderHome() {
       ensureProviderHomeMap();
       const homeStack = $("providerFloatingStack");
       if (homeStack) homeStack.innerHTML = "";
@@ -1576,7 +1576,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       await loadPendingOfferWaitingCard();
     }
 
-    async function renderProviderHomeMap() {
+    window.renderProviderHomeMap = async function renderProviderHomeMap() {
       ensureProviderHomeMap();
       providerHomeMarkers.forEach(m => m.remove());
       providerHomeMarkers = [];
@@ -2491,7 +2491,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       setTimeout(() => go("providerHomeScreen"), 400);
     }
 
-    async function loadWalkerCredits() {
+    window.loadWalkerCredits = async function loadWalkerCredits() {
       const debugEl = $("walletDebugText");
       const setValue = (balance, maxTariff = null, note = "") => {
         const safe = Math.max(0, Number(balance || 0));
@@ -2621,7 +2621,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    async function loadHotelCredits() {
+    window.loadHotelCredits = async function loadHotelCredits() {
       const setValue = (balance) => {
         const safe = Math.max(0, Number(balance || 0));
         if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
@@ -3679,6 +3679,16 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
       boot();
     });
+    // Compat global shims
+    try {
+      if (typeof window.loadWalkerCredits !== "function" && typeof loadWalkerCredits === "function") window.loadWalkerCredits = loadWalkerCredits;
+      if (typeof window.renderProviderHome !== "function" && typeof renderProviderHome === "function") window.renderProviderHome = renderProviderHome;
+      if (typeof window.renderProviderHomeMap !== "function" && typeof renderProviderHomeMap === "function") window.renderProviderHomeMap = renderProviderHomeMap;
+      if (typeof window.getCurrentSessionUser !== "function" && typeof getCurrentSessionUser === "function") window.getCurrentSessionUser = getCurrentSessionUser;
+      if (typeof window.handleLogin !== "function" && typeof handleLogin === "function") window.handleLogin = handleLogin;
+      if (typeof window.registerUser !== "function" && typeof registerUser === "function") window.registerUser = registerUser;
+    } catch (e) { console.warn("shim init", e); }
+
   </script>
 </body>
 </html>
