@@ -98,6 +98,14 @@
       margin-bottom: 6px;
     }
     .hidden { display: none !important; }
+    .avatar-small {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #efefef;
+      border: 1px solid #eee;
+    }
     .preview-img {
       width: 120px;
       height: 120px;
@@ -253,6 +261,35 @@
       overflow-y: auto;
       pointer-events: none;
     }
+    
+    .eta-bubble {
+      background: #fff;
+      color: #222;
+      border: 1px solid #d9e2ef;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      line-height: 1;
+      box-shadow: 0 8px 18px rgba(0,0,0,.14);
+      white-space: nowrap;
+      position: relative;
+      transform: translateY(-6px);
+    }
+    .eta-bubble::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -6px;
+      width: 10px;
+      height: 10px;
+      background: #fff;
+      border-right: 1px solid #d9e2ef;
+      border-bottom: 1px solid #d9e2ef;
+      rotate: 45deg;
+    }
+
     .floating-stack .card {
       pointer-events: auto;
       margin: 0;
@@ -585,6 +622,7 @@
     <div id="liveWalkScreen" class="screen">
       <h2>Paseo en vivo</h2>
       <div id="liveWalkInfo" class="card"></div>
+      
       <div class="card center">
         <div class="small">Tiempo transcurrido</div>
         <div id="walkTimerDisplay" class="timer-display">00:00</div>
@@ -605,7 +643,8 @@
         <button class="green" onclick="verifyDropoffPin()">Confirmar devolución</button>
       </div>
       <button class="gray" onclick="openChatFromCurrentService()">Abrir chat</button>
-      <button class="red" onclick="finishWalk()">Terminar paseo</button>
+      <button class="orange" id="cancelBeforePickupBtn" onclick="cancelCurrentWalkBeforePickup()">Cancelar paseo</button>
+      <button class="red hidden" id="finishWalkBtn" onclick="finishWalk()">Terminar paseo</button>
       <button class="secondary" onclick="goBackFromLiveWalk()">Volver</button>
     </div>
 
@@ -689,7 +728,7 @@
 
     let ownerHomeMap = null, providerHomeMap = null, walkerMap = null, hotelsMap = null, liveMap = null;
     let ownerHomeMarkers = [], providerHomeMarkers = [], walkerRequestMarkers = [], hotelMarkers = [];
-    let liveOwnerMarker = null, liveWalkerMarker = null;
+    let liveOwnerMarker = null, liveWalkerMarker = null, liveDogMarker = null, liveEtaMarker = null;
     let ownerLat = null, ownerLng = null, providerLat = null, providerLng = null;
 
     let selectedRequest = null;
@@ -1133,10 +1172,12 @@
 
       for (const ofr of offers || []) {
         if (!["pending"].includes(ofr.status) || req.status !== "open") continue;
+        const walker = await getWalkerSummary(ofr.walker_id);
         const offerCard = document.createElement("div");
         offerCard.className = "card";
         offerCard.innerHTML = `
           <p><b>Oferta recibida</b></p>
+          ${buildWalkerMiniProfileHtml(walker)}
           <p class="small">Tarifa del paseador: S/${ofr.price}</p>
           <div class="home-action-row">
             <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
@@ -1528,6 +1569,52 @@
       }, 500);
     }
 
+
+    async function getWalkerSummary(walkerId) {
+      if (!walkerId) return null;
+      try {
+        const { data: user } = await supabaseClient
+          .from("users")
+          .select("id,name,selfie_url,stars")
+          .eq("id", walkerId)
+          .maybeSingle();
+
+        const { count } = await supabaseClient
+          .from("walks")
+          .select("*", { count: "exact", head: true })
+          .eq("walker_id", walkerId)
+          .eq("status", "completed");
+
+        return {
+          id: walkerId,
+          name: user?.name || "Paseador",
+          selfie_url: user?.selfie_url || null,
+          stars: user?.stars || 5,
+          completed_walks: count || 0
+        };
+      } catch (e) {
+        console.error("getWalkerSummary error", e);
+        return null;
+      }
+    }
+
+    function buildWalkerMiniProfileHtml(walker) {
+      if (!walker) return "";
+      const stars = Number(walker.stars || 0);
+      return `
+        <div class="comment-box">
+          <div style="display:flex;gap:10px;align-items:center;">
+            ${walker.selfie_url ? `<img src="${walker.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+            <div style="flex:1">
+              <p><b>${walker.name || "Paseador"}</b></p>
+              <p class="small">⭐ ${stars} estrellas</p>
+              <p class="small">🚶 ${walker.completed_walks || 0} paseos</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     async function getRequestDogsWithPhotos(requestId, ownerId) {
       const list = [];
       const { data: links } = await supabaseClient
@@ -1626,10 +1713,12 @@
 
           if (offers?.length) {
             for (const ofr of offers) {
+              const walker = await getWalkerSummary(ofr.walker_id);
               const offerCard = document.createElement("div");
               offerCard.className = "card";
               offerCard.innerHTML = `
                 <p><b>Oferta del paseador</b></p>
+                ${buildWalkerMiniProfileHtml(walker)}
                 <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
                 <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
                 ${ofr.status === "pending" && req.status === "open" ? `
@@ -1764,22 +1853,45 @@
         .order("delivered_at", { ascending: false });
 
       if (error) return [];
-      const pendingTargets = (targets || []).filter(t => t.status === "pending" || t.status === "offered");
-      if (!pendingTargets.length) return [];
+      const baseTargets = (targets || []).filter(t => t.status === "pending" || t.status === "offered");
+      if (!baseTargets.length) return [];
 
-      const requestIds = pendingTargets.map(t => t.request_id);
+      const requestIds = [...new Set(baseTargets.map(t => t.request_id))];
       const { data: requests } = await supabaseClient
         .from("walk_requests")
         .select("*")
         .in("id", requestIds);
 
+      const { data: myOffers } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("walker_id", currentUser.id)
+        .in("request_id", requestIds)
+        .order("created_at", { ascending: false });
+
+      const latestOfferByRequest = new Map();
+      for (const offer of myOffers || []) {
+        if (!latestOfferByRequest.has(offer.request_id)) latestOfferByRequest.set(offer.request_id, offer);
+      }
+
       const requestMap = new Map((requests || []).map(r => [r.id, r]));
       const visible = [];
-      for (const target of pendingTargets) {
+      for (const target of baseTargets) {
         const req = requestMap.get(target.request_id);
         if (!req) continue;
         if (req.status !== "open") continue;
         if (isWalkRequestExpired(req.created_at)) continue;
+
+        const lastOffer = latestOfferByRequest.get(target.request_id);
+
+        // Si el paseador descartó esa solicitud manualmente, no debe volver.
+        if (lastOffer?.status === "dismissed") continue;
+
+        // Si ya tiene oferta pendiente, no la repetimos en pantalla.
+        if (lastOffer?.status === "pending") continue;
+
+        // Si el dueño rechazó su oferta, la mostramos otra vez para que pueda reenviar.
+        // Si nunca ofertó, también la mostramos.
         visible.push({ target, req });
       }
       return visible;
@@ -2122,7 +2234,7 @@
 
       if (!dateValue) {
         $("walkTimerDisplay").textContent = "00:00";
-        $("walkTimerStatus").textContent = "Esperando inicio";
+        $("walkTimerStatus").textContent = "Esperando recojo del perro";
         $("walkTimerDisplay").classList.remove("timer-over");
         return;
       }
@@ -2130,9 +2242,10 @@
       walkStartedAt = new Date(dateValue);
 
       const render = () => {
-        const elapsed = Math.floor((new Date() - walkStartedAt) / 1000);
+        const elapsed = Math.max(0, Math.floor((new Date() - walkStartedAt) / 1000));
         const elapsedMin = Math.floor(elapsed / 60);
         $("walkTimerDisplay").textContent = formatTimerSeconds(elapsed);
+
         if (requestedWalkMinutes > 0) {
           if (elapsedMin >= requestedWalkMinutes) {
             $("walkTimerStatus").textContent = `Tiempo excedido. Contratado: ${requestedWalkMinutes} min`;
@@ -2149,6 +2262,119 @@
 
       render();
       walkTimerInterval = setInterval(render, 1000);
+    }
+
+
+    function estimateArrivalMinutesKm(distanceKm) {
+      const adjustedKm = Number(distanceKm || 0) * 1.3;
+      const avgKmPerHour = 4.5;
+      return Math.max(1, Math.round((adjustedKm / avgKmPerHour) * 60));
+    }
+
+    async function getOwnerCoordsForWalk(walk) {
+      if (!walk?.request_id) return { lat: ownerLat, lng: ownerLng };
+      const { data: req } = await supabaseClient
+        .from("walk_requests")
+        .select("lat,lng")
+        .eq("id", walk.request_id)
+        .maybeSingle();
+      return {
+        lat: req?.lat ?? ownerLat,
+        lng: req?.lng ?? ownerLng
+      };
+    }
+
+    async function getLatestWalkerCoordsForWalk(walkId) {
+      const { data: lastLoc } = await supabaseClient
+        .from("walk_locations")
+        .select("*")
+        .eq("walk_id", walkId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastLoc?.lat != null && lastLoc?.lng != null) {
+        return { lat: Number(lastLoc.lat), lng: Number(lastLoc.lng) };
+      }
+      if (providerLat != null && providerLng != null) {
+        return { lat: providerLat, lng: providerLng };
+      }
+      return null;
+    }
+
+    function createEtaMarker(minutes) {
+      const el = document.createElement("div");
+      el.className = "eta-bubble";
+      el.textContent = `${minutes} min`;
+      return new mapboxgl.Marker({ element: el, anchor: "bottom" });
+    }
+
+    async function updateEtaBubble(walk, ownerCoords, walkerCoords) {
+      if (liveEtaMarker) {
+        liveEtaMarker.remove();
+        liveEtaMarker = null;
+      }
+
+      if (walk?.dog_received || walk?.start_time) return;
+      if (!ownerCoords?.lat || !ownerCoords?.lng || !walkerCoords?.lat || !walkerCoords?.lng) return;
+
+      const distanceKm = getDistanceKm(
+        Number(walkerCoords.lat),
+        Number(walkerCoords.lng),
+        Number(ownerCoords.lat),
+        Number(ownerCoords.lng)
+      );
+
+      const etaMin = estimateArrivalMinutesKm(distanceKm);
+      liveEtaMarker = createEtaMarker(etaMin)
+        .setLngLat([Number(walkerCoords.lng), Number(walkerCoords.lat)])
+        .addTo(liveMap);
+    }
+
+    async function cancelCurrentWalkBeforePickup() {
+      if (!selectedWalk) return;
+      const { data: walk } = await supabaseClient
+        .from("walks")
+        .select("*")
+        .eq("id", selectedWalk)
+        .maybeSingle();
+
+      if (!walk) return alert("No se encontró el paseo");
+      if (walk.dog_received || walk.start_time) {
+        return alert("Ya no se puede cancelar después de recoger al perro.");
+      }
+
+      const ok = confirm("¿Seguro que quieres cancelar el paseo antes del recojo?");
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from("walks")
+        .update({
+          status: "cancelled",
+          end_time: new Date().toISOString()
+        })
+        .eq("id", selectedWalk);
+
+      if (error) return alert(error.message);
+
+      if (walk.request_id) {
+        await supabaseClient
+          .from("walk_requests")
+          .update({ status: "cancelled" })
+          .eq("id", walk.request_id);
+      }
+
+      if (walk.offer_id) {
+        await supabaseClient
+          .from("offers")
+          .update({ status: "cancelled" })
+          .eq("id", walk.offer_id);
+      }
+
+      alert("Paseo cancelado");
+      goBackFromLiveWalk();
+      await refreshActiveWalkCards();
+      await loadOwnerHomeRequestOverlay?.();
     }
 
     function ensureLiveMap() {
@@ -2179,33 +2405,64 @@
       const { data: walk } = await supabaseClient.from("walks").select("*").eq("id", selectedWalk).single();
       if (!walk) return;
 
-      const dogs = walk.dog_id ? await supabaseClient.from("dogs").select("*").eq("id", walk.dog_id).maybeSingle() : { data: null };
+      const dogResult = walk.dog_id
+        ? await supabaseClient.from("dogs").select("*").eq("id", walk.dog_id).maybeSingle()
+        : { data: null };
+
+      const prePickup = !(walk.dog_received || walk.start_time);
+      const statusLabel = prePickup ? "Esperando recojo" : (walk.status || "-");
+
       $("liveWalkInfo").innerHTML = `
-        <p><b>Estado:</b> ${walk.status || "-"}</p>
+        <p><b>Estado:</b> ${statusLabel}</p>
         <p><b>Tarifa final:</b> S/${walk.price || 0}</p>
-        <p><b>Perro:</b> ${dogs.data?.name || "-"}</p>
+        <p><b>Perro:</b> ${dogResult.data?.name || "-"}</p>\n        <p class="small">🐶 El perrito se ve siempre en el mapa en vivo.</p>
       `;
 
-      startWalkTimerFromDate(walk.start_time || walk.created_at, walk.time || 0);
+      const cancelBtn = $("cancelBeforePickupBtn");
+      const finishBtn = $("finishWalkBtn");
+      if (cancelBtn) cancelBtn.classList.toggle("hidden", !prePickup);
+      if (finishBtn) finishBtn.classList.toggle("hidden", prePickup);
+
+      // el temporizador solo arranca cuando el paseador recoge al perro
+      startWalkTimerFromDate(walk.start_time, walk.time || 0);
 
       $("ownerPinCard").classList.toggle("hidden", currentProfile?.role !== "owner");
       $("walkerPinCard").classList.toggle("hidden", currentProfile?.role !== "walker");
       $("pickupPinDisplay").textContent = walk.pickup_pin || "------";
 
-      const { data: lastLoc } = await supabaseClient
-        .from("walk_locations")
-        .select("*")
-        .eq("walk_id", selectedWalk)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const ownerCoords = await getOwnerCoordsForWalk(walk);
+      const lastWalkerCoords = await getLatestWalkerCoordsForWalk(selectedWalk);
 
       if (liveOwnerMarker) liveOwnerMarker.remove();
       if (liveWalkerMarker) liveWalkerMarker.remove();
-
-      if (ownerLat != null && ownerLng != null) {
-        liveOwnerMarker = createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(liveMap);
+      if (liveDogMarker) liveDogMarker.remove();
+      if (liveEtaMarker) {
+        liveEtaMarker.remove();
+        liveEtaMarker = null;
       }
+
+      if (ownerCoords?.lat != null && ownerCoords?.lng != null) {
+        liveOwnerMarker = createEmojiMarker("📍").setLngLat([Number(ownerCoords.lng), Number(ownerCoords.lat)]).addTo(liveMap);
+      }
+
+      if (lastWalkerCoords?.lat != null && lastWalkerCoords?.lng != null) {
+        liveWalkerMarker = createEmojiMarker("🚶").setLngLat([Number(lastWalkerCoords.lng), Number(lastWalkerCoords.lat)]).addTo(liveMap);
+
+        if (walk.dog_returned) {
+          liveDogMarker = createEmojiMarker("🐶").setLngLat([Number(ownerCoords.lng), Number(ownerCoords.lat)]).addTo(liveMap);
+        } else if (walk.dog_received || walk.start_time) {
+          liveDogMarker = createEmojiMarker("🐶").setLngLat([Number(lastWalkerCoords.lng), Number(lastWalkerCoords.lat)]).addTo(liveMap);
+        } else {
+          liveDogMarker = createEmojiMarker("🐶").setLngLat([Number(ownerCoords.lng), Number(ownerCoords.lat)]).addTo(liveMap);
+          await updateEtaBubble(walk, ownerCoords, lastWalkerCoords);
+        }
+
+        liveMap.setCenter([Number(lastWalkerCoords.lng), Number(lastWalkerCoords.lat)]);
+      } else if (ownerCoords?.lat != null && ownerCoords?.lng != null) {
+        liveDogMarker = createEmojiMarker("🐶").setLngLat([Number(ownerCoords.lng), Number(ownerCoords.lat)]).addTo(liveMap);
+        liveMap.setCenter([Number(ownerCoords.lng), Number(ownerCoords.lat)]);
+      }
+    }
 
       if (lastLoc?.lat != null && lastLoc?.lng != null) {
         liveMap.setCenter([Number(lastLoc.lng), Number(lastLoc.lat)]);
@@ -2230,7 +2487,8 @@
       await supabaseClient.from("walks").update({
         dog_received: true,
         dog_received_at: new Date().toISOString(),
-        start_time: walk.start_time || new Date().toISOString()
+        start_time: walk.start_time || new Date().toISOString(),
+        status: "active"
       }).eq("id", selectedWalk);
       $("pickupPinInput").value = "";
       await refreshLiveWalk();
@@ -2254,6 +2512,13 @@
 
     async function finishWalk() {
       if (!selectedWalk) return;
+      const { data: walk } = await supabaseClient.from("walks").select("*").eq("id", selectedWalk).maybeSingle();
+      if (!walk) return;
+
+      if (!(walk.dog_received || walk.start_time)) {
+        return alert("Antes del recojo solo se puede cancelar, no terminar el paseo.");
+      }
+
       const { error } = await supabaseClient.rpc("finish_walk", { walk_id: selectedWalk });
       if (error) {
         await supabaseClient.from("walks").update({
@@ -2262,6 +2527,7 @@
         }).eq("id", selectedWalk);
       }
       await refreshLiveWalk();
+      await refreshActiveWalkCards();
       alert("Paseo terminado");
     }
 
