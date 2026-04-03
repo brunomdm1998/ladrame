@@ -324,7 +324,7 @@
     }
   </style>
 </head>
-<body data-version="final-limpio">
+<body data-version="v41-limpio">
   <div id="phone">
 
     <div id="loginScreen" class="screen active">
@@ -736,6 +736,19 @@
   <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-limpio</div>
 
   <script>
+    (function forceFreshClient(){
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister())).catch(() => {});
+        }
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
+        }
+      } catch(e) {
+        console.error('forceFreshClient error', e);
+      }
+    })();
+
 mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
 
     const { createClient } = supabase;
@@ -3443,6 +3456,21 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       setTimeout(bindCoreButtons, 1200);
       boot();
     });
+
+    try {
+      window.handleLogin = handleLogin;
+      window.registerUser = registerUser;
+      window.getCurrentSessionUser = getCurrentSessionUser;
+      window.renderProviderHome = renderProviderHome;
+      window.renderProviderHomeMap = renderProviderHomeMap;
+      window.loadWalkerCredits = loadWalkerCredits;
+      window.loadHotelCredits = loadHotelCredits;
+      window.createWalkRequest = createWalkRequest;
+      window.go = go;
+      console.log("LADRAME v41 handlers exportados OK");
+    } catch (e) {
+      console.error("Error exportando handlers globales", e);
+    }
   </script>
 </body>
 </html>
