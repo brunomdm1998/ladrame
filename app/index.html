@@ -1390,6 +1390,30 @@
       providerHomeMap.resize();
     }
 
+
+    async function loadPendingOfferWaitingCard() {
+      const homeStack = $("providerFloatingStack");
+      if (!homeStack || !currentUser || currentProfile?.role !== "walker") return;
+
+      const { data: pendingOffers } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("walker_id", currentUser.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      for (const offer of pendingOffers || []) {
+        const waiting = document.createElement("div");
+        waiting.className = "card";
+        waiting.innerHTML = `
+          <p><b>Oferta enviada</b></p>
+          <p class="small">Tu tarifa: S/${offer.price}</p>
+          <p class="small">Esperando respuesta del dueño...</p>
+        `;
+        homeStack.appendChild(waiting);
+      }
+    }
+
     async function renderProviderHome() {
       ensureProviderHomeMap();
       await loadWalkerCredits();
@@ -1404,6 +1428,7 @@
         $("hotelRequestsBtn").classList.add("hidden");
       }
       await renderProviderHomeMap();
+      await loadPendingOfferWaitingCard();
     }
 
     async function renderProviderHomeMap() {
@@ -2037,13 +2062,66 @@
       if (homeStack) homeStack.innerHTML = "";
 
       const visible = await fetchVisibleWalkerTargets();
+
       for (const { req } of visible) {
         if (req.lat == null || req.lng == null) continue;
+
         let distance = null;
         if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
           if (distance > 5) continue;
         }
+
+        // Si el paseador ya envió una oferta pendiente para esta solicitud,
+        // no debe seguir viendo la tarjeta mientras el dueño decide.
+        const { data: myOffer } = await supabaseClient
+          .from("offers")
+          .select("*")
+          .eq("request_id", req.id)
+          .eq("walker_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (myOffer?.status === "pending") {
+          continue;
+        }
+
+        walkerRequestMarkers.push(
+          createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap)
+        );
+
+        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+        const htmlCard = buildWalkerTargetCard(req, dogs, distance);
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = htmlCard;
+        $("requestsList").appendChild(div);
+
+        if (mapStack) {
+          const c = document.createElement("div");
+          c.className = "card";
+          c.innerHTML = htmlCard;
+          mapStack.appendChild(c);
+        }
+
+        if (homeStack) {
+          const c = document.createElement("div");
+          c.className = "card";
+          c.innerHTML = htmlCard;
+          homeStack.appendChild(c);
+        }
+      }
+
+      if (!$("requestsList").innerHTML.trim()) {
+        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
+      }
+
+      if (providerLat != null && providerLng != null) {
+        walkerMap.setCenter([providerLng, providerLat]);
+      }
+    }
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
         const html = buildWalkerTargetCard(req, dogs, distance);
@@ -2140,7 +2218,9 @@
 
       await createNotification(req.owner_id, "Nueva oferta", `Recibiste una nueva oferta por S/${price}.`, "offer_created", "offers", selectedRequest);
       showMsg("offerMsg", "Oferta enviada");
-      setTimeout(() => go("providerHomeScreen"), 700);
+      await loadNearbyRequests();
+      await renderProviderHomeMap();
+      setTimeout(() => go("providerHomeScreen"), 400);
     }
 
     async function loadWalkerCredits() {
