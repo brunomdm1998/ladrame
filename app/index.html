@@ -736,19 +736,6 @@
   <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-limpio</div>
 
   <script>
-    (function forceFreshClient(){
-      try {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister())).catch(() => {});
-        }
-        if ('caches' in window) {
-          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
-        }
-      } catch(e) {
-        console.error('forceFreshClient error', e);
-      }
-    })();
-
 mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
 
     const { createClient } = supabase;
@@ -1366,19 +1353,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
     function getProviderLocationOnce() {
       return new Promise(resolve => {
-        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
-        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
-        const cachedOk = Number.isFinite(cachedLat) && Number.isFinite(cachedLng);
-        if (!navigator.geolocation) return resolve(cachedOk ? { lat: cachedLat, lng: cachedLng } : null);
+        if (!navigator.geolocation) return resolve(null);
         navigator.geolocation.getCurrentPosition(
-          pos => {
-            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            localStorage.setItem("ladrame_last_provider_lat", String(coords.lat));
-            localStorage.setItem("ladrame_last_provider_lng", String(coords.lng));
-            resolve(coords);
-          },
-          () => resolve(cachedOk ? { lat: cachedLat, lng: cachedLng } : null),
-          { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
+          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 10000 }
         );
       });
     }
@@ -1461,6 +1440,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     async function renderProviderHome() {
       ensureProviderHomeMap();
       await loadWalkerCredits();
+      setTimeout(() => { loadWalkerCredits(); }, 500);
       if (currentProfile?.hotel_enabled) {
         $("hotelWalletCard").classList.remove("hidden");
         $("hotelConfigBtn").classList.remove("hidden");
@@ -1503,13 +1483,44 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function startProviderLiveGps() {
-      const first = await getProviderLocationOnce();
+      const saveLocal = (lat, lng) => {
+        try {
+          localStorage.setItem("ladrame_last_provider_lat", String(lat));
+          localStorage.setItem("ladrame_last_provider_lng", String(lng));
+        } catch {}
+      };
+
+      const restoreLocal = () => {
+        try {
+          const lat = Number(localStorage.getItem("ladrame_last_provider_lat"));
+          const lng = Number(localStorage.getItem("ladrame_last_provider_lng"));
+          if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+        } catch {}
+        return null;
+      };
+
+      let first = await getProviderLocationOnce();
+      if (!first && currentUser?.id) {
+        try {
+          const { data } = await supabaseClient
+            .from("walkers")
+            .select("lat,lng")
+            .eq("user_id", currentUser.id)
+            .maybeSingle();
+          if (data?.lat != null && data?.lng != null) {
+            first = { lat: Number(data.lat), lng: Number(data.lng) };
+          }
+        } catch (e) {
+          console.error("restore walker position db", e);
+        }
+      }
+      if (!first) first = restoreLocal();
+
       if (first) {
-        providerLat = first.lat;
-        providerLng = first.lng;
-        localStorage.setItem("ladrame_last_provider_lat", String(first.lat));
-        localStorage.setItem("ladrame_last_provider_lng", String(first.lng));
-        await upsertWalkerPosition(first.lat, first.lng);
+        providerLat = Number(first.lat);
+        providerLng = Number(first.lng);
+        saveLocal(providerLat, providerLng);
+        await upsertWalkerPosition(providerLat, providerLng);
         await renderProviderHomeMap();
       }
 
@@ -1518,30 +1529,29 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       providerGpsWatchId = navigator.geolocation.watchPosition(async pos => {
         providerLat = pos.coords.latitude;
         providerLng = pos.coords.longitude;
-        localStorage.setItem("ladrame_last_provider_lat", String(providerLat));
-        localStorage.setItem("ladrame_last_provider_lng", String(providerLng));
+        saveLocal(providerLat, providerLng);
         await upsertWalkerPosition(providerLat, providerLng);
-        if ($("providerHomeScreen")?.classList.contains("active")) {
-          await renderProviderHomeMap();
+        await renderProviderHomeMap();
+      }, async err => {
+        console.error("watchPosition error", err);
+        if (providerLat == null || providerLng == null) {
+          const restored = restoreLocal();
+          if (restored) {
+            providerLat = restored.lat;
+            providerLng = restored.lng;
+            await renderProviderHomeMap();
+          }
         }
-        if ($("walkerMapScreen")?.classList.contains("active")) {
-          await loadNearbyRequests();
-          await renderProviderHomeMap();
-        }
-      }, async () => {
-        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
-        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
-        if (Number.isFinite(cachedLat) && Number.isFinite(cachedLng)) {
-          providerLat = cachedLat;
-          providerLng = cachedLng;
-          await renderProviderHomeMap();
-        }
-      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+      }, { enableHighAccuracy: true, maximumAge: 8000, timeout: 20000 });
     }
 
     async function upsertWalkerPosition(lat, lng) {
       if (!currentUser) return;
-      await supabaseClient.from("walkers").upsert({ user_id: currentUser.id, lat, lng }, { onConflict: "user_id" });
+      try {
+        await supabaseClient.from("walkers").upsert({ user_id: currentUser.id, lat, lng }, { onConflict: "user_id" });
+      } catch (e) {
+        console.error("upsertWalkerPosition", e);
+      }
     }
 
     async function loadDogs() {
@@ -1768,37 +1778,40 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         }
 
         const primaryDogId = selectedDogs[0].id;
+
         setDebug("Creando solicitud...");
+        const rpcResp = await supabaseClient.rpc("create_walk_request", {
+          p_owner_id: currentUser.id,
+          p_dog_id: primaryDogId,
+          p_tariff: price,
+          p_time: time,
+          p_location: `${ownerLat},${ownerLng}`,
+          p_comments: comments,
+          p_lat: ownerLat,
+          p_lng: ownerLng
+        });
 
-        const { data: request, error: insertError } = await supabaseClient
-          .from("walk_requests")
-          .insert({
-            owner_id: currentUser.id,
-            dog_id: primaryDogId,
-            tariff: Math.round(price),
-            time: Math.round(time),
-            location: `${ownerLat},${ownerLng}`,
-            comments,
-            lat: ownerLat,
-            lng: ownerLng,
-            status: "open"
-          })
-          .select()
-          .single();
-
-        if (insertError || !request?.id) {
-          console.error("walk_requests insert error", insertError);
-          showMsg("walkMsg", insertError?.message || "No se pudo crear la solicitud");
-          setDebug("Insert walk_requests falló");
+        if (rpcResp.error) {
+          console.error("create_walk_request rpc error", rpcResp.error);
+          showMsg("walkMsg", rpcResp.error.message || "Error creando solicitud");
+          setDebug("RPC create_walk_request falló");
           return;
         }
 
+        const requestId = rpcResp.data;
+
         setDebug("Vinculando perros...");
-        const requestDogsPayload = selectedDogs.map(dog => ({ request_id: request.id, dog_id: dog.id }));
-        const dogResp = await supabaseClient.from("walk_request_dogs").insert(requestDogsPayload);
-        if (dogResp.error) {
-          console.error("walk_request_dogs insert error", dogResp.error);
-          setDebug("Solicitud creada, pero algunos perros no se vincularon");
+        for (const dog of selectedDogs) {
+          const dogResp = await supabaseClient
+            .from("walk_request_dogs")
+            .upsert({
+              request_id: requestId,
+              dog_id: dog.id
+            });
+
+          if (dogResp.error) {
+            console.error("walk_request_dogs upsert error", dogResp.error);
+          }
         }
 
         try {
@@ -1808,7 +1821,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             `Tu solicitud fue publicada por S/${price}.`,
             "walk_request_created",
             "walk_requests",
-            request.id
+            requestId
           );
         } catch (e) {
           console.error("createNotification after createWalkRequest", e);
@@ -2383,26 +2396,28 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadWalkerCredits() {
-      const debugEl = $("walletDebugText");
       const setValue = (balance, source = "") => {
         const safe = Math.max(0, Number(balance || 0));
         if ($("walkerCredits")) $("walkerCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
         if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${(safe * 10).toFixed(2).replace(/\.00$/, "")}`;
-        if (debugEl) {
-          debugEl.classList.remove("hidden");
-          debugEl.textContent = source ? `Saldo cargado desde ${source}: ${safe}` : `Saldo: ${safe}`;
+        if ($("walletDebugText")) {
+          $("walletDebugText").textContent = source ? `Fuente saldo: ${source}` : "";
+          $("walletDebugText").classList.remove("hidden");
         }
+        try { localStorage.setItem("ladrame_last_walker_balance", String(safe)); } catch {}
       };
 
       try {
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
         if (!user?.id) {
-          setValue(0, "sesión vacía");
-          return 0;
+          const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
+          setValue(cached, cached ? "cache" : "sin sesión");
+          return;
         }
 
         let balance = null;
+        let source = "";
 
         try {
           const resp1 = await supabaseClient
@@ -2412,55 +2427,59 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             .eq("provider_type", "walker")
             .maybeSingle();
           if (!resp1.error && resp1.data && resp1.data.balance != null) {
-            balance = Number(resp1.data.balance);
-            localStorage.setItem("ladrame_last_walker_balance", String(balance));
-            setValue(balance, "provider_wallets");
-            return balance;
+            balance = resp1.data.balance;
+            source = "provider_wallets";
+          } else if (resp1.error) {
+            console.error("wallet strategy 1", resp1.error);
           }
-          if (resp1.error) console.error("wallet strategy 1", resp1.error);
         } catch (e) {
           console.error("wallet strategy 1", e);
         }
 
-        try {
-          const resp2 = await supabaseClient
-            .from("provider_wallet_balances")
-            .select("balance")
-            .eq("user_id", user.id)
-            .eq("provider_type", "walker")
-            .maybeSingle();
-          if (!resp2.error && resp2.data && resp2.data.balance != null) {
-            balance = Number(resp2.data.balance);
-            localStorage.setItem("ladrame_last_walker_balance", String(balance));
-            setValue(balance, "provider_wallet_balances");
-            return balance;
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp2 = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .eq("email", user.email)
+              .eq("provider_type", "walker")
+              .maybeSingle();
+            if (!resp2.error && resp2.data && resp2.data.balance != null) {
+              balance = resp2.data.balance;
+              source = "provider_wallet_balances";
+            } else if (resp2.error) {
+              console.error("wallet strategy 2", resp2.error);
+            }
+          } catch (e) {
+            console.error("wallet strategy 2", e);
           }
-          if (resp2.error) console.error("wallet strategy 2", resp2.error);
-        } catch (e) {
-          console.error("wallet strategy 2", e);
         }
 
-        try {
-          const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "walker" });
-          if (!resp3.error && resp3.data != null) {
-            balance = Number(resp3.data);
-            localStorage.setItem("ladrame_last_walker_balance", String(balance));
-            setValue(balance, "rpc");
-            return balance;
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "walker" });
+            if (!resp3.error && resp3.data != null) {
+              balance = resp3.data;
+              source = "rpc";
+            } else if (resp3.error) {
+              console.error("wallet strategy 3", resp3.error);
+            }
+          } catch (e) {
+            console.error("wallet strategy 3", e);
           }
-          if (resp3.error) console.error("wallet strategy 3", resp3.error);
-        } catch (e) {
-          console.error("wallet strategy 3", e);
         }
 
-        const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
-        setValue(cached, "caché local");
-        return cached;
+        if (balance == null) {
+          const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
+          setValue(cached, cached ? "cache" : "sin datos");
+          return;
+        }
+
+        setValue(balance, source || "desconocida");
       } catch (e) {
         console.error("loadWalkerCredits fatal", e);
         const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
-        setValue(cached, cached ? "caché local" : "error");
-        return cached;
+        setValue(cached, cached ? "cache por error" : "error");
       }
     }
 
@@ -2469,13 +2488,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         const safe = Math.max(0, Number(balance || 0));
         if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
       };
+
       try {
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
-        if (!user?.id) {
-          setValue(0);
-          return;
-        }
+        if (!user?.id) return setValue(0);
 
         let balance = null;
         try {
@@ -2493,7 +2510,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
             const resp2 = await supabaseClient
               .from("provider_wallet_balances")
               .select("balance")
-              .eq("user_id", user.id)
+              .eq("email", user.email)
               .eq("provider_type", "hotel")
               .maybeSingle();
             if (!resp2.error && resp2.data && resp2.data.balance != null) balance = resp2.data.balance;
@@ -3473,12 +3490,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       window.acceptOffer = acceptOffer;
       window.rejectOffer = rejectOffer;
       window.cancelWalkRequest = cancelWalkRequest;
-      window.loadWalkerCredits = loadWalkerCredits;
-      window.loadHotelCredits = loadHotelCredits;
-      window.renderProviderHome = renderProviderHome;
-      window.renderProviderHomeMap = renderProviderHomeMap;
-      window.startProviderLiveGps = startProviderLiveGps;
-      window.getCurrentSessionUser = getCurrentSessionUser;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -3491,12 +3502,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       bindCoreButtons();
       setTimeout(bindCoreButtons, 300);
       setTimeout(bindCoreButtons, 1200);
-      $("loginPass")?.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
-      $("signupPass")?.addEventListener("keydown", e => { if (e.key === "Enter") registerUser(); });
-      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-        currentUser = session?.user || null;
-        syncGlobalState();
-      });
       boot();
     });
   </script>
