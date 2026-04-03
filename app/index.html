@@ -349,7 +349,7 @@
         </div>
         <button class="secondary" style="width:auto;padding:10px 12px" onclick="logout()">Salir</button>
       </div>
-      <div class="home-map-wrap"><div id="ownerHomeMap"></div></div>
+      <div class="home-map-wrap"><div id="ownerHomeMap"></div><div id="ownerFloatingStack" class="floating-stack"></div></div>
       <div class="home-action-row">
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
@@ -1030,6 +1030,7 @@
         await updateHotelDogSelect();
         await getOwnerLocation();
         await renderOwnerHomeMap();
+        await loadOwnerHomeRequestOverlay();
         await refreshActiveWalkCards();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
         ownerMapRefreshInterval = setInterval(() => { renderOwnerHomeMap(); }, 5000);
@@ -1082,6 +1083,67 @@
       if (currentProfile?.role === "walker" && providerCard) {
         $("providerActiveWalkText").textContent = `Paseo activo · Tarifa final S/${walk.price || 0}`;
         providerCard.classList.remove("hidden");
+      }
+    }
+
+
+    async function loadOwnerHomeRequestOverlay() {
+      const stack = $("ownerFloatingStack");
+      if (!stack || !currentUser || currentProfile?.role !== "owner") return;
+      stack.innerHTML = "";
+
+      const { data: requests, error } = await supabaseClient
+        .from("walk_requests")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .in("status", ["open", "active"])
+        .order("created_at", { ascending: false });
+
+      if (error || !requests?.length) return;
+
+      const req = requests[0];
+      const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id).catch(() => []);
+      const requestCard = document.createElement("div");
+      requestCard.className = "card";
+
+      if (req.status === "open") {
+        requestCard.innerHTML = `
+          <p><b>Buscando paseador...</b></p>
+          <p class="small">Tu tarifa: S/${req.tariff}</p>
+          <p class="small">Tiempo: ${req.time || 0} min</p>
+          <p class="small">Notas: ${req.comments || "-"}</p>
+          ${buildDogsHtml(dogs)}
+          <button class="red" onclick="cancelWalkRequest('${req.id}')">Cancelar solicitud</button>
+        `;
+      } else {
+        requestCard.innerHTML = `
+          <p><b>Tienes un paseo activo</b></p>
+          <p class="small">Ya encontraste paseador.</p>
+          <button onclick="openMyActiveWalk()">Abrir paseo</button>
+          <button class="secondary" onclick="openChatFromActiveWalkHome()">Abrir chat</button>
+        `;
+      }
+      stack.appendChild(requestCard);
+
+      const { data: offers } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("request_id", req.id)
+        .order("created_at", { ascending: false });
+
+      for (const ofr of offers || []) {
+        if (!["pending"].includes(ofr.status) || req.status !== "open") continue;
+        const offerCard = document.createElement("div");
+        offerCard.className = "card";
+        offerCard.innerHTML = `
+          <p><b>Oferta recibida</b></p>
+          <p class="small">Tarifa del paseador: S/${ofr.price}</p>
+          <div class="home-action-row">
+            <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+            <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+          </div>
+        `;
+        stack.appendChild(offerCard);
       }
     }
 
@@ -1141,7 +1203,8 @@
       if (ownerLat != null && ownerLng != null) {
         ownerHomeMap.setCenter([ownerLng, ownerLat]);
         ownerHomeMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(ownerHomeMap));
-      }
+        await loadOwnerHomeRequestOverlay();
+    }
       const { data: activeWalks } = await supabaseClient
         .from("walks")
         .select("*")
@@ -1457,7 +1520,12 @@
 
       await createNotification(currentUser.id, "Solicitud creada", `Tu solicitud fue publicada por S/${price}.`, "walk_request_created", "walk_requests", request.id);
       showMsg("walkMsg", "Solicitud publicada");
-      setTimeout(() => loadOwnerRequests(), 700);
+      await loadOwnerHomeRequestOverlay();
+      setTimeout(async () => {
+        go("ownerHomeScreen");
+        await renderOwnerHomeMap();
+        await loadOwnerHomeRequestOverlay();
+      }, 500);
     }
 
     async function getRequestDogsWithPhotos(requestId, ownerId) {
@@ -1594,9 +1662,11 @@
         }
         if (walkId) {
           await refreshActiveWalkCards();
+          await loadOwnerHomeRequestOverlay();
           await openLiveWalk(walkId, "owner");
         } else {
           await refreshActiveWalkCards();
+          await loadOwnerHomeRequestOverlay();
           await loadOwnerRequests();
         }
       } finally {
@@ -1629,13 +1699,20 @@
         );
       }
 
-      await loadOwnerRequests();
+      if (document.getElementById("ownerRequestsScreen").classList.contains("active")) {
+        await loadOwnerRequests();
+      }
+      await loadOwnerHomeRequestOverlay();
     }
 
     async function cancelWalkRequest(requestId) {
       const { error } = await supabaseClient.rpc("cancel_walk_request", { p_request_id: requestId });
       if (error) return alert(error.message);
-      await loadOwnerRequests();
+      if (document.getElementById("ownerRequestsScreen").classList.contains("active")) {
+        await loadOwnerRequests();
+      }
+      await loadOwnerHomeRequestOverlay();
+      await renderOwnerHomeMap();
     }
 
     function ensureWalkerMap() {
@@ -1967,6 +2044,7 @@
           if (currentProfile?.role === "owner") {
             if (document.getElementById("ownerRequestsScreen").classList.contains("active")) await loadOwnerRequests();
             await renderOwnerHomeMap();
+            await loadOwnerHomeRequestOverlay();
           }
           if (currentProfile?.role === "walker") {
             await loadNearbyRequests();
@@ -1983,6 +2061,7 @@
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
             if (document.getElementById("ownerRequestsScreen").classList.contains("active")) await loadOwnerRequests();
+            await loadOwnerHomeRequestOverlay();
           }
           if (currentProfile?.role === "walker" && offer?.walker_id === currentUser.id) {
             await loadNearbyRequests();
@@ -1992,6 +2071,7 @@
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
             if (document.getElementById("ownerRequestsScreen").classList.contains("active")) await loadOwnerRequests();
+            await loadOwnerHomeRequestOverlay();
           }
           if (currentProfile?.role === "walker" && offer?.walker_id === currentUser.id) {
             await loadNearbyRequests();
