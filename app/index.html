@@ -491,6 +491,7 @@
       <button id="publishWalkBtn" class="green" onclick="createWalkRequest()">Publicar solicitud</button>
       <button class="secondary" onclick="go('ownerHomeScreen')">Volver</button>
       <p id="walkMsg" class="msg"></p>
+      <p id="walkDebugMsg" class="small center" style="min-height:14px;color:#666"></p>
     </div>
 
     <div id="ownerRequestsScreen" class="screen">
@@ -1689,7 +1690,15 @@
 
     async function createWalkRequest() {
       const btn = $("publishWalkBtn");
+      const setDebug = (msg) => {
+        const el = $("walkDebugMsg");
+        if (el) el.textContent = msg || "";
+      };
+
       try {
+        showMsg("walkMsg", "");
+        setDebug("");
+
         if (btn) {
           btn.disabled = true;
           btn.textContent = "Publicando...";
@@ -1702,24 +1711,34 @@
         const selectedDogs = Array.from(document.querySelectorAll("#walkDogsMultiSelect input[type='checkbox']:checked"))
           .map(el => ({ id: el.value, name: el.dataset.name }));
 
-        if (!selectedDogs.length) return showMsg("walkMsg", "Selecciona al menos un perro");
-        if (!price || price <= 0) return showMsg("walkMsg", "Tarifa inválida");
-        if (!time || time <= 0) return showMsg("walkMsg", "Selecciona el tiempo");
+        if (!selectedDogs.length) {
+          showMsg("walkMsg", "Selecciona al menos un perro");
+          return;
+        }
+        if (!price || price <= 0) {
+          showMsg("walkMsg", "Tarifa inválida");
+          return;
+        }
+        if (!time || time <= 0) {
+          showMsg("walkMsg", "Selecciona el tiempo");
+          return;
+        }
 
         if (ownerLat == null || ownerLng == null) {
           showMsg("walkMsg", "Obteniendo ubicación...");
+          setDebug("Esperando permiso de ubicación del navegador...");
           const ok = await getOwnerLocation();
-          if (!ok) {
-            return showMsg("walkMsg", "Activa la ubicación del navegador y vuelve a intentar");
+          if (!ok || ownerLat == null || ownerLng == null) {
+            showMsg("walkMsg", "Activa la ubicación del navegador y vuelve a intentar");
+            setDebug("No se obtuvieron coordenadas");
+            return;
           }
         }
 
-        if (ownerLat == null || ownerLng == null) {
-          return showMsg("walkMsg", "No se pudo obtener tu ubicación");
-        }
-
         const primaryDogId = selectedDogs[0].id;
-        const { data: request, error } = await supabaseClient
+
+        setDebug("Creando solicitud...");
+        const insertResp = await supabaseClient
           .from("walk_requests")
           .insert({
             owner_id: currentUser.id,
@@ -1732,40 +1751,59 @@
             lng: ownerLng,
             status: "open"
           })
-          .select()
+          .select("id, owner_id, status")
           .single();
 
-        if (error) return showMsg("walkMsg", error.message);
+        if (insertResp.error) {
+          showMsg("walkMsg", insertResp.error.message || "Error guardando la solicitud");
+          setDebug("walk_requests insert falló");
+          return;
+        }
 
+        const request = insertResp.data;
+
+        setDebug("Vinculando perros...");
         for (const dog of selectedDogs) {
-          const { error: dogError } = await supabaseClient.from("walk_request_dogs").upsert({
-            request_id: request.id,
-            dog_id: dog.id
-          });
-          if (dogError) {
-            console.error("walk_request_dogs upsert error", dogError);
+          const dogResp = await supabaseClient
+            .from("walk_request_dogs")
+            .upsert({
+              request_id: request.id,
+              dog_id: dog.id
+            });
+
+          if (dogResp.error) {
+            console.error("walk_request_dogs upsert error", dogResp.error);
           }
         }
 
-        await createNotification(
-          currentUser.id,
-          "Solicitud creada",
-          `Tu solicitud fue publicada por S/${price}.`,
-          "walk_request_created",
-          "walk_requests",
-          request.id
-        );
+        // notificación silenciosa; si falla no rompe el flujo
+        try {
+          await createNotification(
+            currentUser.id,
+            "Solicitud creada",
+            `Tu solicitud fue publicada por S/${price}.`,
+            "walk_request_created",
+            "walk_requests",
+            request.id
+          );
+        } catch (e) {
+          console.error("createNotification after createWalkRequest", e);
+        }
 
         showMsg("walkMsg", "Solicitud publicada");
-        await loadOwnerHomeRequestOverlay();
+        setDebug("");
+
+        // flujo simple y estable: volver al home y refrescar después
         setTimeout(async () => {
           go("ownerHomeScreen");
-          await renderOwnerHomeMap();
-          await loadOwnerHomeRequestOverlay();
-        }, 500);
+          try { await renderOwnerHomeMap(); } catch (e) { console.error(e); }
+          try { await loadOwnerHomeRequestOverlay(); } catch (e) { console.error(e); }
+          try { await refreshActiveWalkCards(); } catch (e) { console.error(e); }
+        }, 350);
       } catch (e) {
         console.error("createWalkRequest error", e);
-        showMsg("walkMsg", "Ocurrió un error al publicar la solicitud");
+        showMsg("walkMsg", e?.message || "Ocurrió un error al publicar la solicitud");
+        setDebug(e?.stack ? String(e.stack).slice(0, 160) : "Excepción JS");
       } finally {
         if (btn) {
           btn.disabled = false;
