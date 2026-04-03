@@ -3623,12 +3623,12 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       const openSignupBtn = $("openSignupBtn");
       const registerBtn = $("registerBtn");
       const signupBackBtn = $("signupBackBtn");
-      if (loginBtn) loginBtn.onclick = () => handleLogin();
-      if (openSignupBtn) openSignupBtn.onclick = () => go("signupScreen");
-      if (registerBtn) registerBtn.onclick = () => registerUser();
-      if (signupBackBtn) signupBackBtn.onclick = () => go("loginScreen");
+      if (loginBtn) loginBtn.onclick = () => window.handleLogin();
+      if (openSignupBtn) openSignupBtn.onclick = () => window.go("signupScreen");
+      if (registerBtn) registerBtn.onclick = () => window.registerUser();
+      if (signupBackBtn) signupBackBtn.onclick = () => window.go("loginScreen");
       const publishWalkBtn = $("publishWalkBtn");
-      if (publishWalkBtn) publishWalkBtn.onclick = () => createWalkRequest();
+      if (publishWalkBtn) publishWalkBtn.onclick = () => window.createWalkRequest();
       window.handleLogin = handleLogin;
       window.registerUser = registerUser;
       window.go = go;
@@ -3646,6 +3646,27 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       window.rejectOffer = rejectOffer;
       window.cancelWalkRequest = cancelWalkRequest;
     }
+    function exposeHtmlHandlers() {
+      const handlerNames = [
+        "go","handleLogin","registerUser","verifySignupCode","resendSignupCode","finalizePendingProfile","logout",
+        "saveDog","openCreateWalkScreen","createWalkRequest","openOwnerRequestsSafe","loadOwnerHotelRequests",
+        "openHotelSearchScreen","createHotelRequest","openWalkerMapScreen","sendOffer","openHotelProfileScreen",
+        "saveHotelProfile","loadHotelRequestsForProvider","sendHotelOffer","verifyPickupPin","verifyDropoffPin",
+        "openChatFromCurrentService","cancelCurrentWalkBeforePickup","finishWalk","goBackFromLiveWalk","goBackFromChat",
+        "startAppCall","toggleCallMic","toggleCallCam","hangupAppCall","sendChatMessage","sendCreditOrder",
+        "openNotificationsScreen","goBackFromNotifications","markAllNotificationsRead","activateHotelMode",
+        "openMyActiveWalk","openChatFromActiveWalkHome","acceptOffer","rejectOffer","cancelWalkRequest",
+        "dismissRequest","openOffer","openHotelOffer","acceptHotelOffer","openHotelRequestFor","loadWalkerCredits",
+        "renderProviderHome","renderProviderHomeMap","getCurrentSessionUser"
+      ];
+      handlerNames.forEach((name) => {
+        try {
+          const fn = globalThis[name];
+          if (typeof fn === "function") window[name] = fn;
+        } catch (_) {}
+      });
+    }
+
 
     document.addEventListener("DOMContentLoaded", () => {
       document.body.dataset.ladrameBoot = "ok";
@@ -3654,6 +3675,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
       syncGlobalState();
+      exposeHtmlHandlers();
       bindCoreButtons();
       setTimeout(bindCoreButtons, 300);
       setTimeout(bindCoreButtons, 1200);
@@ -3661,14 +3683,14 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       ["loginEmail", "loginPass"].forEach(id => {
         const el = $(id);
         if (el) el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") handleLogin();
+          if (e.key === "Enter") window.handleLogin();
         });
       });
 
       ["signupName", "signupEmail", "signupDNI", "signupPass"].forEach(id => {
         const el = $(id);
         if (el) el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") registerUser();
+          if (e.key === "Enter") window.registerUser();
         });
       });
 
@@ -3677,6 +3699,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         syncGlobalState();
       });
 
+      exposeHtmlHandlers();
       boot();
     });
     // Compat global shims
@@ -3687,6 +3710,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (typeof window.getCurrentSessionUser !== "function" && typeof getCurrentSessionUser === "function") window.getCurrentSessionUser = getCurrentSessionUser;
       if (typeof window.handleLogin !== "function" && typeof handleLogin === "function") window.handleLogin = handleLogin;
       if (typeof window.registerUser !== "function" && typeof registerUser === "function") window.registerUser = registerUser;
+      try { exposeHtmlHandlers(); } catch (_) {}
     } catch (e) { console.warn("shim init", e); }
 
   </script>
