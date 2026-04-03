@@ -324,7 +324,7 @@
     }
   </style>
 </head>
-<body data-version="v41-limpio">
+<body data-version="final-limpio">
   <div id="phone">
 
     <div id="loginScreen" class="screen active">
@@ -915,14 +915,12 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data.user || null;
     }
 
-        async function handleLogin() {
-      const email = $("loginEmail").value.trim().toLowerCase();
+    async function handleLogin() {
+      const email = $("loginEmail").value.trim();
       const password = $("loginPass").value.trim();
       if (!email || !password) return showMsg("loginMsg", "Completa los campos");
-      showMsg("loginMsg", "Entrando...");
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) return showMsg("loginMsg", error.message);
-      showMsg("loginMsg", "");
       await boot();
     }
 
@@ -1061,7 +1059,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data;
     }
 
-        async function boot() {
+    async function boot() {
       const user = await getCurrentSessionUser();
       if (!user) {
         currentUser = null;
@@ -1089,7 +1087,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           go("completeProfileScreen");
           return;
         }
-        showMsg("loginMsg", "No se encontró tu perfil. Inicia sesión otra vez.");
         go("loginScreen");
         return;
       }
@@ -1369,11 +1366,19 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
     function getProviderLocationOnce() {
       return new Promise(resolve => {
-        if (!navigator.geolocation) return resolve(null);
+        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
+        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
+        const cachedOk = Number.isFinite(cachedLat) && Number.isFinite(cachedLng);
+        if (!navigator.geolocation) return resolve(cachedOk ? { lat: cachedLat, lng: cachedLng } : null);
         navigator.geolocation.getCurrentPosition(
-          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 10000 }
+          pos => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            localStorage.setItem("ladrame_last_provider_lat", String(coords.lat));
+            localStorage.setItem("ladrame_last_provider_lng", String(coords.lng));
+            resolve(coords);
+          },
+          () => resolve(cachedOk ? { lat: cachedLat, lng: cachedLng } : null),
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
         );
       });
     }
@@ -1497,41 +1502,32 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-        async function startProviderLiveGps() {
-      const persist = (lat, lng) => {
-        try {
-          localStorage.setItem("ladrame_last_provider_lat", String(lat));
-          localStorage.setItem("ladrame_last_provider_lng", String(lng));
-        } catch (_) {}
-      };
-      const apply = async (lat, lng) => {
-        providerLat = lat;
-        providerLng = lng;
-        persist(lat, lng);
-        await upsertWalkerPosition(lat, lng);
-        await renderProviderHomeMap();
-        if ($("walkerMapScreen")?.classList.contains("active")) {
-          await loadNearbyRequests();
-        }
-      };
-
+    async function startProviderLiveGps() {
       const first = await getProviderLocationOnce();
-      if (first?.lat != null && first?.lng != null) {
-        await apply(first.lat, first.lng);
-      } else {
-        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
-        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
-        if (Number.isFinite(cachedLat) && Number.isFinite(cachedLng)) {
-          providerLat = cachedLat;
-          providerLng = cachedLng;
-          await renderProviderHomeMap();
-        }
+      if (first) {
+        providerLat = first.lat;
+        providerLng = first.lng;
+        localStorage.setItem("ladrame_last_provider_lat", String(first.lat));
+        localStorage.setItem("ladrame_last_provider_lng", String(first.lng));
+        await upsertWalkerPosition(first.lat, first.lng);
+        await renderProviderHomeMap();
       }
 
       if (!navigator.geolocation) return;
       if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       providerGpsWatchId = navigator.geolocation.watchPosition(async pos => {
-        await apply(pos.coords.latitude, pos.coords.longitude);
+        providerLat = pos.coords.latitude;
+        providerLng = pos.coords.longitude;
+        localStorage.setItem("ladrame_last_provider_lat", String(providerLat));
+        localStorage.setItem("ladrame_last_provider_lng", String(providerLng));
+        await upsertWalkerPosition(providerLat, providerLng);
+        if ($("providerHomeScreen")?.classList.contains("active")) {
+          await renderProviderHomeMap();
+        }
+        if ($("walkerMapScreen")?.classList.contains("active")) {
+          await loadNearbyRequests();
+          await renderProviderHomeMap();
+        }
       }, async () => {
         const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
         const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
@@ -1720,7 +1716,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       go("createWalkScreen");
     }
 
-        async function createWalkRequest() {
+    async function createWalkRequest() {
       const btn = $("publishWalkBtn");
       const setDebug = (msg) => {
         const el = $("walkDebugMsg");
@@ -1736,15 +1732,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           btn.textContent = "Publicando...";
         }
 
-        const owner = await getCurrentSessionUser();
-        if (!owner?.id) {
-          showMsg("walkMsg", "Tu sesión no está lista. Vuelve a entrar.");
-          setDebug("No se encontró sesión activa");
-          return;
-        }
-        currentUser = owner;
-        syncGlobalState();
-
         const price = Number($("walkPriceInput").value || 0);
         const time = Number($("walkTimeInput").value || 0);
         const comments = $("walkNotesInput").value.trim();
@@ -1752,93 +1739,94 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         const selectedDogs = Array.from(document.querySelectorAll("#walkDogsMultiSelect input[type='checkbox']:checked"))
           .map(el => ({ id: el.value, name: el.dataset.name }));
 
+        if (!currentUser?.id) {
+          showMsg("walkMsg", "Tu sesión no está lista. Vuelve a entrar.");
+          return;
+        }
         if (!selectedDogs.length) {
           showMsg("walkMsg", "Selecciona al menos un perro");
           return;
         }
-        if (!Number.isFinite(price) || price <= 0) {
-          showMsg("walkMsg", "Ingresa una tarifa válida");
+        if (!price || price <= 0) {
+          showMsg("walkMsg", "Tarifa inválida");
           return;
         }
-        if (!Number.isFinite(time) || time <= 0) {
-          showMsg("walkMsg", "Selecciona el tiempo del paseo");
+        if (!time || time <= 0) {
+          showMsg("walkMsg", "Selecciona el tiempo");
           return;
         }
 
         if (ownerLat == null || ownerLng == null) {
-          setDebug("Obteniendo ubicación del dueño...");
+          showMsg("walkMsg", "Obteniendo ubicación...");
+          setDebug("Esperando permiso de ubicación...");
           const ok = await getOwnerLocation();
           if (!ok || ownerLat == null || ownerLng == null) {
             showMsg("walkMsg", "Activa la ubicación del navegador y vuelve a intentar");
-            setDebug("No se pudieron obtener coordenadas");
+            setDebug("No se obtuvieron coordenadas");
             return;
           }
         }
 
         const primaryDogId = selectedDogs[0].id;
-        const payload = {
-          owner_id: owner.id,
-          dog_id: primaryDogId,
-          tariff: Math.round(price),
-          time: Math.round(time),
-          location: `${ownerLat},${ownerLng}`,
-          comments,
-          lat: ownerLat,
-          lng: ownerLng,
-          status: "open"
-        };
+        setDebug("Creando solicitud...");
 
-        setDebug("Insertando solicitud...");
-        const { data: requestRow, error: requestError } = await supabaseClient
+        const { data: request, error: insertError } = await supabaseClient
           .from("walk_requests")
-          .insert(payload)
+          .insert({
+            owner_id: currentUser.id,
+            dog_id: primaryDogId,
+            tariff: Math.round(price),
+            time: Math.round(time),
+            location: `${ownerLat},${ownerLng}`,
+            comments,
+            lat: ownerLat,
+            lng: ownerLng,
+            status: "open"
+          })
           .select()
           .single();
 
-        if (requestError || !requestRow?.id) {
-          console.error("walk_requests insert error", requestError);
-          showMsg("walkMsg", requestError?.message || "No se pudo crear la solicitud");
-          setDebug("Falló el insert en walk_requests");
+        if (insertError || !request?.id) {
+          console.error("walk_requests insert error", insertError);
+          showMsg("walkMsg", insertError?.message || "No se pudo crear la solicitud");
+          setDebug("Insert walk_requests falló");
           return;
         }
 
         setDebug("Vinculando perros...");
-        if (selectedDogs.length) {
-          const dogLinks = selectedDogs.map(dog => ({
-            request_id: requestRow.id,
-            dog_id: dog.id,
-            owner_id: owner.id
-          }));
-          const { error: linkError } = await supabaseClient
-            .from("walk_request_dogs")
-            .upsert(dogLinks, { onConflict: "request_id,dog_id" });
-          if (linkError) {
-            console.error("walk_request_dogs upsert error", linkError);
-            setDebug("Solicitud creada, pero falló la vinculación de algunos perros");
-          }
+        const requestDogsPayload = selectedDogs.map(dog => ({ request_id: request.id, dog_id: dog.id }));
+        const dogResp = await supabaseClient.from("walk_request_dogs").insert(requestDogsPayload);
+        if (dogResp.error) {
+          console.error("walk_request_dogs insert error", dogResp.error);
+          setDebug("Solicitud creada, pero algunos perros no se vincularon");
         }
 
         try {
           await createNotification(
-            owner.id,
-            "Solicitud publicada",
-            `Tu solicitud de paseo por S/${Math.round(price)} fue publicada.`,
+            currentUser.id,
+            "Solicitud creada",
+            `Tu solicitud fue publicada por S/${price}.`,
             "walk_request_created",
             "walk_requests",
-            requestRow.id
+            request.id
           );
-        } catch (notifyErr) {
-          console.error("create walk notification error", notifyErr);
+        } catch (e) {
+          console.error("createNotification after createWalkRequest", e);
         }
 
         showMsg("walkMsg", "Solicitud publicada");
-        setDebug("Solicitud creada correctamente");
-        await loadOwnerHomeRequestOverlay();
-        setTimeout(() => go("ownerHomeScreen"), 500);
+        setDebug("");
+
+        setTimeout(async () => {
+          go("ownerHomeScreen");
+          try { await renderOwnerHomeMap(); } catch (e) { console.error(e); }
+          try { await loadOwnerHomeRequestOverlay(); } catch (e) { console.error(e); }
+          try { await refreshActiveWalkCards(); } catch (e) { console.error(e); }
+        }, 350);
       } catch (e) {
-        console.error("createWalkRequest fatal", e);
+        console.error("createWalkRequest error", e);
         showMsg("walkMsg", e?.message || "Ocurrió un error al publicar la solicitud");
-        setDebug("Excepción en createWalkRequest");
+        setDebug(e?.stack ? String(e.stack).slice(0, 200) : "Excepción JS");
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -2394,92 +2382,135 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       setTimeout(() => go("providerHomeScreen"), 400);
     }
 
-        async function loadWalkerCredits() {
+    async function loadWalkerCredits() {
       const debugEl = $("walletDebugText");
-      const setDebug = (msg) => {
-        if (debugEl) {
-          debugEl.textContent = msg || "";
-          debugEl.classList.remove("hidden");
-        }
-      };
       const setValue = (balance, source = "") => {
         const safe = Math.max(0, Number(balance || 0));
         if ($("walkerCredits")) $("walkerCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
         if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${(safe * 10).toFixed(2).replace(/\.00$/, "")}`;
-        try {
-          localStorage.setItem("ladrame_last_walker_balance", String(safe));
-        } catch (_) {}
-        if (source) setDebug(`Saldo cargado desde ${source}: ${safe}`);
+        if (debugEl) {
+          debugEl.classList.remove("hidden");
+          debugEl.textContent = source ? `Saldo cargado desde ${source}: ${safe}` : `Saldo: ${safe}`;
+        }
       };
 
       try {
-        const user = await getCurrentSessionUser();
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
         if (!user?.id) {
-          const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
-          setValue(cached, "caché sin sesión");
-          return;
+          setValue(0, "sesión vacía");
+          return 0;
         }
 
         let balance = null;
 
-        const rpcResp = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-          p_provider_type: "walker"
-        });
-        if (!rpcResp.error && rpcResp.data != null) {
-          balance = rpcResp.data;
-        }
-
-        if (balance == null || Number(balance) === 0) {
+        try {
           const resp1 = await supabaseClient
             .from("provider_wallets")
             .select("balance")
             .eq("user_id", user.id)
             .eq("provider_type", "walker")
             .maybeSingle();
-          if (!resp1.error && resp1.data?.balance != null) balance = resp1.data.balance;
+          if (!resp1.error && resp1.data && resp1.data.balance != null) {
+            balance = Number(resp1.data.balance);
+            localStorage.setItem("ladrame_last_walker_balance", String(balance));
+            setValue(balance, "provider_wallets");
+            return balance;
+          }
+          if (resp1.error) console.error("wallet strategy 1", resp1.error);
+        } catch (e) {
+          console.error("wallet strategy 1", e);
         }
 
-        if ((balance == null || Number(balance) === 0) && user.email) {
+        try {
           const resp2 = await supabaseClient
             .from("provider_wallet_balances")
             .select("balance")
-            .eq("email", user.email)
+            .eq("user_id", user.id)
             .eq("provider_type", "walker")
             .maybeSingle();
-          if (!resp2.error && resp2.data?.balance != null) balance = resp2.data.balance;
+          if (!resp2.error && resp2.data && resp2.data.balance != null) {
+            balance = Number(resp2.data.balance);
+            localStorage.setItem("ladrame_last_walker_balance", String(balance));
+            setValue(balance, "provider_wallet_balances");
+            return balance;
+          }
+          if (resp2.error) console.error("wallet strategy 2", resp2.error);
+        } catch (e) {
+          console.error("wallet strategy 2", e);
         }
 
-        if (balance == null) {
-          const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
-          setValue(cached, "caché");
-          return;
+        try {
+          const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "walker" });
+          if (!resp3.error && resp3.data != null) {
+            balance = Number(resp3.data);
+            localStorage.setItem("ladrame_last_walker_balance", String(balance));
+            setValue(balance, "rpc");
+            return balance;
+          }
+          if (resp3.error) console.error("wallet strategy 3", resp3.error);
+        } catch (e) {
+          console.error("wallet strategy 3", e);
         }
 
-        setValue(balance, "supabase");
+        const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
+        setValue(cached, "caché local");
+        return cached;
       } catch (e) {
-        console.error("loadWalkerCredits exception", e);
-        const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
-        setValue(cached, "caché por excepción");
+        console.error("loadWalkerCredits fatal", e);
+        const cached = Number(localStorage.getItem("ladrame_last_walker_balance") || 0);
+        setValue(cached, cached ? "caché local" : "error");
+        return cached;
       }
     }
 
     async function loadHotelCredits() {
+      const setValue = (balance) => {
+        const safe = Math.max(0, Number(balance || 0));
+        if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
+      };
       try {
-        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-          p_provider_type: "hotel"
-        });
-
-        if (error) {
-          console.error("loadHotelCredits rpc error", error);
-          $("hotelCredits").textContent = "0";
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
+        if (!user?.id) {
+          setValue(0);
           return;
         }
 
-        const balance = Math.max(0, Number(data ?? 0));
-        $("hotelCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
+        let balance = null;
+        try {
+          const resp1 = await supabaseClient
+            .from("provider_wallets")
+            .select("balance")
+            .eq("user_id", user.id)
+            .eq("provider_type", "hotel")
+            .maybeSingle();
+          if (!resp1.error && resp1.data && resp1.data.balance != null) balance = resp1.data.balance;
+        } catch (e) { console.error("hotel strategy 1", e); }
+
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp2 = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .eq("user_id", user.id)
+              .eq("provider_type", "hotel")
+              .maybeSingle();
+            if (!resp2.error && resp2.data && resp2.data.balance != null) balance = resp2.data.balance;
+          } catch (e) { console.error("hotel strategy 2", e); }
+        }
+
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "hotel" });
+            if (!resp3.error && resp3.data != null) balance = resp3.data;
+          } catch (e) { console.error("hotel strategy 3", e); }
+        }
+
+        setValue(balance || 0);
       } catch (e) {
-        console.error("loadHotelCredits exception", e);
-        $("hotelCredits").textContent = "0";
+        console.error("loadHotelCredits fatal", e);
+        setValue(0);
       }
     }
 
@@ -3442,6 +3473,12 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       window.acceptOffer = acceptOffer;
       window.rejectOffer = rejectOffer;
       window.cancelWalkRequest = cancelWalkRequest;
+      window.loadWalkerCredits = loadWalkerCredits;
+      window.loadHotelCredits = loadHotelCredits;
+      window.renderProviderHome = renderProviderHome;
+      window.renderProviderHomeMap = renderProviderHomeMap;
+      window.startProviderLiveGps = startProviderLiveGps;
+      window.getCurrentSessionUser = getCurrentSessionUser;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -3454,23 +3491,14 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       bindCoreButtons();
       setTimeout(bindCoreButtons, 300);
       setTimeout(bindCoreButtons, 1200);
+      $("loginPass")?.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
+      $("signupPass")?.addEventListener("keydown", e => { if (e.key === "Enter") registerUser(); });
+      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        currentUser = session?.user || null;
+        syncGlobalState();
+      });
       boot();
     });
-
-    try {
-      window.handleLogin = handleLogin;
-      window.registerUser = registerUser;
-      window.getCurrentSessionUser = getCurrentSessionUser;
-      window.renderProviderHome = renderProviderHome;
-      window.renderProviderHomeMap = renderProviderHomeMap;
-      window.loadWalkerCredits = loadWalkerCredits;
-      window.loadHotelCredits = loadHotelCredits;
-      window.createWalkRequest = createWalkRequest;
-      window.go = go;
-      console.log("LADRAME v41 handlers exportados OK");
-    } catch (e) {
-      console.error("Error exportando handlers globales", e);
-    }
   </script>
 </body>
 </html>
