@@ -285,6 +285,28 @@
     }
     .center { text-align: center; }
 
+    .floating-stack {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 18px;
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 46%;
+      overflow-y: auto;
+      pointer-events: none;
+    }
+    .floating-stack .card {
+      pointer-events: auto;
+      margin: 0;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #e8edf3;
+      box-shadow: 0 12px 28px rgba(0,0,0,.16);
+      backdrop-filter: blur(8px);
+    }
+
     @media (max-width: 460px) {
       #phone { width: 100vw; height: 100vh; border-radius: 0; }
     }
@@ -310,8 +332,7 @@
       <select id="signupLanguage">
         <option value="es">Español</option>
         <option value="en">English</option>
-        <option value="jp">日本語</option>
-        <option value="pe">Perú</option>
+        <option value="ja">日本語</option>
       </select>
 
       <select id="signupCountry">
@@ -334,15 +355,8 @@
       </select>
 
       <div class="card">
-        <p><b>Selfie de verificación</b></p>
-        <input type="file" accept="image/*" capture="user" id="selfieInput">
-        <img id="selfiePreview" class="preview-img hidden">
-      </div>
-
-      <div class="card">
-        <p><b>Foto del DNI / documento</b></p>
-        <input type="file" accept="image/*" capture="environment" id="dniInput">
-        <img id="dniPreview" class="preview-img hidden">
+        <p><b>Verificación de identidad</b></p>
+        <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
       </div>
 
       <button class="green" onclick="registerUser()">Registrarme</button>
@@ -398,13 +412,14 @@
 
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
+        <div id="ownerFloatingOffers" class="floating-stack"></div>
       </div>
 
       <div class="home-action-row">
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-        <button onclick="loadOwnerRequests()">Solicitudes</button>
+        <button onclick="openOwnerRequestsScreen()">Solicitudes</button>
       </div>
 
       <div class="home-action-row">
@@ -1035,16 +1050,9 @@
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
-      const selfie = $("selfieInput").files?.[0];
-      const dniPhoto = $("dniInput").files?.[0];
 
       if (!name || !email || !dni || !password || !role || !country || !language) {
         showMsg("signupMsg", "Completa todos los campos");
-        return;
-      }
-
-      if (!selfie || !dniPhoto) {
-        showMsg("signupMsg", "Debes subir selfie y documento");
         return;
       }
 
@@ -1140,8 +1148,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1289,9 +1297,13 @@
         updateHotelDogSelect();
         getOwnerLocation();
         go("ownerHomeScreen");
+        loadOwnerRequests(true);
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(renderOwnerHomeMap, 5000);
+        ownerMapRefreshInterval = setInterval(async () => {
+          await renderOwnerHomeMap();
+          await loadOwnerRequests(true);
+        }, 5000);
         return;
       }
 
@@ -1300,6 +1312,7 @@
         renderProviderHome();
         startProviderLiveGps();
         go("providerHomeScreen");
+        loadNearbyRequests();
         return;
       }
 
@@ -1439,18 +1452,26 @@
         providerHomeMarkers.push(createEmojiMarker("🚶").setLngLat([providerLng, providerLat]).addTo(providerHomeMap));
       }
 
-      const { data: requests } = await supabaseClient
-        .from("walk_requests")
-        .select("*")
-        .eq("status", "open")
-        .limit(20);
+      const { data: targets } = await supabaseClient
+        .from("walk_request_targets")
+        .select("request_id,distance_km,status")
+        .eq("walker_id", currentUser.id)
+        .eq("status", "pending")
+        .order("delivered_at", { ascending: false });
 
-      (requests || []).forEach(req => {
-        if (req.lat == null || req.lng == null || providerLat == null || providerLng == null) return;
-        const distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
-        if (distance > 3) return;
-        providerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(providerHomeMap));
-      });
+      const requestIds = (targets || []).map(t => t.request_id);
+      if (requestIds.length) {
+        const { data: requests } = await supabaseClient
+          .from("walk_requests")
+          .select("id,lat,lng,status,created_at")
+          .in("id", requestIds)
+          .eq("status", "open");
+
+        (requests || []).forEach(req => {
+          if (req.lat == null || req.lng == null) return;
+          providerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(providerHomeMap));
+        });
+      }
 
       if (currentProfile?.hotel_enabled) {
         const { data: myHotel } = await supabaseClient
@@ -1822,15 +1843,16 @@
       `;
     }
 
-function openWalkerMapScreen() {
+async function openWalkerMapScreen() {
       go("walkerMapScreen");
       ensureWalkerMap();
-      loadNearbyRequests();
+      await startProviderLiveGps();
+      await loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       walkerRefreshInterval = setInterval(async () => {
         await loadNearbyRequests();
-        renderProviderHomeMap();
+        await renderProviderHomeMap();
       }, 5000);
     }
 
@@ -2076,6 +2098,13 @@ function openWalkerMapScreen() {
         if (error) { showMsg("offerMsg", error.message); return; }
       }
 
+      await supabaseClient
+        .from("walk_request_targets")
+        .update({ status: "offered", responded_at: new Date().toISOString() })
+        .eq("request_id", selectedRequest)
+        .eq("walker_id", currentUser.id)
+        .eq("status", "pending");
+
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
       setTimeout(async () => {
@@ -2084,7 +2113,7 @@ function openWalkerMapScreen() {
       }, 400);
     }
 
-    async function loadOwnerRequests() {
+    async function loadOwnerRequests(silent = false) {
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
@@ -2101,7 +2130,7 @@ function openWalkerMapScreen() {
 
       if (!activeReqs.length) {
         $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
-        go("ownerRequestsScreen");
+        if (!silent) go("ownerRequestsScreen");
         return;
       }
 
@@ -2114,6 +2143,9 @@ function openWalkerMapScreen() {
           <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
           <p class="small">Tiempo: ${req.time || 0} min</p>
           ${buildDogsHtml(dogs)}
+          <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;">
+            <button class="red" onclick="cancelMyRequest('${req.id}')">Cancelar solicitud</button>
+          </div>
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
         $("ownerRequestsList").appendChild(card);
@@ -2152,7 +2184,22 @@ function openWalkerMapScreen() {
         }
       }
 
-      go("ownerRequestsScreen");
+      if (!silent) go("ownerRequestsScreen");
+    }
+
+    function openOwnerRequestsScreen() {
+      loadOwnerRequests(false);
+    }
+
+    async function cancelMyRequest(requestId) {
+      if (!confirm("¿Cancelar esta solicitud?")) return;
+      const { error } = await supabaseClient.rpc("cancel_walk_request", { p_request_id: requestId });
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      await loadOwnerRequests(true);
+      await loadNearbyRequests();
     }
 
     async function loadOwnerHotelRequests() {
@@ -2674,10 +2721,19 @@ function openWalkerMapScreen() {
       requestsChannel = supabaseClient
         .channel("requests-channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "walk_requests" }, async () => {
-          if (currentProfile?.role === "owner") renderOwnerHomeMap();
+          if (currentProfile?.role === "owner") {
+            await renderOwnerHomeMap();
+            await loadOwnerRequests(true);
+          }
           if (currentProfile?.role === "walker") {
-            if ($("walkerMapScreen").classList.contains("active")) loadNearbyRequests();
-            renderProviderHomeMap();
+            if ($("walkerMapScreen").classList.contains("active")) await loadNearbyRequests();
+            await renderProviderHomeMap();
+          }
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "walk_request_targets" }, async () => {
+          if (currentProfile?.role === "walker") {
+            await loadNearbyRequests();
+            await renderProviderHomeMap();
           }
         })
         .subscribe();
