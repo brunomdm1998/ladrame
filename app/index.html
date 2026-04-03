@@ -896,7 +896,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data?.publicUrl || null;
     }
 
-    window.getCurrentSessionUser = async function getCurrentSessionUser() {
+    window.getCurrentSessionUser = async function window.getCurrentSessionUser() {
       try {
         const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
         if (!sessionError && sessionData?.session?.user) return sessionData.session.user;
@@ -931,7 +931,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       try {
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) return showMsg("loginMsg", error.message);
-        currentUser = data?.user || await getCurrentSessionUser();
+        currentUser = data?.user || await window.getCurrentSessionUser();
         syncGlobalState();
         await boot();
       } catch (e) {
@@ -1019,7 +1019,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       localStorage.removeItem("ladrame_pending_verification_email");
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
-      currentUser = await getCurrentSessionUser();
+      currentUser = await window.getCurrentSessionUser();
       syncGlobalState();
       $("completeProfileInfo").innerHTML = `
         <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
@@ -1039,7 +1039,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function finalizePendingProfile() {
-      const user = await getCurrentSessionUser();
+      const user = await window.getCurrentSessionUser();
       if (!user) return showMsg("completeProfileMsg", "Inicia sesión nuevamente");
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
@@ -1095,7 +1095,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadCurrentProfile() {
-      currentUser = await getCurrentSessionUser();
+      currentUser = await window.getCurrentSessionUser();
       syncGlobalState();
       if (!currentUser) return null;
 
@@ -1130,7 +1130,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
     async function boot() {
       try {
-        const user = await getCurrentSessionUser();
+        const user = await window.getCurrentSessionUser();
         if (!user) {
           currentUser = null;
           currentProfile = null;
@@ -1192,7 +1192,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (profile.role === "walker") {
         $("providerWelcome").textContent = "Hola " + (profile.name || "");
         go("providerHomeScreen");
-        await renderProviderHome();
+        await window.renderProviderHome();
         await refreshActiveWalkCards();
         await startProviderLiveGps();
         return;
@@ -1557,11 +1557,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    window.renderProviderHome = async function renderProviderHome() {
+    window.renderProviderHome = async function window.renderProviderHome() {
       ensureProviderHomeMap();
       const homeStack = $("providerFloatingStack");
       if (homeStack) homeStack.innerHTML = "";
-      await loadWalkerCredits();
+      await window.loadWalkerCredits();
       if (currentProfile?.hotel_enabled) {
         $("hotelWalletCard").classList.remove("hidden");
         $("hotelConfigBtn").classList.remove("hidden");
@@ -1572,11 +1572,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         $("hotelConfigBtn").classList.add("hidden");
         $("hotelRequestsBtn").classList.add("hidden");
       }
-      await renderProviderHomeMap();
+      await window.renderProviderHomeMap();
       await loadPendingOfferWaitingCard();
     }
 
-    window.renderProviderHomeMap = async function renderProviderHomeMap() {
+    window.renderProviderHomeMap = async function window.renderProviderHomeMap() {
       ensureProviderHomeMap();
       providerHomeMarkers.forEach(m => m.remove());
       providerHomeMarkers = [];
@@ -1613,7 +1613,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
         } catch (_) {}
         await upsertWalkerPosition(providerLat, providerLng);
-        await renderProviderHomeMap();
+        await window.renderProviderHomeMap();
       } else if (debugEl && !debugEl.textContent) {
         debugEl.textContent = "GPS pendiente de permiso";
       }
@@ -1627,7 +1627,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
         } catch (_) {}
         await upsertWalkerPosition(providerLat, providerLng);
-        await renderProviderHomeMap();
+        await window.renderProviderHomeMap();
         if (walkerMap && $("walkerMapScreen")?.classList.contains("active")) {
           await renderWalkerMap();
         }
@@ -1640,7 +1640,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         if (fallback) {
           providerLat = Number(fallback.lat);
           providerLng = Number(fallback.lng);
-          await renderProviderHomeMap();
+          await window.renderProviderHomeMap();
         }
       }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
     }
@@ -2245,7 +2245,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       walkerRefreshInterval = setInterval(async () => {
         await loadNearbyRequests();
-        await renderProviderHomeMap();
+        await window.renderProviderHomeMap();
       }, 5000);
     }
 
@@ -2487,11 +2487,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       await createNotification(req.owner_id, "Nueva oferta", `Recibiste una nueva oferta por S/${price}.`, "offer_created", "offers", selectedRequest);
       showMsg("offerMsg", "Oferta enviada");
       await loadNearbyRequests();
-      await renderProviderHomeMap();
+      await window.renderProviderHomeMap();
       setTimeout(() => go("providerHomeScreen"), 400);
     }
 
-    window.loadWalkerCredits = async function loadWalkerCredits() {
+    window.loadWalkerCredits = async function window.loadWalkerCredits() {
       const debugEl = $("walletDebugText");
       const setValue = (balance, maxTariff = null, note = "") => {
         const safe = Math.max(0, Number(balance || 0));
@@ -2505,7 +2505,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       };
 
       try {
-        const user = currentUser || await getCurrentSessionUser();
+        const user = currentUser || await window.getCurrentSessionUser();
         if (!user?.id) {
           const cached = localStorage.getItem("ladrame_last_walker_balance");
           if (cached) {
@@ -2627,7 +2627,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
       };
       try {
-        const user = currentUser || await getCurrentSessionUser();
+        const user = currentUser || await window.getCurrentSessionUser();
         if (!user?.id) {
           setValue(0);
           return;
@@ -2704,10 +2704,10 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
 
       await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.", "credit_order_created", "credit_orders", null);
       showMsg("buyCreditsMsg", "Comprobante enviado. Se verá reflejado cuando lo apruebe el admin.");
-      await loadWalkerCredits().catch(() => {});
+      await window.loadWalkerCredits().catch(() => {});
       setTimeout(async () => {
         go("providerHomeScreen");
-        await renderProviderHome().catch(() => {});
+        await window.renderProviderHome().catch(() => {});
       }, 700);
     }
 
@@ -2793,7 +2793,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           }
           if (currentProfile?.role === "walker") {
             await loadNearbyRequests();
-            await renderProviderHomeMap();
+            await window.renderProviderHomeMap();
           }
         })
         .subscribe();
@@ -3158,7 +3158,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         await renderOwnerHomeMap();
         go("ownerHomeScreen");
       } else {
-        await renderProviderHomeMap();
+        await window.renderProviderHomeMap();
         go("providerHomeScreen");
       }
     }
@@ -3327,7 +3327,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (error) return alert(error.message);
       currentProfile.hotel_enabled = true;
       await loadCurrentProfile();
-      await renderProviderHome();
+      await window.renderProviderHome();
     }
 
     function openHotelProfileScreen() {
