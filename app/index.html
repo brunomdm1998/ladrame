@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LADRAME v27 ESTABLE</title>
+  <title>LADRAME v29 RPC</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
@@ -324,7 +324,7 @@
     }
   </style>
 </head>
-<body data-version="v27-estable">
+<body data-version="v29-rpc">
   <div id="phone">
 
     <div id="loginScreen" class="screen active">
@@ -732,7 +732,7 @@
     </div>
 
   </div>
-  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">v27-estable</div>
+  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">v29-rpc</div>
 
   <script>
     (function forceFreshClient(){
@@ -1711,6 +1711,10 @@
         const selectedDogs = Array.from(document.querySelectorAll("#walkDogsMultiSelect input[type='checkbox']:checked"))
           .map(el => ({ id: el.value, name: el.dataset.name }));
 
+        if (!currentUser?.id) {
+          showMsg("walkMsg", "Tu sesión no está lista. Vuelve a entrar.");
+          return;
+        }
         if (!selectedDogs.length) {
           showMsg("walkMsg", "Selecciona al menos un perro");
           return;
@@ -1726,7 +1730,7 @@
 
         if (ownerLat == null || ownerLng == null) {
           showMsg("walkMsg", "Obteniendo ubicación...");
-          setDebug("Esperando permiso de ubicación del navegador...");
+          setDebug("Esperando permiso de ubicación...");
           const ok = await getOwnerLocation();
           if (!ok || ownerLat == null || ownerLng == null) {
             showMsg("walkMsg", "Activa la ubicación del navegador y vuelve a intentar");
@@ -1737,37 +1741,32 @@
 
         const primaryDogId = selectedDogs[0].id;
 
-        setDebug("Creando solicitud...");
-        const insertResp = await supabaseClient
-          .from("walk_requests")
-          .insert({
-            owner_id: currentUser.id,
-            dog_id: primaryDogId,
-            tariff: price,
-            time,
-            location: `${ownerLat},${ownerLng}`,
-            comments,
-            lat: ownerLat,
-            lng: ownerLng,
-            status: "open"
-          })
-          .select("id, owner_id, status")
-          .single();
+        setDebug("Creando solicitud por RPC...");
+        const rpcResp = await supabaseClient.rpc("create_walk_request", {
+          p_owner_id: currentUser.id,
+          p_dog_id: primaryDogId,
+          p_tariff: price,
+          p_time: time,
+          p_location: `${ownerLat},${ownerLng}`,
+          p_comments: comments,
+          p_lat: ownerLat,
+          p_lng: ownerLng
+        });
 
-        if (insertResp.error) {
-          showMsg("walkMsg", insertResp.error.message || "Error guardando la solicitud");
-          setDebug("walk_requests insert falló");
+        if (rpcResp.error) {
+          showMsg("walkMsg", rpcResp.error.message || "Error creando solicitud");
+          setDebug("RPC create_walk_request falló");
           return;
         }
 
-        const request = insertResp.data;
+        const requestId = rpcResp.data;
 
         setDebug("Vinculando perros...");
         for (const dog of selectedDogs) {
           const dogResp = await supabaseClient
             .from("walk_request_dogs")
             .upsert({
-              request_id: request.id,
+              request_id: requestId,
               dog_id: dog.id
             });
 
@@ -1776,7 +1775,6 @@
           }
         }
 
-        // notificación silenciosa; si falla no rompe el flujo
         try {
           await createNotification(
             currentUser.id,
@@ -1784,7 +1782,7 @@
             `Tu solicitud fue publicada por S/${price}.`,
             "walk_request_created",
             "walk_requests",
-            request.id
+            requestId
           );
         } catch (e) {
           console.error("createNotification after createWalkRequest", e);
@@ -1792,8 +1790,6 @@
 
         showMsg("walkMsg", "Solicitud publicada");
         setDebug("");
-
-        // flujo simple y estable: volver al home y refrescar después
         setTimeout(async () => {
           go("ownerHomeScreen");
           try { await renderOwnerHomeMap(); } catch (e) { console.error(e); }
@@ -1803,7 +1799,7 @@
       } catch (e) {
         console.error("createWalkRequest error", e);
         showMsg("walkMsg", e?.message || "Ocurrió un error al publicar la solicitud");
-        setDebug(e?.stack ? String(e.stack).slice(0, 160) : "Excepción JS");
+        setDebug(e?.stack ? String(e.stack).slice(0, 200) : "Excepción JS");
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -3329,7 +3325,19 @@
       window.verifySignupCode = verifySignupCode;
       window.resendSignupCode = resendSignupCode;
       window.finalizePendingProfile = finalizePendingProfile;
+      const publishWalkBtn = $("publishWalkBtn");
+      if (publishWalkBtn) publishWalkBtn.onclick = () => createWalkRequest();
+
       window.logout = logout;
+      window.createWalkRequest = createWalkRequest;
+      window.openCreateWalkScreen = openCreateWalkScreen;
+      window.loadOwnerRequests = loadOwnerRequests;
+      window.openOwnerRequestsSafe = openOwnerRequestsSafe;
+      window.openWalkerMapScreen = openWalkerMapScreen;
+      window.sendOffer = sendOffer;
+      window.acceptOffer = acceptOffer;
+      window.rejectOffer = rejectOffer;
+      window.cancelWalkRequest = cancelWalkRequest;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
