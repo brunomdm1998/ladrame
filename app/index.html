@@ -354,7 +354,7 @@
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-        <button onclick="loadOwnerRequests()">Solicitudes</button>
+        <button onclick="openOwnerRequestsSafe()">Solicitudes</button>
       </div>
       <div class="home-action-row">
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
@@ -681,6 +681,7 @@
     let selectedHotelRequest = null;
     let selectedHotelProfileId = null;
     let currentChatRoom = null;
+    let acceptingOfferId = null;
     let currentChatOrigin = null;
 
     let notificationsChannel = null;
@@ -993,7 +994,7 @@
         return;
       }
 
-      routeUser(profile);
+      await routeUser(profile);
       subscribeNotifications();
       subscribeRequestsRealtime();
       subscribeOffersRealtime();
@@ -1005,24 +1006,24 @@
       }
     }
 
-    function routeUser(profile) {
+    async function routeUser(profile) {
       if (profile.role === "owner") {
         $("ownerWelcome").textContent = "Hola " + (profile.name || "");
-        loadDogs();
-        updateHotelDogSelect();
-        getOwnerLocation();
         go("ownerHomeScreen");
-        renderOwnerHomeMap();
+        await loadDogs();
+        await updateHotelDogSelect();
+        await getOwnerLocation();
+        await renderOwnerHomeMap();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(renderOwnerHomeMap, 5000);
+        ownerMapRefreshInterval = setInterval(() => { renderOwnerHomeMap(); }, 5000);
         return;
       }
 
       if (profile.role === "walker") {
         $("providerWelcome").textContent = "Hola " + (profile.name || "");
-        renderProviderHome();
-        startProviderLiveGps();
         go("providerHomeScreen");
+        await renderProviderHome();
+        await startProviderLiveGps();
         return;
       }
 
@@ -1178,33 +1179,50 @@
     }
 
     async function loadDogs() {
-      const { data } = await supabaseClient
-        .from("dogs")
-        .select("*")
-        .eq("owner_id", currentUser.id)
-        .order("created_at", { ascending: false });
+      try {
+        const wrap = $("ownerDogsList");
+        if (wrap) wrap.innerHTML = `<div class="card"><p class="small">Cargando perros...</p></div>`;
 
-      const wrap = $("ownerDogsList");
-      wrap.innerHTML = "";
-      if (!data?.length) {
-        wrap.innerHTML = `<div class="card"><p class="small">Aún no registras perros.</p></div>`;
-        return;
-      }
-      for (const dog of data) {
-        const photo = await getDogPhoto(currentUser.id, dog.name);
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <p><b>${dog.name}</b></p>
-          ${photo ? `<img src="${photo}" class="wide-photo">` : ""}
-          <p class="small">Tamaño: ${dog.size || "-"}</p>
-          <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
-          <p class="small">Sociable: ${dog.sociable || "-"}</p>
-          <p class="small">Controlable: ${dog.controllable || "-"}</p>
-          <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
-          <p class="small">Notas: ${dog.recommendations || "-"}</p>
-        `;
-        wrap.appendChild(div);
+        const { data, error } = await supabaseClient
+          .from("dogs")
+          .select("*")
+          .eq("owner_id", currentUser.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          if (wrap) wrap.innerHTML = `<div class="card"><p class="small">No se pudieron cargar los perros: ${error.message}</p></div>`;
+          return;
+        }
+
+        if (!wrap) return;
+        wrap.innerHTML = "";
+
+        if (!data?.length) {
+          wrap.innerHTML = `<div class="card"><p class="small">Aún no registras perros.</p></div>`;
+          return;
+        }
+
+        for (const dog of data) {
+          let photo = null;
+          try { photo = await getDogPhoto(currentUser.id, dog.name); } catch {}
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <p><b>${dog.name}</b></p>
+            ${photo ? `<img src="${photo}" class="wide-photo">` : ""}
+            <p class="small">Tamaño: ${dog.size || "-"}</p>
+            <span class="dog-pill ${getDogRiskClass(dog.personality)}">${getDogRiskLabel(dog.personality)}</span>
+            <p class="small">Sociable: ${dog.sociable || "-"}</p>
+            <p class="small">Controlable: ${dog.controllable || "-"}</p>
+            <p class="small">Responde a su nombre: ${dog.responds_to_name || "-"}</p>
+            <p class="small">Notas: ${dog.recommendations || "-"}</p>
+          `;
+          wrap.appendChild(div);
+        }
+      } catch (e) {
+        const wrap = $("ownerDogsList");
+        if (wrap) wrap.innerHTML = `<div class="card"><p class="small">Error cargando perros.</p></div>`;
+        console.error("loadDogs error", e);
       }
     }
 
@@ -1267,20 +1285,34 @@
     }
 
     async function updateHotelDogSelect() {
-      const { data } = await supabaseClient
-        .from("dogs")
-        .select("*")
-        .eq("owner_id", currentUser.id)
-        .order("created_at", { ascending: false });
-      const select = $("hotelDogSelect");
-      if (!select) return;
-      select.innerHTML = '<option value="">Selecciona perro</option>';
-      for (const dog of data || []) {
-        const o = document.createElement("option");
-        o.value = dog.id;
-        o.textContent = dog.name;
-        select.appendChild(o);
+      try {
+        const select = $("hotelDogSelect");
+        if (!select) return;
+        const { data, error } = await supabaseClient
+          .from("dogs")
+          .select("*")
+          .eq("owner_id", currentUser.id)
+          .order("created_at", { ascending: false });
+
+        select.innerHTML = '<option value="">Selecciona perro</option>';
+        if (error || !data?.length) return;
+
+        for (const dog of data) {
+          const o = document.createElement("option");
+          o.value = dog.id;
+          o.textContent = dog.name;
+          select.appendChild(o);
+        }
+      } catch (e) {
+        console.error("updateHotelDogSelect error", e);
       }
+    }
+
+    async function openOwnerRequestsSafe() {
+      go("ownerRequestsScreen");
+      const wrap = $("ownerRequestsList");
+      if (wrap) wrap.innerHTML = `<div class="card"><p class="small">Cargando solicitudes...</p></div>`;
+      await loadOwnerRequests();
     }
 
     async function openCreateWalkScreen() {
@@ -1415,73 +1447,124 @@
     }
 
     async function loadOwnerRequests() {
-      const { data: requests } = await supabaseClient
-        .from("walk_requests")
-        .select("*")
-        .eq("owner_id", currentUser.id)
-        .order("created_at", { ascending: false });
-
       const wrap = $("ownerRequestsList");
-      wrap.innerHTML = "";
+      try {
+        if (wrap) wrap.innerHTML = `<div class="card"><p class="small">Cargando solicitudes...</p></div>`;
 
-      for (const req of requests || []) {
-        const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <p><b>Solicitud</b></p>
-          <p class="small">Tarifa del dueño: S/${req.tariff}</p>
-          <p class="small">Tiempo: ${req.time || 0} min</p>
-          <p class="small">Estado: ${req.status || "-"}</p>
-          <p class="small">Notas: ${req.comments || "-"}</p>
-          ${buildDogsHtml(dogs)}
-          ${req.status === "open" ? `<button class="red" onclick="cancelWalkRequest('${req.id}')">Cancelar solicitud</button>` : ""}
-        `;
-        wrap.appendChild(card);
-
-        const { data: offers } = await supabaseClient
-          .from("offers")
+        const { data: requests, error: reqError } = await supabaseClient
+          .from("walk_requests")
           .select("*")
-          .eq("request_id", req.id)
+          .eq("owner_id", currentUser.id)
           .order("created_at", { ascending: false });
 
-        if (offers?.length) {
-          for (const ofr of offers) {
+        if (reqError) {
+          if (wrap) wrap.innerHTML = `<div class="card"><p class="small">No se pudieron cargar las solicitudes: ${reqError.message}</p></div>`;
+          return;
+        }
+
+        wrap.innerHTML = "";
+
+        for (const req of requests || []) {
+          let dogs = [];
+          try { dogs = await getRequestDogsWithPhotos(req.id, req.owner_id); } catch (e) { console.error(e); }
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <p><b>Solicitud</b></p>
+            <p class="small">Tarifa del dueño: S/${req.tariff}</p>
+            <p class="small">Tiempo: ${req.time || 0} min</p>
+            <p class="small">Estado: ${req.status || "-"}</p>
+            <p class="small">Notas: ${req.comments || "-"}</p>
+            ${buildDogsHtml(dogs)}
+            ${req.status === "open" ? `<button class="red" onclick="cancelWalkRequest('${req.id}')">Cancelar solicitud</button>` : ""}
+          `;
+          wrap.appendChild(card);
+
+          const { data: offers, error: offerError } = await supabaseClient
+            .from("offers")
+            .select("*")
+            .eq("request_id", req.id)
+            .order("created_at", { ascending: false });
+
+          if (offerError) {
             const offerCard = document.createElement("div");
             offerCard.className = "card";
-            offerCard.innerHTML = `
-              <p><b>Oferta del paseador</b></p>
-              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
-              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
-              ${ofr.status === "pending" && req.status === "open" ? `
-                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-              ` : ""}
-            `;
+            offerCard.innerHTML = `<p class="small">No se pudieron cargar ofertas: ${offerError.message}</p>`;
             wrap.appendChild(offerCard);
+            continue;
+          }
+
+          if (offers?.length) {
+            for (const ofr of offers) {
+              const offerCard = document.createElement("div");
+              offerCard.className = "card";
+              offerCard.innerHTML = `
+                <p><b>Oferta del paseador</b></p>
+                <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
+                <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
+                ${ofr.status === "pending" && req.status === "open" ? `
+                  <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+                  <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+                ` : ""}
+              `;
+              wrap.appendChild(offerCard);
+            }
           }
         }
-      }
 
-      if (!wrap.innerHTML.trim()) {
-        wrap.innerHTML = `<div class="card"><p class="small">No tienes solicitudes aún.</p></div>`;
+        if (!wrap.innerHTML.trim()) {
+          wrap.innerHTML = `<div class="card"><p class="small">No tienes solicitudes aún.</p></div>`;
+        }
+      } catch (e) {
+        if (wrap) wrap.innerHTML = `<div class="card"><p class="small">Error cargando solicitudes.</p></div>`;
+        console.error("loadOwnerRequests error", e);
       }
-      go("ownerRequestsScreen");
     }
 
     async function acceptOffer(offerId) {
-      const { data: walkId, error } = await supabaseClient.rpc("accept_offer", { p_offer_id: offerId });
-      if (error) return alert(error.message);
-      if (walkId) {
-        await openLiveWalk(walkId, "owner");
-      } else {
-        await loadOwnerRequests();
+      if (acceptingOfferId === offerId) return;
+      acceptingOfferId = offerId;
+      try {
+        const { data: walkId, error } = await supabaseClient.rpc("accept_offer", { p_offer_id: offerId });
+        if (error) {
+          alert(error.message);
+          return;
+        }
+        if (walkId) {
+          await openLiveWalk(walkId, "owner");
+        } else {
+          await loadOwnerRequests();
+        }
+      } finally {
+        acceptingOfferId = null;
       }
     }
 
     async function rejectOffer(offerId) {
-      const { error } = await supabaseClient.from("offers").update({ status: "rejected" }).eq("id", offerId);
+      const { data: offer } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("id", offerId)
+        .maybeSingle();
+
+      const { error } = await supabaseClient
+        .from("offers")
+        .update({ status: "rejected" })
+        .eq("id", offerId);
+
       if (error) return alert(error.message);
+
+      if (offer?.walker_id) {
+        await createNotification(
+          offer.walker_id,
+          "Oferta rechazada",
+          "El dueño rechazó tu oferta. Puedes enviar una nueva mientras la solicitud siga abierta.",
+          "offer_rejected",
+          "offers",
+          offerId
+        );
+      }
+
       await loadOwnerRequests();
     }
 
