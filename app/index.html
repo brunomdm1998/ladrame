@@ -3629,22 +3629,22 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (signupBackBtn) signupBackBtn.onclick = () => window.go("loginScreen");
       const publishWalkBtn = $("publishWalkBtn");
       if (publishWalkBtn) publishWalkBtn.onclick = () => window.createWalkRequest();
-      window.handleLogin = handleLogin;
-      window.registerUser = registerUser;
-      window.go = go;
-      window.verifySignupCode = verifySignupCode;
-      window.resendSignupCode = resendSignupCode;
-      window.finalizePendingProfile = finalizePendingProfile;
-      window.logout = logout;
-      window.createWalkRequest = createWalkRequest;
-      window.openCreateWalkScreen = openCreateWalkScreen;
-      window.loadOwnerRequests = loadOwnerRequests;
-      window.openOwnerRequestsSafe = openOwnerRequestsSafe;
-      window.openWalkerMapScreen = openWalkerMapScreen;
-      window.sendOffer = sendOffer;
-      window.acceptOffer = acceptOffer;
-      window.rejectOffer = rejectOffer;
-      window.cancelWalkRequest = cancelWalkRequest;
+      if (typeof window.handleLogin !== "function") console.warn("handleLogin missing on window");
+      if (typeof window.registerUser !== "function") console.warn("registerUser missing on window");
+      if (typeof window.go !== "function") console.warn("go missing on window");
+      if (typeof window.verifySignupCode !== "function") console.warn("verifySignupCode missing on window");
+      if (typeof window.resendSignupCode !== "function") console.warn("resendSignupCode missing on window");
+      if (typeof window.finalizePendingProfile !== "function") console.warn("finalizePendingProfile missing on window");
+      if (typeof window.logout !== "function") console.warn("logout missing on window");
+      if (typeof window.createWalkRequest !== "function") console.warn("createWalkRequest missing on window");
+      if (typeof window.openCreateWalkScreen !== "function") console.warn("openCreateWalkScreen missing on window");
+      if (typeof window.loadOwnerRequests !== "function") console.warn("loadOwnerRequests missing on window");
+      if (typeof window.openOwnerRequestsSafe !== "function") console.warn("openOwnerRequestsSafe missing on window");
+      if (typeof window.openWalkerMapScreen !== "function") console.warn("openWalkerMapScreen missing on window");
+      if (typeof window.sendOffer !== "function") console.warn("sendOffer missing on window");
+      if (typeof window.acceptOffer !== "function") console.warn("acceptOffer missing on window");
+      if (typeof window.rejectOffer !== "function") console.warn("rejectOffer missing on window");
+      if (typeof window.cancelWalkRequest !== "function") console.warn("cancelWalkRequest missing on window");
     }
     function exposeHtmlHandlers() {
       const handlerNames = [
@@ -3702,14 +3702,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       exposeHtmlHandlers();
       boot();
     });
-    // Compat global shims
+    // Compat global verification only (do not reference undeclared local names)
     try {
-      if (typeof window.loadWalkerCredits !== "function" && typeof loadWalkerCredits === "function") window.loadWalkerCredits = loadWalkerCredits;
-      if (typeof window.renderProviderHome !== "function" && typeof renderProviderHome === "function") window.renderProviderHome = renderProviderHome;
-      if (typeof window.renderProviderHomeMap !== "function" && typeof renderProviderHomeMap === "function") window.renderProviderHomeMap = renderProviderHomeMap;
-      if (typeof window.getCurrentSessionUser !== "function" && typeof getCurrentSessionUser === "function") window.getCurrentSessionUser = getCurrentSessionUser;
-      if (typeof window.handleLogin !== "function" && typeof handleLogin === "function") window.handleLogin = handleLogin;
-      if (typeof window.registerUser !== "function" && typeof registerUser === "function") window.registerUser = registerUser;
+      ["loadWalkerCredits","renderProviderHome","renderProviderHomeMap","getCurrentSessionUser","handleLogin","registerUser"].forEach((name) => {
+        if (typeof window[name] !== "function") console.warn(`global handler missing: ${name}`);
+      });
       try { exposeHtmlHandlers(); } catch (_) {}
     } catch (e) { console.warn("shim init", e); }
 
