@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LADRAME FINAL PRO v31</title>
+  <title>LADRAME FINAL PRO v30</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
@@ -324,7 +324,7 @@
     }
   </style>
 </head>
-<body data-version="final-fix-v32">
+<body data-version="final-limpio">
   <div id="phone">
 
     <div id="loginScreen" class="screen active">
@@ -557,7 +557,7 @@
         <p><b>Créditos disponibles paseo</b></p>
         <p id="walkerCredits">0</p>
         <p class="small" id="maxTariffText">Tarifa máxima: S/0</p>
-        <p class="small" id="walletDebugText">Saldo: cargando...</p>
+        <p class="small hidden" id="walletDebugText"></p>
       </div>
       <div class="card hidden" id="hotelWalletCard">
         <p><b>Créditos hotel</b></p>
@@ -733,7 +733,7 @@
     </div>
 
   </div>
-  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-fix-v32</div>
+  <div style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#777;background:rgba(255,255,255,.8);padding:3px 6px;border-radius:8px;z-index:9999">final-limpio</div>
 
   <script>
 mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEycW9raWZnZXhoaTgifQ.wBvTm7B510CFMwkgENURKw";
@@ -896,115 +896,58 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       return data?.publicUrl || null;
     }
 
-    window.getCurrentSessionUser = async function getCurrentSessionUser() {
-      try {
-        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-        if (!sessionError && sessionData?.session?.user) return sessionData.session.user;
-      } catch (e) {
-        console.error("getCurrentSessionUser session", e);
-      }
-      try {
-        const { data, error } = await supabaseClient.auth.getUser();
-        if (error) {
-          console.error("getCurrentSessionUser getUser", error);
-          return null;
-        }
-        return data.user || null;
-      } catch (e) {
-        console.error("getCurrentSessionUser fatal", e);
-        return null;
-      }
+    async function getCurrentSessionUser() {
+      const { data, error } = await supabaseClient.auth.getUser();
+      if (error) return null;
+      return data.user || null;
     }
 
-    window.handleLogin = async function handleLogin() {
+        async function handleLogin() {
       const email = $("loginEmail").value.trim().toLowerCase();
-      const password = $("loginPass").value;
-      const btn = $("loginBtn");
-      showMsg("loginMsg", "");
+      const password = $("loginPass").value.trim();
       if (!email || !password) return showMsg("loginMsg", "Completa los campos");
-
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Entrando...";
-      }
-
-      try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) return showMsg("loginMsg", error.message);
-        currentUser = data?.user || await window.getCurrentSessionUser();
-        syncGlobalState();
-        await boot();
-      } catch (e) {
-        console.error("handleLogin", e);
-        showMsg("loginMsg", e?.message || "No se pudo iniciar sesión");
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "Entrar";
-        }
-      }
+      showMsg("loginMsg", "Entrando...");
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) return showMsg("loginMsg", error.message);
+      showMsg("loginMsg", "");
+      await boot();
     }
 
-    window.registerUser = async function registerUser() {
+    async function registerUser() {
       const name = $("signupName").value.trim();
-      const email = $("signupEmail").value.trim().toLowerCase();
+      const email = $("signupEmail").value.trim();
       const dni = normalizeDni($("signupDNI").value);
       const password = $("signupPass").value;
       const role = $("signupRole").value;
       const language = $("signupLanguage").value;
       const country = $("signupCountry").value;
-      const btn = $("registerBtn");
 
-      showMsg("signupMsg", "");
       if (!name || !email || !dni || !password || !role || !country || !language) {
         return showMsg("signupMsg", "Completa todos los campos");
       }
-      if (password.length < 6) return showMsg("signupMsg", "La contraseña debe tener al menos 6 caracteres");
 
       pendingSignupData = { name, email, dni, role, language, country };
       localStorage.setItem("ladrame_pending_signup_data", JSON.stringify(pendingSignupData));
 
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Creando cuenta...";
-      }
-
-      try {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              pending_name: name,
-              pending_dni: dni,
-              pending_role: role,
-              pending_language: language,
-              pending_country: country
-            }
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            pending_name: name,
+            pending_dni: dni,
+            pending_role: role,
+            pending_language: language,
+            pending_country: country
           }
-        });
-
-        if (error) return showMsg("signupMsg", error.message);
-
-        localStorage.setItem("ladrame_pending_verification_email", email);
-        pendingVerificationEmail = email;
-        $("verifyEmailText").textContent = email;
-
-        if (data?.session?.user) {
-          currentUser = data.session.user;
-          syncGlobalState();
         }
+      });
 
-        go("verifyCodeScreen");
-      } catch (e) {
-        console.error("registerUser", e);
-        showMsg("signupMsg", e?.message || "No se pudo crear la cuenta");
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "Registrarme";
-        }
-      }
+      if (error) return showMsg("signupMsg", error.message);
+      localStorage.setItem("ladrame_pending_verification_email", email);
+      pendingVerificationEmail = email;
+      $("verifyEmailText").textContent = email;
+      go("verifyCodeScreen");
     }
 
     async function verifySignupCode() {
@@ -1019,7 +962,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       localStorage.removeItem("ladrame_pending_verification_email");
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
-      currentUser = await window.getCurrentSessionUser();
+      currentUser = await getCurrentSessionUser();
       syncGlobalState();
       $("completeProfileInfo").innerHTML = `
         <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
@@ -1039,7 +982,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function finalizePendingProfile() {
-      const user = await window.getCurrentSessionUser();
+      const user = await getCurrentSessionUser();
       if (!user) return showMsg("completeProfileMsg", "Inicia sesión nuevamente");
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
@@ -1095,82 +1038,58 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadCurrentProfile() {
-      currentUser = await window.getCurrentSessionUser();
+      currentUser = await getCurrentSessionUser();
       syncGlobalState();
       if (!currentUser) return null;
-
-      let profile = null;
-      let profileError = null;
-
-      const byId = await supabaseClient.from("users").select("*").eq("id", currentUser.id).maybeSingle();
-      if (!byId.error && byId.data) {
-        profile = byId.data;
-      } else {
-        profileError = byId.error || null;
-      }
-
-      if (!profile && currentUser.email) {
-        const byEmail = await supabaseClient
-          .from("users")
-          .select("*")
-          .ilike("email", currentUser.email)
-          .maybeSingle();
-        if (!byEmail.error && byEmail.data) {
-          profile = byEmail.data;
-        } else if (byEmail.error) {
-          profileError = byEmail.error;
-        }
-      }
-
-      if (profileError) console.error("loadCurrentProfile", profileError);
-      currentProfile = profile;
+      const { data, error } = await supabaseClient.from("users").select("*").eq("id", currentUser.id).maybeSingle();
+      if (error) return null;
+      currentProfile = data;
       syncGlobalState();
-      return profile;
+      return data;
     }
 
-    async function boot() {
-      try {
-        const user = await window.getCurrentSessionUser();
-        if (!user) {
-          currentUser = null;
-          currentProfile = null;
-          syncGlobalState();
-          go("loginScreen");
-          return;
-        }
-
-        currentUser = user;
+        async function boot() {
+      const user = await getCurrentSessionUser();
+      if (!user) {
+        currentUser = null;
+        currentProfile = null;
         syncGlobalState();
-        const profile = await loadCurrentProfile();
+        go("loginScreen");
+        return;
+      }
 
-        if (!profile) {
-          const raw = localStorage.getItem("ladrame_pending_signup_data");
-          if (raw) pendingSignupData = JSON.parse(raw);
+      currentUser = user;
+      syncGlobalState();
+      const profile = await loadCurrentProfile();
+
+      if (!profile) {
+        const raw = localStorage.getItem("ladrame_pending_signup_data");
+        if (raw) pendingSignupData = JSON.parse(raw);
+        if (pendingSignupData) {
           $("completeProfileInfo").innerHTML = `
-            <p><b>Nombre:</b> ${pendingSignupData?.name || user.user_metadata?.pending_name || user.user_metadata?.name || "-"}</p>
+            <p><b>Nombre:</b> ${pendingSignupData?.name || "-"}</p>
             <p><b>Correo:</b> ${pendingSignupData?.email || user.email || "-"}</p>
-            <p><b>DNI:</b> ${pendingSignupData?.dni || user.user_metadata?.pending_dni || "-"}</p>
-            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role || user.user_metadata?.pending_role)}</p>
-            <p><b>País:</b> ${pendingSignupData?.country || user.user_metadata?.pending_country || "-"}</p>
+            <p><b>DNI:</b> ${pendingSignupData?.dni || "-"}</p>
+            <p><b>Rol:</b> ${getCurrentRoleLabel(pendingSignupData?.role)}</p>
+            <p><b>País:</b> ${pendingSignupData?.country || "-"}</p>
           `;
           go("completeProfileScreen");
           return;
         }
-
-        await routeUser(profile);
-        subscribeNotifications();
-        subscribeRequestsRealtime();
-        subscribeOffersRealtime();
-        subscribeWalksRealtime();
-
-        if (window.activarPush && pushActivatedForUserId !== currentUser.id) {
-          pushActivatedForUserId = currentUser.id;
-          window.activarPush();
-        }
-      } catch (e) {
-        console.error("boot", e);
-        showMsg("loginMsg", e?.message || "Error iniciando la app");
+        showMsg("loginMsg", "No se encontró tu perfil. Inicia sesión otra vez.");
         go("loginScreen");
+        return;
+      }
+
+      await routeUser(profile);
+      subscribeNotifications();
+      subscribeRequestsRealtime();
+      subscribeOffersRealtime();
+      subscribeWalksRealtime();
+
+      if (window.activarPush && pushActivatedForUserId !== currentUser.id) {
+        pushActivatedForUserId = currentUser.id;
+        window.activarPush();
       }
     }
 
@@ -1192,7 +1111,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (profile.role === "walker") {
         $("providerWelcome").textContent = "Hola " + (profile.name || "");
         go("providerHomeScreen");
-        await window.renderProviderHome();
+        await renderProviderHome();
         await refreshActiveWalkCards();
         await startProviderLiveGps();
         return;
@@ -1435,48 +1354,15 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       });
     }
 
-    async function getSavedWalkerCoords() {
-      if (!currentUser?.id) return null;
-      try {
-        const { data } = await supabaseClient
-          .from("walkers")
-          .select("lat,lng")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-        if (data?.lat != null && data?.lng != null) {
-          return { lat: Number(data.lat), lng: Number(data.lng) };
-        }
-      } catch (e) {
-        console.error("getSavedWalkerCoords", e);
-      }
-      return null;
-    }
-
-    async function getProviderLocationOnce() {
-      if (!navigator.geolocation) return await getSavedWalkerCoords();
-
-      const tryGet = (opts) => new Promise(resolve => {
+    function getProviderLocationOnce() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) return resolve(null);
         navigator.geolocation.getCurrentPosition(
           pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          async () => resolve(null),
-          opts
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 10000 }
         );
       });
-
-      let coords = await tryGet({ enableHighAccuracy: true, timeout: 18000, maximumAge: 0 });
-      if (!coords) coords = await tryGet({ enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
-      if (!coords) coords = await getSavedWalkerCoords();
-      if (coords) {
-        try {
-          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify(coords));
-        } catch (_) {}
-      } else {
-        try {
-          const raw = localStorage.getItem("ladrame_last_provider_coords");
-          if (raw) coords = JSON.parse(raw);
-        } catch (_) {}
-      }
-      return coords;
     }
 
     function ensureOwnerHomeMap() {
@@ -1542,10 +1428,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
-      const seen = new Set();
       for (const offer of pendingOffers || []) {
-        if (seen.has(offer.id)) continue;
-        seen.add(offer.id);
         const waiting = document.createElement("div");
         waiting.className = "card";
         waiting.innerHTML = `
@@ -1557,11 +1440,9 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    window.renderProviderHome = async function renderProviderHome() {
+    async function renderProviderHome() {
       ensureProviderHomeMap();
-      const homeStack = $("providerFloatingStack");
-      if (homeStack) homeStack.innerHTML = "";
-      await window.loadWalkerCredits();
+      await loadWalkerCredits();
       if (currentProfile?.hotel_enabled) {
         $("hotelWalletCard").classList.remove("hidden");
         $("hotelConfigBtn").classList.remove("hidden");
@@ -1572,11 +1453,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         $("hotelConfigBtn").classList.add("hidden");
         $("hotelRequestsBtn").classList.add("hidden");
       }
-      await window.renderProviderHomeMap();
+      await renderProviderHomeMap();
       await loadPendingOfferWaitingCard();
     }
 
-    window.renderProviderHomeMap = async function renderProviderHomeMap() {
+    async function renderProviderHomeMap() {
       ensureProviderHomeMap();
       providerHomeMarkers.forEach(m => m.remove());
       providerHomeMarkers = [];
@@ -1603,46 +1484,50 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       }
     }
 
-    async function startProviderLiveGps() {
-      const debugEl = $("walletDebugText");
-      const first = await getProviderLocationOnce();
-      if (first) {
-        providerLat = Number(first.lat);
-        providerLng = Number(first.lng);
+        async function startProviderLiveGps() {
+      const persist = (lat, lng) => {
         try {
-          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
+          localStorage.setItem("ladrame_last_provider_lat", String(lat));
+          localStorage.setItem("ladrame_last_provider_lng", String(lng));
         } catch (_) {}
-        await upsertWalkerPosition(providerLat, providerLng);
-        await window.renderProviderHomeMap();
-      } else if (debugEl && !debugEl.textContent) {
-        debugEl.textContent = "GPS pendiente de permiso";
+      };
+      const apply = async (lat, lng) => {
+        providerLat = lat;
+        providerLng = lng;
+        persist(lat, lng);
+        await upsertWalkerPosition(lat, lng);
+        await renderProviderHomeMap();
+        if ($("walkerMapScreen")?.classList.contains("active")) {
+          await loadNearbyRequests();
+        }
+      };
+
+      const first = await getProviderLocationOnce();
+      if (first?.lat != null && first?.lng != null) {
+        await apply(first.lat, first.lng);
+      } else {
+        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
+        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
+        if (Number.isFinite(cachedLat) && Number.isFinite(cachedLng)) {
+          providerLat = cachedLat;
+          providerLng = cachedLng;
+          await renderProviderHomeMap();
+        }
       }
 
       if (!navigator.geolocation) return;
       if (providerGpsWatchId) navigator.geolocation.clearWatch(providerGpsWatchId);
       providerGpsWatchId = navigator.geolocation.watchPosition(async pos => {
-        providerLat = Number(pos.coords.latitude);
-        providerLng = Number(pos.coords.longitude);
-        try {
-          localStorage.setItem("ladrame_last_provider_coords", JSON.stringify({ lat: providerLat, lng: providerLng }));
-        } catch (_) {}
-        await upsertWalkerPosition(providerLat, providerLng);
-        await window.renderProviderHomeMap();
-        if (walkerMap && $("walkerMapScreen")?.classList.contains("active")) {
-          await renderWalkerMap();
+        await apply(pos.coords.latitude, pos.coords.longitude);
+      }, async () => {
+        const cachedLat = Number(localStorage.getItem("ladrame_last_provider_lat"));
+        const cachedLng = Number(localStorage.getItem("ladrame_last_provider_lng"));
+        if (Number.isFinite(cachedLat) && Number.isFinite(cachedLng)) {
+          providerLat = cachedLat;
+          providerLng = cachedLng;
+          await renderProviderHomeMap();
         }
-        if (liveMap && $("liveWalkScreen")?.classList.contains("active") && selectedWalk) {
-          await renderLiveWalkMap(selectedWalk).catch(() => {});
-        }
-      }, async err => {
-        console.error("startProviderLiveGps watchPosition", err);
-        const fallback = await getSavedWalkerCoords();
-        if (fallback) {
-          providerLat = Number(fallback.lat);
-          providerLng = Number(fallback.lng);
-          await window.renderProviderHomeMap();
-        }
-      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
     }
 
     async function upsertWalkerPosition(lat, lng) {
@@ -1822,7 +1707,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       go("createWalkScreen");
     }
 
-    async function createWalkRequest() {
+        async function createWalkRequest() {
       const btn = $("publishWalkBtn");
       const setDebug = (msg) => {
         const el = $("walkDebugMsg");
@@ -1838,6 +1723,15 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           btn.textContent = "Publicando...";
         }
 
+        const owner = await getCurrentSessionUser();
+        if (!owner?.id) {
+          showMsg("walkMsg", "Tu sesión no está lista. Vuelve a entrar.");
+          setDebug("No se encontró sesión activa");
+          return;
+        }
+        currentUser = owner;
+        syncGlobalState();
+
         const price = Number($("walkPriceInput").value || 0);
         const time = Number($("walkTimeInput").value || 0);
         const comments = $("walkNotesInput").value.trim();
@@ -1845,97 +1739,93 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         const selectedDogs = Array.from(document.querySelectorAll("#walkDogsMultiSelect input[type='checkbox']:checked"))
           .map(el => ({ id: el.value, name: el.dataset.name }));
 
-        if (!currentUser?.id) {
-          showMsg("walkMsg", "Tu sesión no está lista. Vuelve a entrar.");
-          return;
-        }
         if (!selectedDogs.length) {
           showMsg("walkMsg", "Selecciona al menos un perro");
           return;
         }
-        if (!price || price <= 0) {
-          showMsg("walkMsg", "Tarifa inválida");
+        if (!Number.isFinite(price) || price <= 0) {
+          showMsg("walkMsg", "Ingresa una tarifa válida");
           return;
         }
-        if (!time || time <= 0) {
-          showMsg("walkMsg", "Selecciona el tiempo");
+        if (!Number.isFinite(time) || time <= 0) {
+          showMsg("walkMsg", "Selecciona el tiempo del paseo");
           return;
         }
 
         if (ownerLat == null || ownerLng == null) {
-          showMsg("walkMsg", "Obteniendo ubicación...");
-          setDebug("Esperando permiso de ubicación...");
+          setDebug("Obteniendo ubicación del dueño...");
           const ok = await getOwnerLocation();
           if (!ok || ownerLat == null || ownerLng == null) {
             showMsg("walkMsg", "Activa la ubicación del navegador y vuelve a intentar");
-            setDebug("No se obtuvieron coordenadas");
+            setDebug("No se pudieron obtener coordenadas");
             return;
           }
         }
 
         const primaryDogId = selectedDogs[0].id;
+        const payload = {
+          owner_id: owner.id,
+          dog_id: primaryDogId,
+          tariff: Math.round(price),
+          time: Math.round(time),
+          location: `${ownerLat},${ownerLng}`,
+          comments,
+          lat: ownerLat,
+          lng: ownerLng,
+          status: "open"
+        };
 
-        setDebug("Creando solicitud...");
-        const rpcResp = await supabaseClient.rpc("create_walk_request", {
-          p_owner_id: currentUser.id,
-          p_dog_id: primaryDogId,
-          p_tariff: price,
-          p_time: time,
-          p_location: `${ownerLat},${ownerLng}`,
-          p_comments: comments,
-          p_lat: ownerLat,
-          p_lng: ownerLng
-        });
+        setDebug("Insertando solicitud...");
+        const { data: requestRow, error: requestError } = await supabaseClient
+          .from("walk_requests")
+          .insert(payload)
+          .select()
+          .single();
 
-        if (rpcResp.error) {
-          console.error("create_walk_request rpc error", rpcResp.error);
-          showMsg("walkMsg", rpcResp.error.message || "Error creando solicitud");
-          setDebug("RPC create_walk_request falló");
+        if (requestError || !requestRow?.id) {
+          console.error("walk_requests insert error", requestError);
+          showMsg("walkMsg", requestError?.message || "No se pudo crear la solicitud");
+          setDebug("Falló el insert en walk_requests");
           return;
         }
 
-        const requestId = rpcResp.data;
-
         setDebug("Vinculando perros...");
-        for (const dog of selectedDogs) {
-          const dogResp = await supabaseClient
+        if (selectedDogs.length) {
+          const dogLinks = selectedDogs.map(dog => ({
+            request_id: requestRow.id,
+            dog_id: dog.id,
+            owner_id: owner.id
+          }));
+          const { error: linkError } = await supabaseClient
             .from("walk_request_dogs")
-            .upsert({
-              request_id: requestId,
-              dog_id: dog.id
-            });
-
-          if (dogResp.error) {
-            console.error("walk_request_dogs upsert error", dogResp.error);
+            .upsert(dogLinks, { onConflict: "request_id,dog_id" });
+          if (linkError) {
+            console.error("walk_request_dogs upsert error", linkError);
+            setDebug("Solicitud creada, pero falló la vinculación de algunos perros");
           }
         }
 
         try {
           await createNotification(
-            currentUser.id,
-            "Solicitud creada",
-            `Tu solicitud fue publicada por S/${price}.`,
+            owner.id,
+            "Solicitud publicada",
+            `Tu solicitud de paseo por S/${Math.round(price)} fue publicada.`,
             "walk_request_created",
             "walk_requests",
-            requestId
+            requestRow.id
           );
-        } catch (e) {
-          console.error("createNotification after createWalkRequest", e);
+        } catch (notifyErr) {
+          console.error("create walk notification error", notifyErr);
         }
 
         showMsg("walkMsg", "Solicitud publicada");
-        setDebug("");
-
-        setTimeout(async () => {
-          go("ownerHomeScreen");
-          try { await renderOwnerHomeMap(); } catch (e) { console.error(e); }
-          try { await loadOwnerHomeRequestOverlay(); } catch (e) { console.error(e); }
-          try { await refreshActiveWalkCards(); } catch (e) { console.error(e); }
-        }, 350);
+        setDebug("Solicitud creada correctamente");
+        await loadOwnerHomeRequestOverlay();
+        setTimeout(() => go("ownerHomeScreen"), 500);
       } catch (e) {
-        console.error("createWalkRequest error", e);
+        console.error("createWalkRequest fatal", e);
         showMsg("walkMsg", e?.message || "Ocurrió un error al publicar la solicitud");
-        setDebug(e?.stack ? String(e.stack).slice(0, 200) : "Excepción JS");
+        setDebug("Excepción en createWalkRequest");
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -2245,7 +2135,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       walkerRefreshInterval = setInterval(async () => {
         await loadNearbyRequests();
-        await window.renderProviderHomeMap();
+        await renderProviderHomeMap();
       }, 5000);
     }
 
@@ -2487,198 +2377,96 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       await createNotification(req.owner_id, "Nueva oferta", `Recibiste una nueva oferta por S/${price}.`, "offer_created", "offers", selectedRequest);
       showMsg("offerMsg", "Oferta enviada");
       await loadNearbyRequests();
-      await window.renderProviderHomeMap();
+      await renderProviderHomeMap();
       setTimeout(() => go("providerHomeScreen"), 400);
     }
 
-    window.loadWalkerCredits = async function loadWalkerCredits() {
+        async function loadWalkerCredits() {
       const debugEl = $("walletDebugText");
-      const setValue = (balance, maxTariff = null, note = "") => {
+      const setDebug = (msg) => {
+        if (debugEl) {
+          debugEl.textContent = msg || "";
+          debugEl.classList.remove("hidden");
+        }
+      };
+      const setValue = (balance, source = "") => {
         const safe = Math.max(0, Number(balance || 0));
         if ($("walkerCredits")) $("walkerCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
-        const safeTariff = maxTariff == null ? safe * 10 : Math.max(0, Number(maxTariff || 0));
-        if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${safeTariff.toFixed(2).replace(/\.00$/, "")}`;
-        if (debugEl) debugEl.textContent = note || `Saldo cargado: ${safe}`;
+        if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${(safe * 10).toFixed(2).replace(/\.00$/, "")}`;
         try {
-          localStorage.setItem("ladrame_last_walker_balance", JSON.stringify({ balance: safe, maxTariff: safeTariff, note: note || "ok" }));
+          localStorage.setItem("ladrame_last_walker_balance", String(safe));
         } catch (_) {}
+        if (source) setDebug(`Saldo cargado desde ${source}: ${safe}`);
       };
 
       try {
-        const user = currentUser || await window.getCurrentSessionUser();
+        const user = await getCurrentSessionUser();
         if (!user?.id) {
-          const cached = localStorage.getItem("ladrame_last_walker_balance");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            setValue(parsed.balance || 0, parsed.maxTariff || null, "Saldo cacheado sin sesión");
-            return;
-          }
-          setValue(0, 0, "Sin sesión activa");
+          const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
+          setValue(cached, "caché sin sesión");
           return;
         }
 
         let balance = null;
-        let source = "sin fuente";
 
-        try {
-          const rpcResp = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-            p_provider_type: "walker"
-          });
-          if (!rpcResp.error && rpcResp.data != null) {
-            balance = rpcResp.data;
-            source = "rpc:get_my_provider_wallet_balance";
-          }
-        } catch (e) {
-          console.error("wallet strategy rpc", e);
+        const rpcResp = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+          p_provider_type: "walker"
+        });
+        if (!rpcResp.error && rpcResp.data != null) {
+          balance = rpcResp.data;
         }
 
-        if (balance == null) {
-          try {
-            const resp1 = await supabaseClient
-              .from("provider_wallets")
-              .select("balance")
-              .eq("user_id", user.id)
-              .eq("provider_type", "walker")
-              .maybeSingle();
-            if (resp1.error) throw resp1.error;
-            if (resp1.data?.balance != null) {
-              balance = resp1.data.balance;
-              source = "provider_wallets";
-            }
-          } catch (e) {
-            console.error("wallet strategy 1", e);
-          }
-        }
-
-        if (balance == null) {
-          try {
-            const resp2 = await supabaseClient
-              .from("provider_wallet_balances")
-              .select("balance")
-              .eq("user_id", user.id)
-              .eq("provider_type", "walker")
-              .maybeSingle();
-            if (resp2.error) throw resp2.error;
-            if (resp2.data?.balance != null) {
-              balance = resp2.data.balance;
-              source = "provider_wallet_balances.user_id";
-            }
-          } catch (e) {
-            console.error("wallet strategy 2", e);
-          }
-        }
-
-        if (balance == null && user.email) {
-          try {
-            const resp2b = await supabaseClient
-              .from("provider_wallet_balances")
-              .select("balance")
-              .ilike("email", String(user.email).trim())
-              .eq("provider_type", "walker")
-              .maybeSingle();
-            if (resp2b.error) throw resp2b.error;
-            if (resp2b.data?.balance != null) {
-              balance = resp2b.data.balance;
-              source = "provider_wallet_balances.email";
-            }
-          } catch (e) {
-            console.error("wallet strategy 2b", e);
-          }
-        }
-
-        let maxTariff = null;
-        try {
-          const maxResp = await supabaseClient.rpc("get_provider_max_tariff", { p_user_id: user.id, p_provider_type: "walker" });
-          if (!maxResp.error && maxResp.data != null) {
-            maxTariff = maxResp.data;
-            source += " + rpc:get_provider_max_tariff";
-          }
-        } catch (e) {
-          console.error("max tariff rpc", e);
-        }
-
-        if (balance == null) {
-          const cached = localStorage.getItem("ladrame_last_walker_balance");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            setValue(parsed.balance || 0, maxTariff ?? parsed.maxTariff ?? null, "Saldo cacheado; no se pudo leer wallet en vivo");
-            return;
-          }
-        }
-
-        setValue(balance || 0, maxTariff, `Saldo cargado desde ${source}: ${Number(balance || 0).toFixed(2)}`);
-      } catch (e) {
-        console.error("loadWalkerCredits fatal", e);
-        try {
-          const cached = localStorage.getItem("ladrame_last_walker_balance");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            setValue(parsed.balance || 0, parsed.maxTariff || null, "Saldo cacheado por error temporal");
-            return;
-          }
-        } catch (_) {}
-        setValue(0, 0, "Error cargando saldo");
-      }
-    }
-
-    window.loadHotelCredits = async function loadHotelCredits() {
-      const setValue = (balance) => {
-        const safe = Math.max(0, Number(balance || 0));
-        if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
-      };
-      try {
-        const user = currentUser || await window.getCurrentSessionUser();
-        if (!user?.id) {
-          setValue(0);
-          return;
-        }
-
-        let balance = null;
-        try {
+        if (balance == null || Number(balance) === 0) {
           const resp1 = await supabaseClient
             .from("provider_wallets")
             .select("balance")
             .eq("user_id", user.id)
-            .eq("provider_type", "hotel")
+            .eq("provider_type", "walker")
             .maybeSingle();
-          if (!resp1.error && resp1.data && resp1.data.balance != null) balance = resp1.data.balance;
-        } catch (e) { console.error("hotel strategy 1", e); }
-
-        if (balance == null) {
-          try {
-            const resp2 = await supabaseClient
-              .from("provider_wallet_balances")
-              .select("balance")
-              .eq("user_id", user.id)
-              .eq("provider_type", "hotel")
-              .maybeSingle();
-            if (!resp2.error && resp2.data && resp2.data.balance != null) balance = resp2.data.balance;
-          } catch (e) { console.error("hotel strategy 2", e); }
+          if (!resp1.error && resp1.data?.balance != null) balance = resp1.data.balance;
         }
 
-        if (balance == null && user.email) {
-          try {
-            const resp2b = await supabaseClient
-              .from("provider_wallet_balances")
-              .select("balance")
-              .ilike("email", user.email)
-              .eq("provider_type", "hotel")
-              .maybeSingle();
-            if (!resp2b.error && resp2b.data && resp2b.data.balance != null) balance = resp2b.data.balance;
-          } catch (e) { console.error("hotel strategy 2b", e); }
+        if ((balance == null || Number(balance) === 0) && user.email) {
+          const resp2 = await supabaseClient
+            .from("provider_wallet_balances")
+            .select("balance")
+            .eq("email", user.email)
+            .eq("provider_type", "walker")
+            .maybeSingle();
+          if (!resp2.error && resp2.data?.balance != null) balance = resp2.data.balance;
         }
 
         if (balance == null) {
-          try {
-            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "hotel" });
-            if (!resp3.error && resp3.data != null) balance = resp3.data;
-          } catch (e) { console.error("hotel strategy 3", e); }
+          const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
+          setValue(cached, "caché");
+          return;
         }
 
-        setValue(balance || 0);
+        setValue(balance, "supabase");
       } catch (e) {
-        console.error("loadHotelCredits fatal", e);
-        setValue(0);
+        console.error("loadWalkerCredits exception", e);
+        const cached = localStorage.getItem("ladrame_last_walker_balance") || "0";
+        setValue(cached, "caché por excepción");
+      }
+    }
+
+    async function loadHotelCredits() {
+      try {
+        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+          p_provider_type: "hotel"
+        });
+
+        if (error) {
+          console.error("loadHotelCredits rpc error", error);
+          $("hotelCredits").textContent = "0";
+          return;
+        }
+
+        const balance = Math.max(0, Number(data ?? 0));
+        $("hotelCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
+      } catch (e) {
+        console.error("loadHotelCredits exception", e);
+        $("hotelCredits").textContent = "0";
       }
     }
 
@@ -2703,12 +2491,8 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (error) return showMsg("buyCreditsMsg", error.message);
 
       await createNotification(currentUser.id, "Comprobante enviado", "Tu comprobante fue enviado para revisión.", "credit_order_created", "credit_orders", null);
-      showMsg("buyCreditsMsg", "Comprobante enviado. Se verá reflejado cuando lo apruebe el admin.");
-      await window.loadWalkerCredits().catch(() => {});
-      setTimeout(async () => {
-        go("providerHomeScreen");
-        await window.renderProviderHome().catch(() => {});
-      }, 700);
+      showMsg("buyCreditsMsg", "Comprobante enviado");
+      setTimeout(() => go("providerHomeScreen"), 700);
     }
 
     async function createNotification(userId, title, message, type = null, referenceTable = null, referenceId = null) {
@@ -2793,7 +2577,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
           }
           if (currentProfile?.role === "walker") {
             await loadNearbyRequests();
-            await window.renderProviderHomeMap();
+            await renderProviderHomeMap();
           }
         })
         .subscribe();
@@ -3158,7 +2942,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
         await renderOwnerHomeMap();
         go("ownerHomeScreen");
       } else {
-        await window.renderProviderHomeMap();
+        await renderProviderHomeMap();
         go("providerHomeScreen");
       }
     }
@@ -3327,7 +3111,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       if (error) return alert(error.message);
       currentProfile.hotel_enabled = true;
       await loadCurrentProfile();
-      await window.renderProviderHome();
+      await renderProviderHome();
     }
 
     function openHotelProfileScreen() {
@@ -3623,50 +3407,29 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       const openSignupBtn = $("openSignupBtn");
       const registerBtn = $("registerBtn");
       const signupBackBtn = $("signupBackBtn");
-      if (loginBtn) loginBtn.onclick = () => window.handleLogin();
-      if (openSignupBtn) openSignupBtn.onclick = () => window.go("signupScreen");
-      if (registerBtn) registerBtn.onclick = () => window.registerUser();
-      if (signupBackBtn) signupBackBtn.onclick = () => window.go("loginScreen");
+      if (loginBtn) loginBtn.onclick = () => handleLogin();
+      if (openSignupBtn) openSignupBtn.onclick = () => go("signupScreen");
+      if (registerBtn) registerBtn.onclick = () => registerUser();
+      if (signupBackBtn) signupBackBtn.onclick = () => go("loginScreen");
       const publishWalkBtn = $("publishWalkBtn");
-      if (publishWalkBtn) publishWalkBtn.onclick = () => window.createWalkRequest();
-      if (typeof window.handleLogin !== "function") console.warn("handleLogin missing on window");
-      if (typeof window.registerUser !== "function") console.warn("registerUser missing on window");
-      if (typeof window.go !== "function") console.warn("go missing on window");
-      if (typeof window.verifySignupCode !== "function") console.warn("verifySignupCode missing on window");
-      if (typeof window.resendSignupCode !== "function") console.warn("resendSignupCode missing on window");
-      if (typeof window.finalizePendingProfile !== "function") console.warn("finalizePendingProfile missing on window");
-      if (typeof window.logout !== "function") console.warn("logout missing on window");
-      if (typeof window.createWalkRequest !== "function") console.warn("createWalkRequest missing on window");
-      if (typeof window.openCreateWalkScreen !== "function") console.warn("openCreateWalkScreen missing on window");
-      if (typeof window.loadOwnerRequests !== "function") console.warn("loadOwnerRequests missing on window");
-      if (typeof window.openOwnerRequestsSafe !== "function") console.warn("openOwnerRequestsSafe missing on window");
-      if (typeof window.openWalkerMapScreen !== "function") console.warn("openWalkerMapScreen missing on window");
-      if (typeof window.sendOffer !== "function") console.warn("sendOffer missing on window");
-      if (typeof window.acceptOffer !== "function") console.warn("acceptOffer missing on window");
-      if (typeof window.rejectOffer !== "function") console.warn("rejectOffer missing on window");
-      if (typeof window.cancelWalkRequest !== "function") console.warn("cancelWalkRequest missing on window");
+      if (publishWalkBtn) publishWalkBtn.onclick = () => createWalkRequest();
+      window.handleLogin = handleLogin;
+      window.registerUser = registerUser;
+      window.go = go;
+      window.verifySignupCode = verifySignupCode;
+      window.resendSignupCode = resendSignupCode;
+      window.finalizePendingProfile = finalizePendingProfile;
+      window.logout = logout;
+      window.createWalkRequest = createWalkRequest;
+      window.openCreateWalkScreen = openCreateWalkScreen;
+      window.loadOwnerRequests = loadOwnerRequests;
+      window.openOwnerRequestsSafe = openOwnerRequestsSafe;
+      window.openWalkerMapScreen = openWalkerMapScreen;
+      window.sendOffer = sendOffer;
+      window.acceptOffer = acceptOffer;
+      window.rejectOffer = rejectOffer;
+      window.cancelWalkRequest = cancelWalkRequest;
     }
-    function exposeHtmlHandlers() {
-      const handlerNames = [
-        "go","handleLogin","registerUser","verifySignupCode","resendSignupCode","finalizePendingProfile","logout",
-        "saveDog","openCreateWalkScreen","createWalkRequest","openOwnerRequestsSafe","loadOwnerHotelRequests",
-        "openHotelSearchScreen","createHotelRequest","openWalkerMapScreen","sendOffer","openHotelProfileScreen",
-        "saveHotelProfile","loadHotelRequestsForProvider","sendHotelOffer","verifyPickupPin","verifyDropoffPin",
-        "openChatFromCurrentService","cancelCurrentWalkBeforePickup","finishWalk","goBackFromLiveWalk","goBackFromChat",
-        "startAppCall","toggleCallMic","toggleCallCam","hangupAppCall","sendChatMessage","sendCreditOrder",
-        "openNotificationsScreen","goBackFromNotifications","markAllNotificationsRead","activateHotelMode",
-        "openMyActiveWalk","openChatFromActiveWalkHome","acceptOffer","rejectOffer","cancelWalkRequest",
-        "dismissRequest","openOffer","openHotelOffer","acceptHotelOffer","openHotelRequestFor","loadWalkerCredits",
-        "renderProviderHome","renderProviderHomeMap","getCurrentSessionUser"
-      ];
-      handlerNames.forEach((name) => {
-        try {
-          const fn = globalThis[name];
-          if (typeof fn === "function") window[name] = fn;
-        } catch (_) {}
-      });
-    }
-
 
     document.addEventListener("DOMContentLoaded", () => {
       document.body.dataset.ladrameBoot = "ok";
@@ -3675,41 +3438,11 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
       syncGlobalState();
-      exposeHtmlHandlers();
       bindCoreButtons();
       setTimeout(bindCoreButtons, 300);
       setTimeout(bindCoreButtons, 1200);
-
-      ["loginEmail", "loginPass"].forEach(id => {
-        const el = $(id);
-        if (el) el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") window.handleLogin();
-        });
-      });
-
-      ["signupName", "signupEmail", "signupDNI", "signupPass"].forEach(id => {
-        const el = $(id);
-        if (el) el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") window.registerUser();
-        });
-      });
-
-      supabaseClient.auth.onAuthStateChange((_event, session) => {
-        currentUser = session?.user || null;
-        syncGlobalState();
-      });
-
-      exposeHtmlHandlers();
       boot();
     });
-    // Compat global verification only (do not reference undeclared local names)
-    try {
-      ["loadWalkerCredits","renderProviderHome","renderProviderHomeMap","getCurrentSessionUser","handleLogin","registerUser"].forEach((name) => {
-        if (typeof window[name] !== "function") console.warn(`global handler missing: ${name}`);
-      });
-      try { exposeHtmlHandlers(); } catch (_) {}
-    } catch (e) { console.warn("shim init", e); }
-
   </script>
 </body>
 </html>
