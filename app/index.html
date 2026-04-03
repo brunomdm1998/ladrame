@@ -2346,10 +2346,35 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadWalkerCredits() {
-      const setZero = () => {
-        $("walkerCredits").textContent = "0";
-        $("maxTariffText").textContent = "Tarifa máxima: S/0";
-      };
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data?.user;
+    if (!user) return;
+
+    const { data: wallet, error } = await supabaseClient
+      .from("provider_wallets")
+      .select("balance")
+      .eq("user_id", user.id)
+      .eq("provider_type", "walker")
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const balance = Number(wallet?.balance || 0);
+
+    const el1 = document.getElementById("walkerCredits");
+    const el2 = document.getElementById("maxTariffText");
+
+    if (el1) el1.textContent = balance;
+    if (el2) el2.textContent = `Tarifa máxima: S/${balance * 10}`;
+
+  } catch (e) {
+    console.error(e);
+  }
+};
 
       try {
         const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
