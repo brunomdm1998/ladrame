@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LADRAME FINAL PRO v30</title>
+  <title>LADRAME FINAL PRO v31</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
@@ -1440,6 +1440,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     async function renderProviderHome() {
       ensureProviderHomeMap();
       await loadWalkerCredits();
+      setTimeout(() => { loadWalkerCredits(); }, 350);
       if (currentProfile?.hotel_enabled) {
         $("hotelWalletCard").classList.remove("hidden");
         $("hotelConfigBtn").classList.remove("hidden");
@@ -2346,74 +2347,122 @@ mapboxgl.accessToken = "pk.eyJ1IjoiYnJ1bm9tZG0xOTk4IiwiYSI6ImNtbWtydmUwbDFzNDEyc
     }
 
     async function loadWalkerCredits() {
-  try {
-    const { data } = await supabaseClient.auth.getUser();
-    const user = data?.user;
-    if (!user) return;
-
-    const { data: wallet, error } = await supabaseClient
-      .from("provider_wallets")
-      .select("balance")
-      .eq("user_id", user.id)
-      .eq("provider_type", "walker")
-      .single();
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    const balance = Number(wallet?.balance || 0);
-
-    const el1 = document.getElementById("walkerCredits");
-    const el2 = document.getElementById("maxTariffText");
-
-    if (el1) el1.textContent = balance;
-    if (el2) el2.textContent = `Tarifa máxima: S/${balance * 10}`;
-
-  } catch (e) {
-    console.error(e);
-  }
-};
+      const setValue = (balance) => {
+        const safe = Math.max(0, Number(balance || 0));
+        if ($("walkerCredits")) $("walkerCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
+        if ($("maxTariffText")) $("maxTariffText").textContent = `Tarifa máxima: S/${(safe * 10).toFixed(2).replace(/\.00$/, "")}`;
+      };
 
       try {
-        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-          p_provider_type: "walker"
-        });
-
-        if (error) {
-          console.error("loadWalkerCredits rpc error", error);
-          setZero();
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
+        if (!user?.id) {
+          setValue(0);
           return;
         }
 
-        const balance = Math.max(0, Number(data ?? 0));
-        $("walkerCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
-        $("maxTariffText").textContent =
-          `Tarifa máxima: S/${(balance * 10).toFixed(2).replace(/\.00$/, "")}`;
+        let balance = null;
+
+        // Estrategia 1: tabla directa
+        try {
+          const resp1 = await supabaseClient
+            .from("provider_wallets")
+            .select("balance")
+            .eq("user_id", user.id)
+            .eq("provider_type", "walker")
+            .maybeSingle();
+          if (!resp1.error && resp1.data && resp1.data.balance != null) {
+            balance = resp1.data.balance;
+          }
+        } catch (e) {
+          console.error("wallet strategy 1", e);
+        }
+
+        // Estrategia 2: vista por email
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp2 = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .eq("email", user.email)
+              .eq("provider_type", "walker")
+              .maybeSingle();
+            if (!resp2.error && resp2.data && resp2.data.balance != null) {
+              balance = resp2.data.balance;
+            }
+          } catch (e) {
+            console.error("wallet strategy 2", e);
+          }
+        }
+
+        // Estrategia 3: RPC segura
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+              p_provider_type: "walker"
+            });
+            if (!resp3.error && resp3.data != null) {
+              balance = resp3.data;
+            }
+          } catch (e) {
+            console.error("wallet strategy 3", e);
+          }
+        }
+
+        setValue(balance || 0);
       } catch (e) {
-        console.error("loadWalkerCredits exception", e);
-        setZero();
+        console.error("loadWalkerCredits fatal", e);
+        setValue(0);
       }
     }
 
     async function loadHotelCredits() {
+      const setValue = (balance) => {
+        const safe = Math.max(0, Number(balance || 0));
+        if ($("hotelCredits")) $("hotelCredits").textContent = safe.toFixed(2).replace(/\.00$/, "");
+      };
       try {
-        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
-          p_provider_type: "hotel"
-        });
-
-        if (error) {
-          console.error("loadHotelCredits rpc error", error);
-          $("hotelCredits").textContent = "0";
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
+        if (!user?.id) {
+          setValue(0);
           return;
         }
 
-        const balance = Math.max(0, Number(data ?? 0));
-        $("hotelCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
+        let balance = null;
+        try {
+          const resp1 = await supabaseClient
+            .from("provider_wallets")
+            .select("balance")
+            .eq("user_id", user.id)
+            .eq("provider_type", "hotel")
+            .maybeSingle();
+          if (!resp1.error && resp1.data && resp1.data.balance != null) balance = resp1.data.balance;
+        } catch (e) { console.error("hotel strategy 1", e); }
+
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp2 = await supabaseClient
+              .from("provider_wallet_balances")
+              .select("balance")
+              .eq("email", user.email)
+              .eq("provider_type", "hotel")
+              .maybeSingle();
+            if (!resp2.error && resp2.data && resp2.data.balance != null) balance = resp2.data.balance;
+          } catch (e) { console.error("hotel strategy 2", e); }
+        }
+
+        if (balance == null || Number(balance) === 0) {
+          try {
+            const resp3 = await supabaseClient.rpc("get_my_provider_wallet_balance", { p_provider_type: "hotel" });
+            if (!resp3.error && resp3.data != null) balance = resp3.data;
+          } catch (e) { console.error("hotel strategy 3", e); }
+        }
+
+        setValue(balance || 0);
       } catch (e) {
-        console.error("loadHotelCredits exception", e);
-        $("hotelCredits").textContent = "0";
+        console.error("loadHotelCredits fatal", e);
+        setValue(0);
       }
     }
 
