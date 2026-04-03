@@ -360,6 +360,14 @@
         <button onclick="loadOwnerHotelRequests()">Hotel solicitudes</button>
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
       </div>
+      <div id="ownerActiveWalkCard" class="card hidden">
+        <p><b>Tienes un paseo activo</b></p>
+        <p class="small" id="ownerActiveWalkText">Puedes volver al paseo o al chat.</p>
+        <div class="home-action-row">
+          <button onclick="openMyActiveWalk()">Abrir paseo</button>
+          <button class="secondary" onclick="openChatFromActiveWalkHome()">Abrir chat</button>
+        </div>
+      </div>
       <div id="ownerDogsList"></div>
     </div>
 
@@ -504,6 +512,14 @@
       <div class="home-action-row">
         <button class="secondary hidden" id="hotelRequestsBtn" onclick="loadHotelRequestsForProvider()">Solicitudes hotel</button>
         <button class="secondary" onclick="openNotificationsScreen()">Notificaciones</button>
+      </div>
+      <div id="providerActiveWalkCard" class="card hidden">
+        <p><b>Tienes un paseo activo</b></p>
+        <p class="small" id="providerActiveWalkText">El dueño ya aceptó. Puedes entrar al paseo o al chat.</p>
+        <div class="home-action-row">
+          <button onclick="openMyActiveWalk()">Abrir paseo</button>
+          <button class="secondary" onclick="openChatFromActiveWalkHome()">Abrir chat</button>
+        </div>
       </div>
     </div>
 
@@ -1014,6 +1030,7 @@
         await updateHotelDogSelect();
         await getOwnerLocation();
         await renderOwnerHomeMap();
+        await refreshActiveWalkCards();
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
         ownerMapRefreshInterval = setInterval(() => { renderOwnerHomeMap(); }, 5000);
         return;
@@ -1023,6 +1040,7 @@
         $("providerWelcome").textContent = "Hola " + (profile.name || "");
         go("providerHomeScreen");
         await renderProviderHome();
+        await refreshActiveWalkCards();
         await startProviderLiveGps();
         return;
       }
@@ -1035,6 +1053,49 @@
       el.className = "emoji-marker";
       el.textContent = emoji;
       return new mapboxgl.Marker({ element: el });
+    }
+
+
+    async function getMyActiveWalk() {
+      if (!currentUser || !currentProfile) return null;
+      let query = supabaseClient.from("walks").select("*").in("status", ["active", "pending"]).order("created_at", { ascending: false }).limit(1);
+      if (currentProfile.role === "owner") query = query.eq("owner_id", currentUser.id);
+      else query = query.eq("walker_id", currentUser.id);
+      const { data, error } = await query.maybeSingle();
+      if (error) return null;
+      return data || null;
+    }
+
+    async function refreshActiveWalkCards() {
+      const ownerCard = $("ownerActiveWalkCard");
+      const providerCard = $("providerActiveWalkCard");
+      if (ownerCard) ownerCard.classList.add("hidden");
+      if (providerCard) providerCard.classList.add("hidden");
+
+      const walk = await getMyActiveWalk();
+      if (!walk) return;
+
+      if (currentProfile?.role === "owner" && ownerCard) {
+        $("ownerActiveWalkText").textContent = `Paseo activo · Tarifa final S/${walk.price || 0}`;
+        ownerCard.classList.remove("hidden");
+      }
+      if (currentProfile?.role === "walker" && providerCard) {
+        $("providerActiveWalkText").textContent = `Paseo activo · Tarifa final S/${walk.price || 0}`;
+        providerCard.classList.remove("hidden");
+      }
+    }
+
+    async function openMyActiveWalk() {
+      const walk = await getMyActiveWalk();
+      if (!walk) return alert("No tienes un paseo activo");
+      await openLiveWalk(walk.id, currentProfile?.role === "owner" ? "owner" : "walker");
+    }
+
+    async function openChatFromActiveWalkHome() {
+      const walk = await getMyActiveWalk();
+      if (!walk) return alert("No tienes un paseo activo");
+      selectedWalk = walk.id;
+      await openChatFromCurrentService();
     }
 
     async function getOwnerLocation() {
@@ -1455,6 +1516,7 @@
           .from("walk_requests")
           .select("*")
           .eq("owner_id", currentUser.id)
+          .in("status", ["open", "active"])
           .order("created_at", { ascending: false });
 
         if (reqError) {
@@ -1531,8 +1593,10 @@
           return;
         }
         if (walkId) {
+          await refreshActiveWalkCards();
           await openLiveWalk(walkId, "owner");
         } else {
+          await refreshActiveWalkCards();
           await loadOwnerRequests();
         }
       } finally {
@@ -1922,6 +1986,7 @@
           }
           if (currentProfile?.role === "walker" && offer?.walker_id === currentUser.id) {
             await loadNearbyRequests();
+            await refreshActiveWalkCards();
           }
         })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "offers" }, async ({ new: offer }) => {
@@ -1930,6 +1995,7 @@
           }
           if (currentProfile?.role === "walker" && offer?.walker_id === currentUser.id) {
             await loadNearbyRequests();
+            await refreshActiveWalkCards();
           }
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
@@ -1947,6 +2013,7 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "walks" }, async ({ new: walk }) => {
           if (!walk) return;
           if (walk.owner_id === currentUser.id || walk.walker_id === currentUser.id) {
+            await refreshActiveWalkCards();
             if (selectedWalk === walk.id && document.getElementById("liveWalkScreen").classList.contains("active")) {
               await refreshLiveWalk();
             }
@@ -2143,7 +2210,10 @@
           .select("*")
           .eq("walk_id", selectedWalk)
           .eq("room_type", "walk")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
+
         if (room) {
           currentChatRoom = room.id;
           currentChatOrigin = "walk";
@@ -2201,6 +2271,11 @@
     }
 
     function goBackFromChat() {
+      if (currentChatOrigin === "walk" && selectedWalk) {
+        go("liveWalkScreen");
+        refreshLiveWalk();
+        return;
+      }
       if (currentProfile?.role === "owner") go("ownerHomeScreen");
       else go("providerHomeScreen");
     }
