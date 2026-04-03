@@ -332,8 +332,8 @@
       <select id="signupLanguage">
         <option value="es">Español</option>
         <option value="en">English</option>
-        <option value="ja">日本語</option>
-      </select>
+        <option value="jp">日本語</option>
+              </select>
 
       <select id="signupCountry">
         <option value="">Selecciona país</option>
@@ -353,7 +353,6 @@
         <option value="owner">Dueño</option>
         <option value="walker">Paseador</option>
       </select>
-
       <div class="card">
         <p><b>Verificación de identidad</b></p>
         <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
@@ -412,14 +411,13 @@
 
       <div class="home-map-wrap">
         <div id="ownerHomeMap"></div>
-        <div id="ownerFloatingOffers" class="floating-stack"></div>
       </div>
 
       <div class="home-action-row">
         <button class="green" onclick="go('addDogScreen')">Registrar perro</button>
         <button onclick="openCreateWalkScreen()">Pedir paseo</button>
         <button class="orange" onclick="openHotelSearchScreen()">Buscar hotel</button>
-        <button onclick="openOwnerRequestsScreen()">Solicitudes</button>
+        <button onclick="loadOwnerRequests()">Solicitudes</button>
       </div>
 
       <div class="home-action-row">
@@ -1148,8 +1146,8 @@
       const raw = localStorage.getItem("ladrame_pending_signup_data");
       if (raw) pendingSignupData = JSON.parse(raw);
 
-      const selfieFile = $("completeSelfieInput").files?.[0];
-      const dniFile = $("completeDniInput").files?.[0];
+      const selfieFile = $("completeSelfieInput").files?.[0] || $("selfieInput").files?.[0];
+      const dniFile = $("completeDniInput").files?.[0] || $("dniInput").files?.[0];
 
       if (!pendingSignupData) {
         showMsg("completeProfileMsg", "No hay datos de registro");
@@ -1297,13 +1295,9 @@
         updateHotelDogSelect();
         getOwnerLocation();
         go("ownerHomeScreen");
-        loadOwnerRequests(true);
 
         if (ownerMapRefreshInterval) clearInterval(ownerMapRefreshInterval);
-        ownerMapRefreshInterval = setInterval(async () => {
-          await renderOwnerHomeMap();
-          await loadOwnerRequests(true);
-        }, 5000);
+        ownerMapRefreshInterval = setInterval(renderOwnerHomeMap, 5000);
         return;
       }
 
@@ -1312,7 +1306,6 @@
         renderProviderHome();
         startProviderLiveGps();
         go("providerHomeScreen");
-        loadNearbyRequests();
         return;
       }
 
@@ -1430,7 +1423,6 @@
       }
 
       renderProviderHomeMap();
-      await loadNearbyRequests();
     }
 
     async function renderProviderHomeMap() {
@@ -1452,25 +1444,12 @@
         providerHomeMarkers.push(createEmojiMarker("🚶").setLngLat([providerLng, providerLat]).addTo(providerHomeMap));
       }
 
-      const { data: targets } = await supabaseClient
-        .from("walk_request_targets")
-        .select("request_id,distance_km,status")
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
-        .order("delivered_at", { ascending: false });
-
-      const requestIds = (targets || []).map(t => t.request_id);
-      if (requestIds.length) {
-        const { data: requests } = await supabaseClient
-          .from("walk_requests")
-          .select("id,lat,lng,status,created_at")
-          .in("id", requestIds)
-          .eq("status", "open");
-
-        (requests || []).forEach(req => {
-          if (req.lat == null || req.lng == null) return;
-          providerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(providerHomeMap));
-        });
+      const visible = await fetchVisibleWalkerTargets();
+      for (const { req } of visible) {
+        if (req.lat == null || req.lng == null || providerLat == null || providerLng == null) continue;
+        const distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
+        if (distance > 5) continue;
+        providerHomeMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(providerHomeMap));
       }
 
       if (currentProfile?.hotel_enabled) {
@@ -1484,6 +1463,8 @@
           providerHomeMarkers.push(createEmojiMarker("🏨").setLngLat([Number(myHotel.lng), Number(myHotel.lat)]).addTo(providerHomeMap));
         }
       }
+
+      await loadNearbyRequests();
     }
 
     async function upsertWalkerLocation(lat, lng) {
@@ -1682,22 +1663,25 @@
         showMsg("walkMsg", "Selecciona al menos un perro");
         return;
       }
-
       if (!price || price <= 0) {
         showMsg("walkMsg", "Ingresa una tarifa válida");
         return;
       }
-
       if (!time || time <= 0) {
         showMsg("walkMsg", "Selecciona el tiempo del paseo");
         return;
       }
-
       if (ownerLat == null || ownerLng == null) {
         showMsg("walkMsg", "Activa tu ubicación primero");
         getOwnerLocation();
         return;
       }
+
+      await supabaseClient
+        .from("walk_requests")
+        .update({ status: "expired" })
+        .eq("owner_id", currentUser.id)
+        .eq("status", "open");
 
       const { data: requestInserted, error } = await supabaseClient
         .from("walk_requests")
@@ -1722,36 +1706,22 @@
 
       const links = dogIds.map(dogId => ({ request_id: requestInserted.id, dog_id: dogId }));
       const { error: linkError } = await supabaseClient.from("walk_request_dogs").insert(links);
-
       if (linkError) {
         showMsg("walkMsg", linkError.message);
         return;
       }
 
-      await supabaseClient.rpc("assign_walk_request_targets", { p_request_id: requestInserted.id });
+      const { error: assignError } = await supabaseClient.rpc("assign_walk_request_targets", { p_request_id: requestInserted.id });
+      if (assignError) console.log("assign_walk_request_targets:", assignError.message);
 
       await createNotification(currentUser.id, "Solicitud publicada", `Publicaste una solicitud por S/${price} durante ${time} min.`);
-
-      try {
-        await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-push-walk", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            lat: ownerLat,
-            lng: ownerLng,
-            request_id: requestInserted.id,
-            tariff: price,
-            time: time
-          })
-        });
-      } catch (pushError) {
-        console.log("Error enviando push walk:", pushError);
-      }
-
       showMsg("walkMsg", "Solicitud publicada");
-      setTimeout(() => go("ownerHomeScreen"), 700);
+      setTimeout(async () => {
+        go("ownerHomeScreen");
+        if (currentProfile?.role === "owner") {
+          await loadOwnerRequests();
+        }
+      }, 700);
     }
 
     async function getRequestDogsWithPhotos(requestId, ownerId) {
@@ -1813,7 +1783,46 @@
       }
     }
 
-    function walkerRequestCardHtml(req, dogs, distance) {
+    function isWalkRequestExpired(createdAt) {
+      return Date.now() - new Date(createdAt).getTime() >= 7 * 60 * 1000;
+    }
+
+    function getWalkerTargetRequestId(target) {
+      return target?.request_id || target?.id || null;
+    }
+
+    async function fetchVisibleWalkerTargets() {
+      const { data: targets, error } = await supabaseClient
+        .from("walk_request_targets")
+        .select("*")
+        .eq("walker_id", currentUser.id)
+        .in("status", ["pending", "offered"])
+        .order("delivered_at", { ascending: false });
+
+      if (error) return [];
+
+      const pendingTargets = (targets || []).filter(t => t.status === "pending");
+      if (!pendingTargets.length) return [];
+
+      const requestIds = pendingTargets.map(t => t.request_id);
+      const { data: requests } = await supabaseClient
+        .from("walk_requests_with_dogs")
+        .select("*")
+        .in("id", requestIds);
+
+      const requestMap = new Map((requests || []).map(r => [r.id, r]));
+      const visible = [];
+      for (const target of pendingTargets) {
+        const req = requestMap.get(target.request_id);
+        if (!req) continue;
+        if (req.status !== "open") continue;
+        if (isWalkRequestExpired(req.created_at)) continue;
+        visible.push({ target, req });
+      }
+      return visible;
+    }
+
+    function buildWalkerTargetCard(req, dogs, distance) {
       const minsLeft = Math.max(0, 7 - Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000));
       return `
         <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
@@ -1829,25 +1838,10 @@
       `;
     }
 
-    function walkerHotelRequestCardHtml(req, dog, owner, dogPhoto) {
-      return `
-        <p><b>Solicitud de hotel</b></p>
-        <p class="small">Dueño: ${owner?.name || "-"}</p>
-        <p class="small">Perro: ${dog?.name || "Perro"}</p>
-        ${dogPhoto ? `<img src="${dogPhoto}" class="wide-photo">` : ""}
-        <p class="small">Check-in: ${req.check_in_date}</p>
-        <p class="small">Check-out: ${req.check_out_date}</p>
-        <p class="small">Horas paseo/día: ${req.walk_hours_per_day || 0}</p>
-        <p class="small">Veces paseo/día: ${req.walk_times_per_day || 0}</p>
-        <button class="orange" onclick="openHotelOfferScreen('${req.id}')">Enviar tarifa hotel</button>
-      `;
-    }
-
-async function openWalkerMapScreen() {
+function openWalkerMapScreen() {
       go("walkerMapScreen");
       ensureWalkerMap();
-      await startProviderLiveGps();
-      await loadNearbyRequests();
+      loadNearbyRequests();
 
       if (walkerRefreshInterval) clearInterval(walkerRefreshInterval);
       walkerRefreshInterval = setInterval(async () => {
@@ -1876,110 +1870,41 @@ async function openWalkerMapScreen() {
       $("requestsList").innerHTML = "";
 
       const mapStack = $("walkerFloatingStack");
-      const homeStack = $("providerFloatingStack");
       if (mapStack) mapStack.innerHTML = "";
+      const homeStack = $("providerFloatingStack");
       if (homeStack) homeStack.innerHTML = "";
 
-      const { data: targets, error: targetsError } = await supabaseClient
-        .from("walk_request_targets")
-        .select("request_id,distance_km,status")
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending")
-        .order("delivered_at", { ascending: false });
+      const visible = await fetchVisibleWalkerTargets();
 
-      if (targetsError) {
-        $("requestsList").innerHTML = `<p class="small">No se pudieron cargar tus solicitudes.</p>`;
-        return;
-      }
+      for (const { req } of visible) {
+        if (req.lat == null || req.lng == null) continue;
 
-      const requestIds = (targets || []).map(t => t.request_id);
-      if (!requestIds.length) {
-        $("requestsList").innerHTML = `<p class="small">No hay solicitudes activas.</p>`;
-        if (currentProfile?.hotel_enabled) {
-          const { data: hotelReqs } = await supabaseClient
-            .from("hotel_requests")
-            .select("*")
-            .eq("status", "open")
-            .order("created_at", { ascending: false });
-          for (const req of (hotelReqs || [])) {
-            const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
-            const { data: owner } = await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle();
-            const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
-            const html = walkerHotelRequestCardHtml(req, dog, owner, dogPhoto);
-            const div = document.createElement("div");
-            div.className = "card";
-            div.innerHTML = html;
-            $("requestsList").appendChild(div);
-            if (mapStack) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; mapStack.appendChild(c); }
-          }
-        }
-        return;
-      }
-
-      const { data: requests, error } = await supabaseClient
-        .from("walk_requests_with_dogs")
-        .select("*")
-        .in("id", requestIds)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        $("requestsList").innerHTML = `<p class="small">No se pudieron cargar tus solicitudes.</p>`;
-        return;
-      }
-
-      const targetMap = new Map((targets || []).map(t => [t.request_id, t]));
-      const visibleRequests = (requests || []).filter(req => {
-        if (req.lat == null || req.lng == null) return false;
-        const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
-        return !expired;
-      });
-
-      for (const req of visibleRequests) {
-        const target = targetMap.get(req.id);
-        let distance = target?.distance_km != null ? Number(target.distance_km) : null;
-        if (distance == null && providerLat != null && providerLng != null) {
+        let distance = null;
+        if (providerLat != null && providerLng != null) {
           distance = getDistanceKm(providerLat, providerLng, Number(req.lat), Number(req.lng));
+          if (distance > 5) continue;
         }
-        if (distance != null && distance > 5) continue;
 
         walkerRequestMarkers.push(createEmojiMarker("📣").setLngLat([Number(req.lng), Number(req.lat)]).addTo(walkerMap));
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
-        const html = walkerRequestCardHtml(req, dogs, distance);
+        const html = buildWalkerTargetCard(req, dogs, distance);
 
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = html;
         $("requestsList").appendChild(div);
 
-        const floatCard = document.createElement("div");
-        floatCard.className = "card";
-        floatCard.innerHTML = html;
-        if (mapStack) mapStack.appendChild(floatCard);
-
-        const homeCard = document.createElement("div");
-        homeCard.className = "card";
-        homeCard.innerHTML = html;
-        if (homeStack) homeStack.appendChild(homeCard);
-      }
-
-      if (currentProfile?.hotel_enabled) {
-        const { data: hotelReqs } = await supabaseClient
-          .from("hotel_requests")
-          .select("*")
-          .eq("status", "open")
-          .order("created_at", { ascending: false });
-
-        for (const req of (hotelReqs || [])) {
-          const { data: dog } = await supabaseClient.from("dogs").select("*").eq("id", req.dog_id).maybeSingle();
-          const { data: owner } = await supabaseClient.from("users").select("*").eq("id", req.owner_id).maybeSingle();
-          const dogPhoto = dog ? await getDogPhoto(req.owner_id, dog.name) : null;
-          const html = walkerHotelRequestCardHtml(req, dog, owner, dogPhoto);
-          const div = document.createElement("div");
-          div.className = "card";
-          div.innerHTML = html;
-          $("requestsList").appendChild(div);
-          if (mapStack) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; mapStack.appendChild(c); }
+        if (mapStack) {
+          const c = document.createElement("div");
+          c.className = "card";
+          c.innerHTML = html;
+          mapStack.appendChild(c);
+        }
+        if (homeStack) {
+          const c = document.createElement("div");
+          c.className = "card";
+          c.innerHTML = html;
+          homeStack.appendChild(c);
         }
       }
 
@@ -2001,7 +1926,7 @@ async function openWalkerMapScreen() {
       await loadNearbyRequests();
     }
 
-    async function openOffer(requestId) {
+async function openOffer(requestId) {
       selectedRequest = requestId;
 
       const { data: target } = await supabaseClient
@@ -2024,14 +1949,13 @@ async function openWalkerMapScreen() {
         .eq("id", requestId)
         .maybeSingle();
 
-      if (error || !data) {
+      if (error || !data || data.status !== "open" || isWalkRequestExpired(data.created_at)) {
         showMsg("offerMsg", "La solicitud ya no está disponible");
         await loadNearbyRequests();
         return;
       }
 
       const dogs = await getRequestDogsWithPhotos(data.id, data.owner_id);
-
       $("offerRequestInfo").innerHTML = `
         <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
         <p><b>Tarifa del dueño:</b> S/${data.tariff}</p>
@@ -2056,96 +1980,117 @@ async function openWalkerMapScreen() {
         return;
       }
 
+      const { data: target } = await supabaseClient
+        .from("walk_request_targets")
+        .select("*")
+        .eq("walker_id", currentUser.id)
+        .eq("request_id", selectedRequest)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!target) {
+        showMsg("offerMsg", "La solicitud ya no está disponible");
+        await loadNearbyRequests();
+        return;
+      }
+
       const { data: req, error: reqError } = await supabaseClient
         .from("walk_requests")
         .select("*")
         .eq("id", selectedRequest)
         .maybeSingle();
 
-      if (reqError || !req || req.status !== "open") {
+      if (reqError || !req || req.status !== "open" || isWalkRequestExpired(req.created_at)) {
         showMsg("offerMsg", "La solicitud ya no está disponible");
+        await supabaseClient.from("walk_request_targets").update({ status: "expired", responded_at: new Date().toISOString() }).eq("id", target.id);
+        await loadNearbyRequests();
         return;
       }
 
-      const expired = Date.now() - new Date(req.created_at).getTime() >= 7 * 60 * 1000;
-      if (expired) {
-        showMsg("offerMsg", "La solicitud expiró");
-        return;
-      }
-
-      const { data: existingOffer } = await supabaseClient
+      const { error } = await supabaseClient
         .from("offers")
-        .select("id,status")
-        .eq("request_id", selectedRequest)
-        .eq("walker_id", currentUser.id)
-        .maybeSingle();
+        .insert({
+          request_id: selectedRequest,
+          walker_id: currentUser.id,
+          owner_id: req.owner_id,
+          dog_id: req.dog_id,
+          price,
+          offer_time: req.time,
+          status: "pending"
+        });
 
-      if (existingOffer?.id && existingOffer.status === "pending") {
-        showMsg("offerMsg", "Ya enviaste una oferta");
+      if (error) {
+        showMsg("offerMsg", error.message);
         return;
-      }
-
-      if (existingOffer?.id) {
-        const { error } = await supabaseClient
-          .from("offers")
-          .update({ price, offer_time: req.time, status: "pending", created_at: new Date().toISOString() })
-          .eq("id", existingOffer.id);
-        if (error) { showMsg("offerMsg", error.message); return; }
-      } else {
-        const { error } = await supabaseClient
-          .from("offers")
-          .insert({ request_id: selectedRequest, walker_id: currentUser.id, owner_id: req.owner_id, dog_id: req.dog_id, price, offer_time: req.time, status: "pending" });
-        if (error) { showMsg("offerMsg", error.message); return; }
       }
 
       await supabaseClient
         .from("walk_request_targets")
         .update({ status: "offered", responded_at: new Date().toISOString() })
-        .eq("request_id", selectedRequest)
-        .eq("walker_id", currentUser.id)
-        .eq("status", "pending");
+        .eq("id", target.id);
 
       await createNotification(req.owner_id, "Nueva oferta", `Un paseador respondió con S/${price}.`);
       showMsg("offerMsg", "Oferta enviada");
-      setTimeout(async () => {
-        go("providerHomeScreen");
-        await loadNearbyRequests();
-      }, 400);
+      await loadWalkerCredits();
+      await loadNearbyRequests();
+      setTimeout(() => go("providerHomeScreen"), 700);
     }
 
-    async function loadOwnerRequests(silent = false) {
+    async function getWalkerProfileSummary(walkerUserId) {
+      const result = { user: null, walker: null, completedWalks: 0, comments: [] };
+
+      const { data: user } = await supabaseClient.from("users").select("*").eq("id", walkerUserId).maybeSingle();
+      result.user = user || null;
+
+      const { data: walker } = await supabaseClient.from("walkers").select("*").eq("user_id", walkerUserId).maybeSingle();
+      result.walker = walker || null;
+
+      const { data: completed } = await supabaseClient
+        .from("walks")
+        .select("id")
+        .eq("walker_id", walkerUserId)
+        .in("status", ["completed", "finished"]);
+
+      result.completedWalks = completed ? completed.length : 0;
+
+      const { data: reviews } = await supabaseClient
+        .from("reviews")
+        .select("*")
+        .eq("reviewee_id", walkerUserId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      result.comments = reviews || [];
+      return result;
+    }
+
+    async function loadOwnerRequests() {
       const { data, error } = await supabaseClient
         .from("walk_requests_with_dogs")
         .select("*")
         .eq("owner_id", currentUser.id)
-        .eq("status", "open")
         .order("created_at", { ascending: false });
 
       if (error) return;
       $("ownerRequestsList").innerHTML = "";
-      const floating = $("ownerFloatingOffers");
-      if (floating) floating.innerHTML = "";
 
-      const activeReqs = (data || []).filter(req => Date.now() - new Date(req.created_at).getTime() < 7 * 60 * 1000);
-
-      if (!activeReqs.length) {
+      if (!data || data.length === 0) {
         $("ownerRequestsList").innerHTML = `<p class="small">No tienes solicitudes.</p>`;
-        if (!silent) go("ownerRequestsScreen");
+        go("ownerRequestsScreen");
         return;
       }
 
-      for (const req of activeReqs) {
+      for (const req of data) {
         const dogs = await getRequestDogsWithPhotos(req.id, req.owner_id);
+
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
           <p><b>Solicitud para ${dogs.length} perro(s)</b></p>
+          <p class="small">Estado: ${req.status || "-"}</p>
           <p class="small">Tarifa dueño: S/${req.tariff || "-"}</p>
           <p class="small">Tiempo: ${req.time || 0} min</p>
           ${buildDogsHtml(dogs)}
-          <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;">
-            <button class="red" onclick="cancelMyRequest('${req.id}')">Cancelar solicitud</button>
-          </div>
           <div id="offers-${req.id}"><p class="small">Cargando ofertas...</p></div>
         `;
         $("ownerRequestsList").appendChild(card);
@@ -2154,52 +2099,207 @@ async function openWalkerMapScreen() {
           .from("offers")
           .select("*")
           .eq("request_id", req.id)
-          .eq("status", "pending")
           .order("created_at", { ascending: false });
 
-        const offerBox = $("offers-" + req.id);
+        const offerBox = $(`offers-${req.id}`);
         offerBox.innerHTML = "";
-        const activeOffers = (offers || []).filter(ofr => req.status === "open");
 
-        if (!activeOffers.length) {
-          offerBox.innerHTML = `<p class="small">Sin ofertas activas.</p>`;
+        if (!offers || offers.length === 0) {
+          offerBox.innerHTML = `<p class="small">Sin ofertas todavía.</p>`;
         } else {
-          for (const ofr of activeOffers) {
+          for (const ofr of offers) {
             const profile = await getWalkerProfileSummary(ofr.walker_id);
-            const html = `
-              <p><b>${profile.user?.name || "Paseador"}</b></p>
-              <p class="small">Tarifa ofrecida: S/${ofr.price}</p>
-              <p class="small">Paseos completados: ${profile.completedWalks || 0}</p>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
-                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
-              </div>
-            `;
+
+            const commentsHtml = profile.comments.length
+              ? profile.comments.map(r => `
+                <div class="comment-box">
+                  <div class="small"><b>${r.rating || 0}/5</b></div>
+                  <div class="small">${r.comment || "Sin comentario"}</div>
+                </div>
+              `).join("")
+              : `<p class="small">Sin comentarios todavía.</p>`;
+
             const offerCard = document.createElement("div");
             offerCard.className = "card";
-            offerCard.innerHTML = html;
+            offerCard.innerHTML = `
+              <div class="profile-mini">
+                ${profile.user?.selfie_url ? `<img src="${profile.user.selfie_url}" class="avatar-small">` : `<div class="avatar-small"></div>`}
+                <div style="flex:1">
+                  <p style="margin:0"><b>${profile.user?.name || "Paseador"}</b></p>
+                  <p class="small" style="margin:4px 0 0">Calificación: ${Number(profile.walker?.rating_avg || 0).toFixed(1)} ⭐</p>
+                  <p class="small" style="margin:4px 0 0">Reseñas: ${profile.walker?.total_reviews || 0}</p>
+                  <p class="small" style="margin:4px 0 0">Perros paseados: ${profile.completedWalks}</p>
+                </div>
+              </div>
+
+              <p style="margin-top:10px"><b>Tarifa del paseador:</b> S/${ofr.price}</p>
+              <p class="small">Estado oferta: ${ofr.status || "pending"}</p>
+              <div>${commentsHtml}</div>
+
+              ${ofr.status === "pending" ? `
+                <button class="green" onclick="acceptOffer('${ofr.id}')">Aceptar</button>
+                <button class="red" onclick="rejectOffer('${ofr.id}')">Rechazar</button>
+              ` : ""}
+            `;
             offerBox.appendChild(offerCard);
-            if (floating) { const c=document.createElement("div"); c.className="card"; c.innerHTML=html; floating.appendChild(c); }
           }
         }
       }
 
-      if (!silent) go("ownerRequestsScreen");
+      go("ownerRequestsScreen");
     }
 
-    function openOwnerRequestsScreen() {
-      loadOwnerRequests(false);
-    }
-
-    async function cancelMyRequest(requestId) {
-      if (!confirm("¿Cancelar esta solicitud?")) return;
-      const { error } = await supabaseClient.rpc("cancel_walk_request", { p_request_id: requestId });
+    async function acceptOffer(offerId) {
+      const { error } = await supabaseClient.rpc("accept_offer", { p_offer_id: offerId });
       if (error) {
         alert(error.message);
         return;
       }
-      await loadOwnerRequests(true);
-      await loadNearbyRequests();
+
+      const { data: accepted } = await supabaseClient
+        .from("offers")
+        .select("*")
+        .eq("id", offerId)
+        .single();
+
+      if (accepted?.walker_id) {
+        await createNotification(accepted.walker_id, "Oferta aceptada", "Tu oferta fue aceptada. El paseo ya está activo.");
+      }
+
+      const { data: walk } = await supabaseClient
+        .from("walks")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .eq("walker_id", accepted.walker_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (walk?.id) {
+        await openLiveWalk(walk.id, "owner");
+      } else {
+        loadOwnerRequests();
+      }
+    }
+
+    async function rejectOffer(offerId) {
+      const { error } = await supabaseClient.from("offers").update({ status: "rejected" }).eq("id", offerId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      loadOwnerRequests();
+    }
+
+    function ensureHotelsMap() {
+      if (!hotelsMap) {
+        hotelsMap = new mapboxgl.Map({
+          container: "hotelsMap",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [-77.0428, -12.0464],
+          zoom: 12
+        });
+      }
+      hotelsMap.resize();
+    }
+
+    async function openHotelSearchScreen() {
+      if (ownerLat == null || ownerLng == null) {
+        getOwnerLocation();
+        await sleep(1000);
+      }
+
+      ensureHotelsMap();
+      go("hotelSearchScreen");
+      await loadNearbyHotels();
+    }
+
+    async function loadNearbyHotels() {
+      ensureHotelsMap();
+      hotelMarkers.forEach(m => m.remove());
+      hotelMarkers = [];
+      $("hotelsList").innerHTML = "";
+
+      if (ownerLat == null || ownerLng == null) {
+        $("hotelsList").innerHTML = `<p class="small">Activa ubicación para buscar hoteles.</p>`;
+        return;
+      }
+
+      hotelsMap.setCenter([ownerLng, ownerLat]);
+      hotelMarkers.push(createEmojiMarker("📍").setLngLat([ownerLng, ownerLat]).addTo(hotelsMap));
+
+      const { data, error } = await supabaseClient.rpc("nearby_hotels", {
+        user_lat: ownerLat,
+        user_lng: ownerLng
+      });
+
+      if (error) {
+        $("hotelsList").innerHTML = `<p class="small">${error.message}</p>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        $("hotelsList").innerHTML = `<p class="small">No hay hoteles hasta 8 km.</p>`;
+        return;
+      }
+
+      for (const hotel of data) {
+        hotelMarkers.push(createEmojiMarker("🏨").setLngLat([Number(hotel.lng), Number(hotel.lat)]).addTo(hotelsMap));
+
+        const { data: photos } = await supabaseClient
+          .from("hotel_photos")
+          .select("*")
+          .eq("hotel_profile_id", hotel.id)
+          .limit(1);
+
+        const photoUrl = photos && photos.length ? photos[0].photo_url : null;
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <p><b>${hotel.hotel_name || "Hotel"}</b></p>
+          ${photoUrl ? `<img src="${photoUrl}" class="wide-photo">` : ""}
+          <p class="small">Dirección: ${hotel.address || "-"}</p>
+          <p class="small">Precio base: S/${hotel.base_price_per_day || "-"}</p>
+          <p class="small">Distancia: ${Number(hotel.distance || 0).toFixed(2)} km</p>
+          <button class="orange" onclick="go('hotelRequestScreen')">Pedir estadía</button>
+        `;
+        $("hotelsList").appendChild(div);
+      }
+    }
+
+    async function createHotelRequest() {
+      const dogId = $("hotelDogSelect").value;
+      const checkIn = $("hotelCheckInDate").value;
+      const checkOut = $("hotelCheckOutDate").value;
+      const walkHours = Number($("hotelWalkHoursPerDay").value || 0);
+      const walkTimes = Number($("hotelWalkTimesPerDay").value || 0);
+      const notes = $("hotelRequestNotes").value.trim();
+
+      if (!dogId || !checkIn || !checkOut) {
+        showMsg("hotelRequestMsg", "Completa los campos obligatorios");
+        return;
+      }
+
+      const { error } = await supabaseClient.from("hotel_requests").insert({
+        owner_id: currentUser.id,
+        dog_id: dogId,
+        check_in_date: checkIn,
+        check_out_date: checkOut,
+        notes,
+        walk_hours_per_day: walkHours,
+        walk_times_per_day: walkTimes,
+        status: "open"
+      });
+
+      if (error) {
+        showMsg("hotelRequestMsg", error.message);
+        return;
+      }
+
+      await createNotification(currentUser.id, "Solicitud hotel publicada", "Tu solicitud de hotel fue publicada.");
+      showMsg("hotelRequestMsg", "Solicitud publicada");
+      setTimeout(() => go("hotelSearchScreen"), 700);
     }
 
     async function loadOwnerHotelRequests() {
@@ -2721,18 +2821,11 @@ async function openWalkerMapScreen() {
       requestsChannel = supabaseClient
         .channel("requests-channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "walk_requests" }, async () => {
-          if (currentProfile?.role === "owner") {
-            await renderOwnerHomeMap();
-            await loadOwnerRequests(true);
-          }
-          if (currentProfile?.role === "walker") {
-            if ($("walkerMapScreen").classList.contains("active")) await loadNearbyRequests();
-            await renderProviderHomeMap();
-          }
+          if (currentProfile?.role === "owner") renderOwnerHomeMap();
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "walk_request_targets" }, async () => {
-          if (currentProfile?.role === "walker") {
-            await loadNearbyRequests();
+        .on("postgres_changes", { event: "*", schema: "public", table: "walk_request_targets" }, async ({ new: row }) => {
+          if (currentProfile?.role === "walker" && row?.walker_id === currentUser.id) {
+            if ($("walkerMapScreen").classList.contains("active")) await loadNearbyRequests();
             await renderProviderHomeMap();
           }
         })
@@ -2746,18 +2839,16 @@ async function openWalkerMapScreen() {
         .channel("offers-channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
+            await createNotification(currentUser.id, "Nueva oferta", `Recibiste una nueva oferta por S/${offer.price}.`);
             await loadOwnerRequests();
           }
-          if (currentProfile?.role === "walker") {
+          if (currentProfile?.role === "walker" && offer?.walker_id === currentUser.id) {
             await loadNearbyRequests();
           }
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "hotel_offers" }, async ({ new: offer }) => {
           if (currentProfile?.role === "owner" && offer?.owner_id === currentUser.id) {
-            await loadOwnerHotelRequests();
-          }
-          if (currentProfile?.hotel_enabled) {
-            await loadHotelRequestsForProvider();
+            await createNotification(currentUser.id, "Nueva oferta de hotel", `Recibiste una oferta por S/${offer.offered_price_per_day} al día.`);
           }
         })
         .subscribe();
