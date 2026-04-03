@@ -310,8 +310,8 @@
       <div class="logo">LADRA<span>ME</span></div>
       <input id="loginEmail" type="email" placeholder="Correo electrónico">
       <input id="loginPass" type="password" placeholder="Contraseña">
-      <button onclick="handleLogin()">Entrar</button>
-      <button class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
+      <button id="loginBtn" onclick="handleLogin()">Entrar</button>
+      <button id="openSignupBtn" class="secondary" onclick="go('signupScreen')">Crear cuenta</button>
       <p id="loginMsg" class="msg"></p>
     </div>
 
@@ -342,8 +342,8 @@
         <p><b>Verificación de identidad</b></p>
         <p class="small">Primero crea tu cuenta y verifica tu correo. Luego te pediremos selfie y documento una sola vez.</p>
       </div>
-      <button class="green" onclick="registerUser()">Registrarme</button>
-      <button class="secondary" onclick="go('loginScreen')">Volver</button>
+      <button id="registerBtn" class="green" onclick="registerUser()">Registrarme</button>
+      <button id="signupBackBtn" class="secondary" onclick="go('loginScreen')">Volver</button>
       <p id="signupMsg" class="msg"></p>
     </div>
 
@@ -3011,12 +3011,32 @@
       } catch {}
     };
 
+
+    function bindCoreButtons() {
+      const loginBtn = $("loginBtn");
+      const openSignupBtn = $("openSignupBtn");
+      const registerBtn = $("registerBtn");
+      const signupBackBtn = $("signupBackBtn");
+      if (loginBtn) loginBtn.onclick = () => handleLogin();
+      if (openSignupBtn) openSignupBtn.onclick = () => go("signupScreen");
+      if (registerBtn) registerBtn.onclick = () => registerUser();
+      if (signupBackBtn) signupBackBtn.onclick = () => go("loginScreen");
+      window.handleLogin = handleLogin;
+      window.registerUser = registerUser;
+      window.go = go;
+      window.verifySignupCode = verifySignupCode;
+      window.resendSignupCode = resendSignupCode;
+      window.finalizePendingProfile = finalizePendingProfile;
+      window.logout = logout;
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       bindPreview("completeSelfieInput", "completeSelfiePreview");
       bindPreview("completeDniInput", "completeDniPreview");
       bindPreview("dogPhotoInput", "dogPreview");
       bindPreview("hotelMainPhotoInput", "hotelMainPreview");
       syncGlobalState();
+      bindCoreButtons();
       boot();
     });
   </script>
