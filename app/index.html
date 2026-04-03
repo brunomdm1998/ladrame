@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LADRAME FINAL LIMPIO</title>
+  <title>LADRAME FINAL LIMPIO v2</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
@@ -2360,12 +2360,10 @@
     async function loadWalkerCredits() {
       try {
         if (!currentUser?.id) return;
-        const { data, error } = await supabaseClient
-          .from("provider_wallets")
-          .select("balance")
-          .eq("user_id", currentUser.id)
-          .eq("provider_type", "walker")
-          .maybeSingle();
+
+        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+          p_provider_type: "walker"
+        });
 
         if (error) {
           console.error("loadWalkerCredits error", error);
@@ -2374,24 +2372,32 @@
           return;
         }
 
-        const balance = Math.max(0, Number(data?.balance ?? 0));
+        const balance = Math.max(0, Number(data ?? 0));
         $("walkerCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
         $("maxTariffText").textContent = `Tarifa máxima: S/${(balance * 10).toFixed(2).replace(/\.00$/, "")}`;
       } catch (e) {
-        console.error("loadWalkerCredits catch", e);
+        console.error("loadWalkerCredits exception", e);
         $("walkerCredits").textContent = "0";
         $("maxTariffText").textContent = "Tarifa máxima: S/0";
       }
     }
 
     async function loadHotelCredits() {
-      const { data } = await supabaseClient
-        .from("provider_wallets")
-        .select("balance")
-        .eq("user_id", currentUser.id)
-        .eq("provider_type", "hotel")
-        .maybeSingle();
-      $("hotelCredits").textContent = data?.balance || 0;
+      try {
+        const { data, error } = await supabaseClient.rpc("get_my_provider_wallet_balance", {
+          p_provider_type: "hotel"
+        });
+        if (error) {
+          console.error("loadHotelCredits error", error);
+          $("hotelCredits").textContent = "0";
+          return;
+        }
+        const balance = Math.max(0, Number(data ?? 0));
+        $("hotelCredits").textContent = balance.toFixed(2).replace(/\.00$/, "");
+      } catch (e) {
+        console.error("loadHotelCredits exception", e);
+        $("hotelCredits").textContent = "0";
+      }
     }
 
     async function sendCreditOrder() {
