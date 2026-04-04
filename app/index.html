@@ -3,168 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LADRAME OTP</title>
-
+<title>LADRAME OTP FIX</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body{font-family:Arial;margin:0;background:#f2f4f7}
 .container{max-width:420px;margin:auto;padding:20px}
 .card{background:white;padding:20px;border-radius:20px;margin-bottom:15px}
-input,select,button{
-width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc
-}
-button{background:#ff6b00;color:white;font-weight:bold;border:none}
+input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc;box-sizing:border-box}
+button{background:#ff6b00;color:white;font-weight:bold;border:none;cursor:pointer}
+button:disabled{opacity:.65}
 .hidden{display:none}
 </style>
 </head>
-
 <body>
-
 <div class="container">
+  <div class="card" id="emailScreen">
+    <h3>Registro</h3>
+    <input id="email" placeholder="Correo">
+    <button id="btnSend" type="button">Enviar código</button>
+  </div>
 
-<div class="card" id="emailScreen">
-<h3>Registro</h3>
-<input id="email" placeholder="Correo">
-<button id="btnSend">Enviar código</button>
-</div>
+  <div class="card hidden" id="otpScreen">
+    <h3>Verifica tu código</h3>
+    <input id="code" placeholder="8 dígitos">
+    <button id="btnVerify" type="button">Verificar</button>
+  </div>
 
-<div class="card hidden" id="otpScreen">
-<h3>Verifica tu código</h3>
-<input id="code" placeholder="8 dígitos">
-<button id="btnVerify">Verificar</button>
-</div>
+  <div class="card hidden" id="profileScreen">
+    <h3>Completa tu perfil</h3>
+    <input id="name" placeholder="Nombre completo">
+    <input id="dni" placeholder="DNI">
+    <select id="role">
+      <option value="owner">Dueño</option>
+      <option value="walker">Paseador</option>
+    </select>
+    <input id="password" type="password" placeholder="Contraseña">
+    <button id="btnCreate" type="button">Crear cuenta</button>
+  </div>
 
-<div class="card hidden" id="profileScreen">
-<h3>Completa tu perfil</h3>
-
-<input id="name" placeholder="Nombre completo">
-<input id="dni" placeholder="DNI">
-
-<select id="role">
-<option value="owner">Dueño</option>
-<option value="walker">Paseador</option>
-</select>
-
-<input id="password" type="password" placeholder="Contraseña">
-
-<button id="btnCreate">Crear cuenta</button>
-</div>
-
-<div class="card hidden" id="homeScreen">
-<h3>Bienvenido</h3>
-<p id="userEmail"></p>
-<h1 id="credits">0</h1>
-</div>
-
+  <div class="card hidden" id="homeScreen">
+    <h3>Bienvenido</h3>
+    <p id="userEmail"></p>
+    <p>Créditos:</p>
+    <h1 id="credits">0</h1>
+  </div>
 </div>
 
 <script>
-const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co"
-const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+(() => {
+  const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0";
+  const SEND_OTP_URL = `${SUPABASE_URL}/functions/v1/send-otp`;
+  const VERIFY_OTP_URL = `${SUPABASE_URL}/functions/v1/verify-otp`;
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let userEmail = "";
 
-let userEmail = ""
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => {
+    ["emailScreen","otpScreen","profileScreen","homeScreen"].forEach(x => $(x).classList.add("hidden"));
+    $(id).classList.remove("hidden");
+  };
 
-document.getElementById("btnSend").addEventListener("click", async () => {
+  $("btnSend").addEventListener("click", async () => {
+    const email = $("email").value.trim().toLowerCase();
+    if (!email) return alert("Escribe tu correo");
+    userEmail = email;
+    $("btnSend").disabled = true;
 
-  const email = document.getElementById("email").value
-  userEmail = email
+    try {
+      const res = await fetch(SEND_OTP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        },
+        body: JSON.stringify({ email })
+      });
 
-  try{
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-otp`,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify({ email })
-    })
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error || "No se pudo enviar el código");
+      }
 
-    const data = await res.json()
-    console.log(data)
+      show("otpScreen");
+    } catch (e) {
+      alert("Error enviando código: " + e.message);
+      console.error(e);
+    } finally {
+      $("btnSend").disabled = false;
+    }
+  });
 
-    document.getElementById("emailScreen").classList.add("hidden")
-    document.getElementById("otpScreen").classList.remove("hidden")
+  $("btnVerify").addEventListener("click", async () => {
+    const code = $("code").value.trim();
+    if (!userEmail) return alert("Primero envía el código");
+    if (!code) return alert("Escribe el código");
+    $("btnVerify").disabled = true;
 
-  }catch(e){
-    alert("Error enviando código")
-  }
+    try {
+      const res = await fetch(VERIFY_OTP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        },
+        body: JSON.stringify({ email: userEmail, code })
+      });
 
-})
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Código inválido");
+      }
 
-document.getElementById("btnVerify").addEventListener("click", async () => {
+      show("profileScreen");
+    } catch (e) {
+      alert("Error verificando código: " + e.message);
+      console.error(e);
+    } finally {
+      $("btnVerify").disabled = false;
+    }
+  });
 
-  const code = document.getElementById("code").value
+  $("btnCreate").addEventListener("click", async () => {
+    const name = $("name").value.trim();
+    const dni = $("dni").value.trim();
+    const role = $("role").value;
+    const password = $("password").value;
 
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-otp`,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "apikey": SUPABASE_KEY,
-      "Authorization": "Bearer " + SUPABASE_KEY
-    },
-    body: JSON.stringify({
-      email:userEmail,
-      code
-    })
-  })
+    if (!name || !dni || !password) return alert("Completa nombre, DNI y contraseña");
+    $("btnCreate").disabled = true;
 
-  const data = await res.json()
+    try {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: userEmail,
+        password
+      });
 
-  if(!data.success){
-    alert(data.error)
-    return
-  }
+      if (error) throw error;
+      if (!data.user) throw new Error("No se creó el usuario");
 
-  document.getElementById("otpScreen").classList.add("hidden")
-  document.getElementById("profileScreen").classList.remove("hidden")
+      const user = data.user;
 
-})
+      const { error: userErr } = await supabaseClient.from("users").insert({
+        id: user.id,
+        name,
+        email: userEmail,
+        dni,
+        role
+      });
+      if (userErr) throw userErr;
 
-document.getElementById("btnCreate").addEventListener("click", async () => {
+      if (role === "walker") {
+        const { error: walletErr } = await supabaseClient.from("provider_wallets").insert({
+          user_id: user.id,
+          provider_type: "walker",
+          balance: 0
+        });
+        if (walletErr) throw walletErr;
+      }
 
-  const name = document.getElementById("name").value
-  const dni = document.getElementById("dni").value
-  const role = document.getElementById("role").value
-  const password = document.getElementById("password").value
+      $("userEmail").innerText = user.email;
 
-  const { data, error } = await supabase.auth.signUp({
-    email:userEmail,
-    password
-  })
+      const { data: bal } = await supabaseClient
+        .from("provider_wallet_balances")
+        .select("balance")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-  if(error){
-    alert(error.message)
-    return
-  }
-
-  const user = data.user
-
-  await supabase.from("users").insert({
-    id:user.id,
-    name,
-    email:userEmail,
-    dni,
-    role
-  })
-
-  if(role === "walker"){
-    await supabase.from("provider_wallets").insert({
-      user_id:user.id,
-      provider_type:"walker",
-      balance:0
-    })
-  }
-
-  document.getElementById("profileScreen").classList.add("hidden")
-  document.getElementById("homeScreen").classList.remove("hidden")
-
-  document.getElementById("userEmail").innerText = user.email
-})
+      $("credits").innerText = bal?.balance ?? 0;
+      show("homeScreen");
+    } catch (e) {
+      alert("Error creando cuenta: " + e.message);
+      console.error(e);
+    } finally {
+      $("btnCreate").disabled = false;
+    }
+  });
+})();
 </script>
-
 </body>
 </html>
