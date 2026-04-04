@@ -3,23 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LADRAME OTP FIX</title>
+<title>LADRAME OTP FINAL VERIFICADO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:Arial;margin:0;background:#f2f4f7}
-.container{max-width:420px;margin:auto;padding:20px}
-.card{background:white;padding:20px;border-radius:20px;margin-bottom:15px}
-input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc;box-sizing:border-box}
-button{background:#ff6b00;color:white;font-weight:bold;border:none;cursor:pointer}
-button:disabled{opacity:.65}
-.hidden{display:none}
+  body{font-family:Arial,sans-serif;margin:0;background:#f2f4f7}
+  .container{max-width:440px;margin:auto;padding:20px}
+  .card{background:#fff;padding:20px;border-radius:20px;margin-bottom:15px;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc;box-sizing:border-box}
+  button{background:#ff6b00;color:#fff;font-weight:bold;border:none;cursor:pointer}
+  button:disabled{opacity:.65;cursor:not-allowed}
+  .hidden{display:none}
+  .status{padding:12px;border-radius:12px;background:#eef5ff;color:#1d4ed8;font-size:14px;white-space:pre-wrap}
+  .error{background:#fff1f2;color:#be123c}
+  .ok{background:#ecfdf5;color:#047857}
 </style>
 </head>
 <body>
 <div class="container">
+
+  <div id="statusBox" class="card status">Estado: listo</div>
+
   <div class="card" id="emailScreen">
-    <h3>Registro</h3>
-    <input id="email" placeholder="Correo">
+    <h3>Registro con código</h3>
+    <input id="email" type="email" placeholder="Correo">
     <button id="btnSend" type="button">Enviar código</button>
   </div>
 
@@ -58,18 +64,34 @@ button:disabled{opacity:.65}
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let userEmail = "";
+  let otpVerified = false;
 
   const $ = (id) => document.getElementById(id);
-  const show = (id) => {
+
+  function setStatus(text, type="info"){
+    const box = $("statusBox");
+    box.textContent = text;
+    box.className = "card status" + (type==="error" ? " error" : type==="ok" ? " ok" : "");
+  }
+
+  function show(id){
     ["emailScreen","otpScreen","profileScreen","homeScreen"].forEach(x => $(x).classList.add("hidden"));
     $(id).classList.remove("hidden");
-  };
+  }
+
+  async function readJsonSafe(res){
+    const text = await res.text();
+    try { return text ? JSON.parse(text) : {}; } catch { return { raw:text }; }
+  }
 
   $("btnSend").addEventListener("click", async () => {
     const email = $("email").value.trim().toLowerCase();
-    if (!email) return alert("Escribe tu correo");
+    if (!email) return setStatus("Escribe tu correo.", "error");
+
     userEmail = email;
+    otpVerified = false;
     $("btnSend").disabled = true;
+    setStatus("Enviando código...");
 
     try {
       const res = await fetch(SEND_OTP_URL, {
@@ -82,15 +104,17 @@ button:disabled{opacity:.65}
         body: JSON.stringify({ email })
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await readJsonSafe(res);
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || "No se pudo enviar el código");
+        throw new Error(data.error || data.raw || "No se pudo enviar el código");
       }
 
+      setStatus("Código enviado. Revisa tu correo y escribe el último código que te llegó.", "ok");
       show("otpScreen");
     } catch (e) {
-      alert("Error enviando código: " + e.message);
       console.error(e);
+      setStatus("Error enviando código: " + e.message, "error");
+      alert("Error enviando código: " + e.message);
     } finally {
       $("btnSend").disabled = false;
     }
@@ -98,9 +122,11 @@ button:disabled{opacity:.65}
 
   $("btnVerify").addEventListener("click", async () => {
     const code = $("code").value.trim();
-    if (!userEmail) return alert("Primero envía el código");
-    if (!code) return alert("Escribe el código");
+    if (!userEmail) return setStatus("Primero envía el código.", "error");
+    if (!code) return setStatus("Escribe el código.", "error");
+
     $("btnVerify").disabled = true;
+    setStatus("Verificando código...");
 
     try {
       const res = await fetch(VERIFY_OTP_URL, {
@@ -113,15 +139,18 @@ button:disabled{opacity:.65}
         body: JSON.stringify({ email: userEmail, code })
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await readJsonSafe(res);
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Código inválido");
+        throw new Error(data.error || data.raw || "Código inválido");
       }
 
+      otpVerified = true;
+      setStatus("Código verificado. Ahora completa tu perfil.", "ok");
       show("profileScreen");
     } catch (e) {
-      alert("Error verificando código: " + e.message);
       console.error(e);
+      setStatus("Error verificando código: " + e.message, "error");
+      alert("Error verificando código: " + e.message);
     } finally {
       $("btnVerify").disabled = false;
     }
@@ -133,8 +162,12 @@ button:disabled{opacity:.65}
     const role = $("role").value;
     const password = $("password").value;
 
-    if (!name || !dni || !password) return alert("Completa nombre, DNI y contraseña");
+    if (!otpVerified) return setStatus("Primero verifica el código.", "error");
+    if (!name || !dni || !password) return setStatus("Completa nombre, DNI y contraseña.", "error");
+    if (password.length < 6) return setStatus("La contraseña debe tener al menos 6 caracteres.", "error");
+
     $("btnCreate").disabled = true;
+    setStatus("Creando cuenta...");
 
     try {
       const { data, error } = await supabaseClient.auth.signUp({
@@ -143,26 +176,27 @@ button:disabled{opacity:.65}
       });
 
       if (error) throw error;
-      if (!data.user) throw new Error("No se creó el usuario");
+      if (!data.user) throw new Error("No se creó el usuario.");
 
       const user = data.user;
 
-      const { error: userErr } = await supabaseClient.from("users").insert({
+      const { error: profileError } = await supabaseClient.from("users").insert({
         id: user.id,
         name,
         email: userEmail,
         dni,
         role
       });
-      if (userErr) throw userErr;
+
+      if (profileError) throw profileError;
 
       if (role === "walker") {
-        const { error: walletErr } = await supabaseClient.from("provider_wallets").insert({
+        const { error: walletError } = await supabaseClient.from("provider_wallets").insert({
           user_id: user.id,
           provider_type: "walker",
           balance: 0
         });
-        if (walletErr) throw walletErr;
+        if (walletError) throw walletError;
       }
 
       $("userEmail").innerText = user.email;
@@ -174,10 +208,12 @@ button:disabled{opacity:.65}
         .maybeSingle();
 
       $("credits").innerText = bal?.balance ?? 0;
+      setStatus("Cuenta creada correctamente.", "ok");
       show("homeScreen");
     } catch (e) {
-      alert("Error creando cuenta: " + e.message);
       console.error(e);
+      setStatus("Error creando cuenta: " + e.message, "error");
+      alert("Error creando cuenta: " + e.message);
     } finally {
       $("btnCreate").disabled = false;
     }
