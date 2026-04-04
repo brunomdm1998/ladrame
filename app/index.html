@@ -23,21 +23,18 @@ button{background:#ff6b00;color:white;font-weight:bold;border:none}
 
 <div class="container">
 
-<!-- EMAIL -->
 <div class="card" id="emailScreen">
 <h3>Registro</h3>
 <input id="email" placeholder="Correo">
 <button onclick="enviarCodigo()">Enviar código</button>
 </div>
 
-<!-- OTP -->
 <div class="card hidden" id="otpScreen">
 <h3>Verifica tu código</h3>
 <input id="code" placeholder="8 dígitos">
 <button onclick="verificarCodigo()">Verificar</button>
 </div>
 
-<!-- PERFIL -->
 <div class="card hidden" id="profileScreen">
 <h3>Completa tu perfil</h3>
 
@@ -54,7 +51,6 @@ button{background:#ff6b00;color:white;font-weight:bold;border:none}
 <button onclick="crearCuenta()">Crear cuenta</button>
 </div>
 
-<!-- HOME -->
 <div class="card hidden" id="homeScreen">
 <h3>Bienvenido</h3>
 <p id="userEmail"></p>
@@ -76,11 +72,18 @@ async function enviarCodigo(){
   const email = document.getElementById("email").value
   userEmail = email
 
-  await fetch(`${SUPABASE_URL}/functions/v1/send-otp`,{
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-otp`,{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{
+      "Content-Type":"application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`
+    },
     body:JSON.stringify({email})
   })
+
+  const data = await res.json()
+  console.log(data)
 
   document.getElementById("emailScreen").classList.add("hidden")
   document.getElementById("otpScreen").classList.remove("hidden")
@@ -91,7 +94,11 @@ async function verificarCodigo(){
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-otp`,{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{
+      "Content-Type":"application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`
+    },
     body:JSON.stringify({
       email:userEmail,
       code:code
@@ -116,7 +123,6 @@ async function crearCuenta(){
   const role = document.getElementById("role").value
   const password = document.getElementById("password").value
 
-  // crear usuario auth
   const { data, error } = await supabase.auth.signUp({
     email:userEmail,
     password
@@ -129,7 +135,6 @@ async function crearCuenta(){
 
   const user = data.user
 
-  // guardar perfil
   await supabase.from("users").insert({
     id:user.id,
     name,
@@ -138,7 +143,6 @@ async function crearCuenta(){
     role
   })
 
-  // crear wallet si es walker
   if(role === "walker"){
     await supabase.from("provider_wallets").insert({
       user_id:user.id,
