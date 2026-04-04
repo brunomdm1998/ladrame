@@ -2,104 +2,29 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LADRAME OTP DEBUG</title>
+<title>TEST OTP</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body{font-family:Arial,sans-serif;margin:0;background:#f2f4f7}
-.container{max-width:430px;margin:auto;padding:20px}
-.card{background:#fff;padding:20px;border-radius:20px;margin-bottom:15px;box-shadow:0 8px 20px rgba(0,0,0,.08)}
-input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc;box-sizing:border-box}
-button{background:#ff6b00;color:#fff;font-weight:bold;border:none;cursor:pointer}
-button:disabled{opacity:.65;cursor:not-allowed}
-.hidden{display:none}
-.status{padding:12px;border-radius:12px;background:#eef5ff;color:#1d4ed8;font-size:14px;white-space:pre-wrap}
-.error{background:#fff1f2;color:#be123c}
-.ok{background:#ecfdf5;color:#047857}
-small{color:#666}
-</style>
 </head>
+
 <body>
-<div class="container">
 
-<div id="statusBox" class="card status">Estado: listo</div>
+<h2>Registro</h2>
 
-<div class="card" id="emailScreen">
-  <h3>Registro</h3>
-  <input id="email" type="email" placeholder="Correo">
-  <button id="sendBtn" onclick="enviarCodigo()">Enviar código</button>
-  <small>Primero debe mandar el OTP de 8 dígitos.</small>
-</div>
-
-<div class="card hidden" id="otpScreen">
-  <h3>Verifica tu código</h3>
-  <input id="code" placeholder="8 dígitos">
-  <button id="verifyBtn" onclick="verificarCodigo()">Verificar</button>
-</div>
-
-<div class="card hidden" id="profileScreen">
-  <h3>Completa tu perfil</h3>
-  <input id="name" placeholder="Nombre completo">
-  <input id="dni" placeholder="DNI">
-  <select id="role">
-    <option value="owner">Dueño</option>
-    <option value="walker">Paseador</option>
-  </select>
-  <input id="password" type="password" placeholder="Contraseña">
-  <button id="createBtn" onclick="crearCuenta()">Crear cuenta</button>
-</div>
-
-<div class="card hidden" id="homeScreen">
-  <h3>Bienvenido</h3>
-  <p id="userEmail"></p>
-  <p>Créditos:</p>
-  <h1 id="credits">0</h1>
-</div>
-
-</div>
+<input id="email" placeholder="Correo">
+<button id="btn">Enviar código</button>
 
 <script>
-const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co";
-const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0";
-const SEND_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-otp";
-const VERIFY_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/verify-otp";
+const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co"
+const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let userEmail = "";
+document.getElementById("btn").addEventListener("click", async () => {
 
-function setStatus(text, type="info"){
-  const box = document.getElementById("statusBox");
-  box.textContent = text;
-  box.className = "card status" + (type==="error" ? " error" : type==="ok" ? " ok" : "");
-}
+  const email = document.getElementById("email").value
 
-function show(id){
-  ["emailScreen","otpScreen","profileScreen","homeScreen"].forEach(x=>{
-    document.getElementById(x).classList.add("hidden");
-  });
-  document.getElementById(id).classList.remove("hidden");
-}
-
-async function readJsonSafe(res){
-  const text = await res.text();
-  try { return text ? JSON.parse(text) : {}; } catch { return { raw:text }; }
-}
-
-async function enviarCodigo(){
-  const btn = document.getElementById("sendBtn");
-  const email = document.getElementById("email").value.trim().toLowerCase();
-
-  if(!email){
-    setStatus("Escribe un correo primero.", "error");
-    return;
-  }
-
-  userEmail = email;
-  btn.disabled = true;
-  setStatus("Enviando código a " + email + "...");
+  console.log("CLICK detectado")
 
   try{
-    const res = await fetch(SEND_OTP_URL,{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-otp`,{
       method:"POST",
       headers:{
         "Content-Type":"application/json",
@@ -107,142 +32,20 @@ async function enviarCodigo(){
         "Authorization": "Bearer " + SUPABASE_KEY
       },
       body: JSON.stringify({ email })
-    });
+    })
 
-    const data = await readJsonSafe(res);
-    console.log("send-otp status:", res.status, data);
+    const data = await res.json()
+    console.log("RESPUESTA:", data)
 
-    if(!res.ok){
-      throw new Error(data.error || data.raw || ("send-otp falló. Status " + res.status));
-    }
+    alert("Si ves esto, el botón YA funciona")
 
-    setStatus("Código enviado. Revisa tu correo y escribe los 8 dígitos.", "ok");
-    show("otpScreen");
-  }catch(err){
-    console.error(err);
-    setStatus("Error al enviar código: " + err.message, "error");
-    alert("Error al enviar código: " + err.message);
-  }finally{
-    btn.disabled = false;
-  }
-}
-
-async function verificarCodigo(){
-  const btn = document.getElementById("verifyBtn");
-  const code = document.getElementById("code").value.trim();
-
-  if(!userEmail){
-    setStatus("Primero envía el código.", "error");
-    return;
-  }
-  if(!code){
-    setStatus("Escribe el código.", "error");
-    return;
+  }catch(e){
+    console.error(e)
+    alert("Error: " + e.message)
   }
 
-  btn.disabled = true;
-  setStatus("Verificando código...");
-
-  try{
-    const res = await fetch(VERIFY_OTP_URL,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify({ email:userEmail, code })
-    });
-
-    const data = await readJsonSafe(res);
-    console.log("verify-otp status:", res.status, data);
-
-    if(!res.ok || !data.success){
-      throw new Error(data.error || data.raw || "Código inválido");
-    }
-
-    setStatus("Código verificado. Ahora completa tu perfil.", "ok");
-    show("profileScreen");
-  }catch(err){
-    console.error(err);
-    setStatus("Error al verificar código: " + err.message, "error");
-    alert("Error al verificar código: " + err.message);
-  }finally{
-    btn.disabled = false;
-  }
-}
-
-async function crearCuenta(){
-  const btn = document.getElementById("createBtn");
-  const name = document.getElementById("name").value.trim();
-  const dni = document.getElementById("dni").value.trim();
-  const role = document.getElementById("role").value;
-  const password = document.getElementById("password").value;
-
-  if(!userEmail || !name || !dni || !password){
-    setStatus("Completa nombre, DNI y contraseña.", "error");
-    return;
-  }
-
-  btn.disabled = true;
-  setStatus("Creando cuenta...");
-
-  try{
-    const { data, error } = await supabase.auth.signUp({
-      email: userEmail,
-      password
-    });
-
-    if(error) throw error;
-    if(!data.user) throw new Error("No se creó el usuario.");
-
-    const user = data.user;
-
-    const { error: userErr } = await supabase.from("users").insert({
-      id: user.id,
-      name,
-      email: userEmail,
-      dni,
-      role
-    });
-    if(userErr) throw userErr;
-
-    if(role === "walker"){
-      const { error: walletErr } = await supabase.from("provider_wallets").insert({
-        user_id: user.id,
-        provider_type: "walker",
-        balance: 0
-      });
-      if(walletErr) throw walletErr;
-    }
-
-    await cargarHome(user);
-    setStatus("Cuenta creada correctamente.", "ok");
-  }catch(err){
-    console.error(err);
-    setStatus("Error al crear cuenta: " + err.message, "error");
-    alert("Error al crear cuenta: " + err.message);
-  }finally{
-    btn.disabled = false;
-  }
-}
-
-async function cargarHome(user){
-  show("homeScreen");
-  document.getElementById("userEmail").innerText = user.email;
-
-  const { data } = await supabase
-    .from("provider_wallet_balances")
-    .select("balance")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if(data && data.balance != null){
-    document.getElementById("credits").innerText = data.balance;
-  }else{
-    document.getElementById("credits").innerText = 0;
-  }
-}
+})
 </script>
+
 </body>
 </html>
