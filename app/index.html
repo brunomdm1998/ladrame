@@ -2,26 +2,75 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>TEST OTP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LADRAME OTP</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f2f4f7}
+.container{max-width:420px;margin:auto;padding:20px}
+.card{background:white;padding:20px;border-radius:20px;margin-bottom:15px}
+input,select,button{
+width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #ccc
+}
+button{background:#ff6b00;color:white;font-weight:bold;border:none}
+.hidden{display:none}
+</style>
 </head>
 
 <body>
 
-<h2>Registro</h2>
+<div class="container">
 
+<div class="card" id="emailScreen">
+<h3>Registro</h3>
 <input id="email" placeholder="Correo">
-<button id="btn">Enviar código</button>
+<button id="btnSend">Enviar código</button>
+</div>
+
+<div class="card hidden" id="otpScreen">
+<h3>Verifica tu código</h3>
+<input id="code" placeholder="8 dígitos">
+<button id="btnVerify">Verificar</button>
+</div>
+
+<div class="card hidden" id="profileScreen">
+<h3>Completa tu perfil</h3>
+
+<input id="name" placeholder="Nombre completo">
+<input id="dni" placeholder="DNI">
+
+<select id="role">
+<option value="owner">Dueño</option>
+<option value="walker">Paseador</option>
+</select>
+
+<input id="password" type="password" placeholder="Contraseña">
+
+<button id="btnCreate">Crear cuenta</button>
+</div>
+
+<div class="card hidden" id="homeScreen">
+<h3>Bienvenido</h3>
+<p id="userEmail"></p>
+<h1 id="credits">0</h1>
+</div>
+
+</div>
 
 <script>
 const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co"
 const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 
-document.getElementById("btn").addEventListener("click", async () => {
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+let userEmail = ""
+
+document.getElementById("btnSend").addEventListener("click", async () => {
 
   const email = document.getElementById("email").value
-
-  console.log("CLICK detectado")
+  userEmail = email
 
   try{
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-otp`,{
@@ -35,15 +84,85 @@ document.getElementById("btn").addEventListener("click", async () => {
     })
 
     const data = await res.json()
-    console.log("RESPUESTA:", data)
+    console.log(data)
 
-    alert("Si ves esto, el botón YA funciona")
+    document.getElementById("emailScreen").classList.add("hidden")
+    document.getElementById("otpScreen").classList.remove("hidden")
 
   }catch(e){
-    console.error(e)
-    alert("Error: " + e.message)
+    alert("Error enviando código")
   }
 
+})
+
+document.getElementById("btnVerify").addEventListener("click", async () => {
+
+  const code = document.getElementById("code").value
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-otp`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY
+    },
+    body: JSON.stringify({
+      email:userEmail,
+      code
+    })
+  })
+
+  const data = await res.json()
+
+  if(!data.success){
+    alert(data.error)
+    return
+  }
+
+  document.getElementById("otpScreen").classList.add("hidden")
+  document.getElementById("profileScreen").classList.remove("hidden")
+
+})
+
+document.getElementById("btnCreate").addEventListener("click", async () => {
+
+  const name = document.getElementById("name").value
+  const dni = document.getElementById("dni").value
+  const role = document.getElementById("role").value
+  const password = document.getElementById("password").value
+
+  const { data, error } = await supabase.auth.signUp({
+    email:userEmail,
+    password
+  })
+
+  if(error){
+    alert(error.message)
+    return
+  }
+
+  const user = data.user
+
+  await supabase.from("users").insert({
+    id:user.id,
+    name,
+    email:userEmail,
+    dni,
+    role
+  })
+
+  if(role === "walker"){
+    await supabase.from("provider_wallets").insert({
+      user_id:user.id,
+      provider_type:"walker",
+      balance:0
+    })
+  }
+
+  document.getElementById("profileScreen").classList.add("hidden")
+  document.getElementById("homeScreen").classList.remove("hidden")
+
+  document.getElementById("userEmail").innerText = user.email
 })
 </script>
 
