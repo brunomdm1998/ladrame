@@ -1,1329 +1,456 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LADRAME</title>
-  <meta name="description" content="Paseos, cuidado y hospedaje para perros con seguimiento en vivo, chat, videollamadas y reservas flexibles." />
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth}
-
-    :root{
-      --orange:#ff7a00;
-      --orange-dark:#de5f00;
-      --text:#171717;
-      --muted:#666;
-      --line:#eadccd;
-      --bg:#f7f3ed;
-      --bg-soft:#fcfaf7;
-      --surface:#ffffff;
-      --shadow-xl:0 28px 70px rgba(0,0,0,.10);
-      --shadow-lg:0 16px 36px rgba(0,0,0,.08);
-      --shadow-md:0 8px 18px rgba(0,0,0,.05);
-      --max:1180px;
-    }
-
-    body{
-      font-family:Inter,Arial,sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(255,122,0,.07), transparent 28%),
-        radial-gradient(circle at top right, rgba(255,186,120,.13), transparent 26%),
-        linear-gradient(180deg,var(--bg-soft) 0%,var(--bg) 100%);
-      overflow-x:hidden;
-    }
-
-    a{text-decoration:none;color:inherit}
-    img{display:block;max-width:100%}
-    .container{width:min(var(--max),calc(100% - 40px));margin:0 auto}
-
-    .o{color:var(--orange)}
-    .d{color:#111}
-
-    /* SPLASH */
-    #splash{
-      position:fixed;
-      inset:0;
-      z-index:9999;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:
-        radial-gradient(circle at 50% 18%, rgba(255,160,76,.18), transparent 34%),
-        linear-gradient(180deg,#fff8f1 0%,#f7f3ed 100%);
-      transition:opacity .65s ease, visibility .65s ease;
-    }
-    #splash.hide{
-      opacity:0;
-      visibility:hidden;
-      pointer-events:none;
-    }
-    .splash-card{
-      width:min(760px,92vw);
-      min-height:400px;
-      padding:34px 24px;
-      border-radius:36px;
-      background:rgba(255,255,255,.86);
-      border:1px solid rgba(234,220,207,.9);
-      backdrop-filter:blur(14px);
-      box-shadow:var(--shadow-xl);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-      overflow:hidden;
-    }
-    .splash-card::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:
-        radial-gradient(circle at top right, rgba(255,196,146,.48) 0%, transparent 28%),
-        radial-gradient(circle at bottom left, rgba(255,232,208,.55) 0%, transparent 30%);
-      pointer-events:none;
-    }
-    .splash-inner{
-      position:relative;
-      z-index:2;
-      text-align:center;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:14px;
-    }
-    .splash-logo{
-      width:min(420px,72vw);
-      object-fit:contain;
-      filter:drop-shadow(0 24px 28px rgba(0,0,0,.10));
-      animation:floatLogo 3s ease-in-out infinite;
-    }
-    .splash-brand{
-      font-size:44px;
-      line-height:.95;
-      font-weight:900;
-      letter-spacing:-1.2px;
-    }
-    .splash-copy{
-      max-width:520px;
-      color:var(--muted);
-      line-height:1.7;
-      font-size:16px;
-    }
-    .splash-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:11px 16px;
-      border-radius:999px;
-      background:#fff;
-      border:1px solid var(--line);
-      box-shadow:var(--shadow-md);
-      font-weight:800;
-      color:#444;
-      font-size:14px;
-    }
-    .pulse{
-      width:10px;height:10px;border-radius:50%;
-      background:var(--orange);
-      box-shadow:0 0 0 0 rgba(255,122,0,.42);
-      animation:pulse 1.6s infinite;
-    }
-
-    /* NAV */
-    header{
-      position:sticky;
-      top:0;
-      z-index:50;
-      background:rgba(255,255,255,.84);
-      backdrop-filter:blur(14px);
-      border-bottom:1px solid rgba(234,220,207,.9);
-    }
-    .header-inner{
-      min-height:84px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:20px;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:6px;
-      font-size:21px;
-      font-weight:800;
-      letter-spacing:-.2px;
-    }
-    .brand-mark{
-      width:90px;
-      height:90px;
-      object-fit:contain;
-      flex:0 0 auto;
-      margin-right:-8px;
-      filter:drop-shadow(0 8px 14px rgba(0,0,0,.08));
-    }
-    .brand-word{
-      display:flex;
-      align-items:center;
-      gap:2px;
-      line-height:1;
-    }
-
-    nav{
-      display:flex;
-      align-items:center;
-      gap:26px;
-      flex-wrap:wrap;
-    }
-    nav a.link{
-      font-size:14px;
-      font-weight:800;
-      color:#444;
-      position:relative;
-    }
-    nav a.link::after{
-      content:"";
-      position:absolute;
-      left:0;
-      bottom:-6px;
-      width:0;
-      height:2px;
-      background:var(--orange);
-      transition:.2s ease;
-    }
-    nav a.link:hover::after{width:100%}
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-height:50px;
-      padding:0 22px;
-      border-radius:16px;
-      font-weight:900;
-      transition:.18s ease;
-      border:none;
-      cursor:pointer;
-    }
-    .btn:hover{transform:translateY(-1px)}
-    .btn-primary{
-      background:linear-gradient(180deg,#ff942f 0%,var(--orange) 100%);
-      color:#fff;
-      box-shadow:0 14px 24px rgba(255,122,0,.18);
-    }
-    .btn-secondary{
-      background:#fff;
-      color:var(--orange);
-      border:1.5px solid #ffd4af;
-      box-shadow:var(--shadow-md);
-    }
-
-    /* HERO */
-    .hero{
-      padding:46px 0 26px;
-    }
-    .hero-grid{
-      display:grid;
-      grid-template-columns:1.02fr .98fr;
-      gap:28px;
-      align-items:center;
-    }
-    .eyebrow{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:10px 15px;
-      border-radius:999px;
-      border:1px solid #ffd8bb;
-      background:linear-gradient(180deg,#fff7ef 0%,#fff1e4 100%);
-      color:var(--orange-dark);
-      font-weight:800;
-      font-size:13px;
-      margin-bottom:18px;
-      box-shadow:var(--shadow-md);
-    }
-    .hero-left h1{
-      font-size:54px;
-      line-height:1.01;
-      letter-spacing:-1.4px;
-      margin-bottom:16px;
-      max-width:630px;
-    }
-    .hero-left p{
-      max-width:580px;
-      color:var(--muted);
-      font-size:18px;
-      line-height:1.72;
-      margin-bottom:24px;
-    }
-    .hero-actions{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:18px;
-    }
-    .hero-badges{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .badge{
-      padding:10px 16px;
-      border-radius:999px;
-      background:rgba(255,255,255,.88);
-      border:1px solid #f1dfcf;
-      font-size:13px;
-      font-weight:600;
-      color:#555;
-      box-shadow:0 6px 14px rgba(0,0,0,.04);
-      backdrop-filter:blur(6px);
-    }
-
-    .hero-right{
-      position:relative;
-      min-height:520px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .hero-orb{
-      position:absolute;
-      width:560px;
-      height:560px;
-      border-radius:50%;
-      background:radial-gradient(circle, rgba(255,196,146,.34) 0%, rgba(255,196,146,0) 70%);
-      filter:blur(2px);
-      top:8px;
-      left:50%;
-      transform:translateX(-50%);
-    }
-    .hero-floor{
-      position:absolute;
-      width:290px;
-      height:44px;
-      border-radius:50%;
-      background:radial-gradient(circle, rgba(217,165,118,.22) 0%, rgba(217,165,118,0) 72%);
-      bottom:112px;
-      left:50%;
-      transform:translateX(-50%);
-    }
-    .hero-logo-wrap{
-      position:relative;
-      z-index:2;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:8px;
-    }
-    .hero-logo{
-      width:min(520px,94%);
-      object-fit:contain;
-      filter:drop-shadow(0 28px 36px rgba(0,0,0,.12));
-      animation:floatLogo 3.2s ease-in-out infinite;
-      margin-bottom:-4px;
-    }
-    .hero-brand{
-      font-size:29px;
-      font-weight:800;
-      letter-spacing:-.2px;
-      line-height:1.04;
-      text-align:center;
-      margin-top:0;
-    }
-    .hero-note{
-      max-width:340px;
-      text-align:center;
-      color:var(--muted);
-      line-height:1.6;
-      font-size:14px;
-      margin-top:6px;
-    }
-
-    /* DASHBOARD PREVIEW */
-    .preview{
-      padding:8px 0 30px;
-    }
-    .preview-shell{
-      padding:24px;
-      border-radius:34px;
-      background:rgba(255,255,255,.76);
-      border:1px solid rgba(234,220,207,.95);
-      box-shadow:var(--shadow-xl);
-      backdrop-filter:blur(12px);
-    }
-    .preview-head{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:18px;
-      margin-bottom:20px;
-      flex-wrap:wrap;
-    }
-    .preview-head h2{
-      font-size:34px;
-      line-height:1.04;
-      letter-spacing:-.8px;
-      margin-bottom:8px;
-    }
-    .preview-head p{
-      max-width:700px;
-      color:var(--muted);
-      font-size:15px;
-      line-height:1.7;
-    }
-    .preview-status{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .status-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid #eed8c3;
-      background:#fff;
-      color:#555;
-      font-size:13px;
-      font-weight:700;
-      box-shadow:var(--shadow-md);
-    }
-    .status-dot{
-      width:9px;
-      height:9px;
-      border-radius:50%;
-      background:#23b35d;
-      box-shadow:0 0 0 5px rgba(35,179,93,.10);
-    }
-
-    .dashboard{
-      display:grid;
-      grid-template-columns:320px 1fr;
-      gap:18px;
-      align-items:start;
-    }
-
-    .side-panel{
-      border-radius:28px;
-      background:linear-gradient(180deg,#fffaf5 0%,#fff 100%);
-      border:1px solid rgba(234,220,207,.95);
-      box-shadow:var(--shadow-lg);
-      padding:18px;
-    }
-    .side-brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      padding:10px 8px 18px;
-      border-bottom:1px solid #f2e6da;
-      margin-bottom:16px;
-    }
-    .side-brand img{
-      width:58px;
-      height:58px;
-      object-fit:contain;
-    }
-    .side-brand strong{
-      font-size:20px;
-      letter-spacing:-.4px;
-      line-height:1;
-    }
-    .side-list{
-      display:grid;
-      gap:12px;
-    }
-    .side-item{
-      display:flex;
-      gap:12px;
-      align-items:flex-start;
-      padding:14px;
-      border-radius:18px;
-      background:#fff;
-      border:1px solid #efe1d4;
-      box-shadow:var(--shadow-md);
-    }
-    .side-icon{
-      width:42px;
-      height:42px;
-      border-radius:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:linear-gradient(180deg,#fff4e8 0%,#ffe8d3 100%);
-      border:1px solid #ffd8b8;
-      font-size:19px;
-      flex:0 0 auto;
-    }
-    .side-item strong{
-      display:block;
-      margin-bottom:4px;
-      font-size:15px;
-      letter-spacing:-.2px;
-    }
-    .side-item span{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.55;
-    }
-
-    .main-panel{
-      display:grid;
-      grid-template-columns:1.18fr .82fr;
-      gap:16px;
-    }
-
-    .panel-col{
-      display:grid;
-      gap:16px;
-      align-content:start;
-    }
-
-    .ui-card{
-      position:relative;
-      border-radius:28px;
-      background:#fff;
-      border:1px solid rgba(234,220,207,.95);
-      box-shadow:var(--shadow-lg);
-      overflow:hidden;
-    }
-
-    .map-card{
-      min-height:315px;
-      padding:18px;
-      background:
-        linear-gradient(180deg, rgba(255,248,239,.95) 0%, rgba(255,255,255,.98) 100%);
-    }
-    .card-top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:14px;
-    }
-    .card-title{
-      font-size:18px;
-      letter-spacing:-.3px;
-      font-weight:800;
-    }
-    .card-sub{
-      color:#7a7a7a;
-      font-size:12px;
-      font-weight:700;
-    }
-    .mini-chip{
-      padding:7px 10px;
-      border-radius:999px;
-      background:#f6fbf7;
-      color:#1f9c55;
-      border:1px solid #d9f1e2;
-      font-size:11px;
-      font-weight:800;
-    }
-    .map-area{
-      position:relative;
-      height:240px;
-      border-radius:22px;
-      background:
-        linear-gradient(70deg, transparent 0 16%, #e9ddd1 16% 18%, transparent 18% 36%, #e9ddd1 36% 38%, transparent 38% 100%),
-        linear-gradient(160deg, transparent 0 28%, #e9ddd1 28% 30%, transparent 30% 56%, #e9ddd1 56% 58%, transparent 58% 100%),
-        linear-gradient(180deg,#fffdfb 0%,#faf4ee 100%);
-      border:1px solid #eee0d2;
-      overflow:hidden;
-    }
-    .map-pin{
-      position:absolute;
-      font-size:26px;
-      filter:drop-shadow(0 6px 10px rgba(0,0,0,.10));
-    }
-    .pin-a{left:16%;top:26%}
-    .pin-b{left:61%;top:21%}
-    .pin-c{left:39%;top:60%}
-    .pin-d{left:73%;top:48%}
-    .pin-e{left:24%;top:70%}
-
-    .metrics{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:12px;
-      padding:0 18px 18px;
-      margin-top:-2px;
-    }
-    .metric{
-      padding:14px;
-      border-radius:18px;
-      background:#fffaf5;
-      border:1px solid #f0dfcf;
-    }
-    .metric strong{
-      display:block;
-      font-size:20px;
-      margin-bottom:4px;
-      letter-spacing:-.3px;
-    }
-    .metric span{
-      color:#777;
-      font-size:12px;
-      line-height:1.5;
-    }
-
-    .stack-card{
-      padding:18px;
-    }
-    .stack-list{
-      display:grid;
-      gap:12px;
-    }
-    .stack-row{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      padding:12px 14px;
-      border-radius:18px;
-      background:#fffaf5;
-      border:1px solid #f0dfcf;
-    }
-    .stack-bullet{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#fff;
-      border:1px solid #ecd8c4;
-      font-size:16px;
-      flex:0 0 auto;
-    }
-    .stack-row strong{
-      display:block;
-      font-size:14px;
-      margin-bottom:3px;
-    }
-    .stack-row span{
-      color:#777;
-      font-size:12px;
-      line-height:1.5;
-    }
-
-    .notif-card{
-      padding:18px;
-      min-height:232px;
-      background:linear-gradient(180deg,#fff 0%,#fff8f1 100%);
-    }
-    .notif-list{
-      display:grid;
-      gap:10px;
-    }
-    .notif{
-      display:flex;
-      gap:10px;
-      padding:12px;
-      border-radius:16px;
-      background:#fff;
-      border:1px solid #f0dfcf;
-    }
-    .notif strong{
-      display:block;
-      font-size:13px;
-      margin-bottom:3px;
-    }
-    .notif span{
-      color:#777;
-      font-size:12px;
-      line-height:1.5;
-    }
-
-    .wallet-card{
-      padding:18px;
-      min-height:178px;
-      background:linear-gradient(180deg,#fffaf3 0%,#fff 100%);
-    }
-    .wallet-amount{
-      font-size:34px;
-      font-weight:900;
-      letter-spacing:-.8px;
-      margin:10px 0 6px;
-      color:#111;
-    }
-    .wallet-sub{
-      color:#777;
-      font-size:13px;
-      line-height:1.6;
-      margin-bottom:16px;
-    }
-    .wallet-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .mini-btn{
-      padding:10px 14px;
-      border-radius:14px;
-      font-size:13px;
-      font-weight:800;
-      border:1px solid #f0dfcf;
-      background:#fff;
-      color:#444;
-    }
-
-    /* FEATURE STRIP */
-    .feature-strip{
-      padding:8px 0 28px;
-    }
-    .feature-grid{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:14px;
-    }
-    .feature{
-      padding:18px;
-      border-radius:22px;
-      background:rgba(255,255,255,.88);
-      border:1px solid rgba(234,220,207,.95);
-      box-shadow:var(--shadow-lg);
-    }
-    .feature strong{
-      display:block;
-      font-size:22px;
-      margin-bottom:6px;
-      letter-spacing:-.5px;
-    }
-    .feature span{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.55;
-    }
-
-    /* SECTIONS */
-    section.block{padding:28px 0}
-    .section-head{
-      margin-bottom:20px;
-    }
-    .section-head h2{
-      font-size:30px;
-      line-height:1.06;
-      letter-spacing:-.6px;
-      margin-bottom:8px;
-    }
-    .section-head p{
-      max-width:740px;
-      color:var(--muted);
-      font-size:15px;
-      line-height:1.7;
-    }
-
-    .cards{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:16px;
-    }
-    .card{
-      padding:20px;
-      border-radius:22px;
-      background:rgba(255,255,255,.88);
-      border:1px solid rgba(234,220,207,.95);
-      box-shadow:var(--shadow-lg);
-    }
-    .icon-box{
-      width:48px;
-      height:48px;
-      border-radius:15px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:linear-gradient(180deg,#fff4e8 0%,#ffe8d3 100%);
-      border:1px solid #ffd8b8;
-      font-size:21px;
-      margin-bottom:12px;
-    }
-    .card h3{
-      font-size:18px;
-      margin-bottom:8px;
-      letter-spacing:-.2px;
-    }
-    .card p{
-      color:var(--muted);
-      line-height:1.62;
-      font-size:14px;
-    }
-
-    .steps{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:16px;
-    }
-    .step{
-      padding:20px;
-      border-radius:20px;
-      background:#fff;
-      border:1px solid var(--line);
-      box-shadow:var(--shadow-lg);
-    }
-    .step-num{
-      width:36px;
-      height:36px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:linear-gradient(180deg,#ff9328 0%,var(--orange) 100%);
-      color:#fff;
-      font-weight:900;
-      font-size:14px;
-      margin-bottom:10px;
-      box-shadow:0 8px 14px rgba(255,122,0,.18);
-    }
-    .step h3{
-      font-size:17px;
-      margin-bottom:8px;
-    }
-    .step p{
-      color:var(--muted);
-      line-height:1.62;
-      font-size:14px;
-    }
-
-    .cta{
-      margin-top:8px;
-      border-radius:28px;
-      padding:28px 20px;
-      background:
-        radial-gradient(circle at top right, rgba(255,217,183,.72) 0%, rgba(255,217,183,0) 28%),
-        linear-gradient(180deg,#fff5ea 0%,#ffe8d4 100%);
-      border:1px solid #ffd5b0;
-      box-shadow:var(--shadow-xl);
-      text-align:center;
-    }
-    .cta h2{
-      font-size:30px;
-      letter-spacing:-.6px;
-      margin-bottom:8px;
-    }
-    .cta p{
-      max-width:680px;
-      margin:0 auto 18px;
-      color:#5f5f5f;
-      font-size:15px;
-      line-height:1.7;
-    }
-    .cta-actions{
-      display:flex;
-      justify-content:center;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-
-    footer{
-      padding:22px 0 36px;
-      color:#777;
-      font-size:14px;
-    }
-
-    @keyframes floatLogo{
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-8px)}
-    }
-    @keyframes pulse{
-      0%{box-shadow:0 0 0 0 rgba(255,122,0,.42)}
-      70%{box-shadow:0 0 0 12px rgba(255,122,0,0)}
-      100%{box-shadow:0 0 0 0 rgba(255,122,0,0)}
-    }
-
-    @media (max-width:1100px){
-      .hero-grid,.dashboard,.main-panel{grid-template-columns:1fr}
-      .hero-left h1{font-size:42px}
-      .feature-grid,.cards{grid-template-columns:1fr 1fr}
-      .steps{grid-template-columns:1fr 1fr}
-      .hero-right{min-height:400px}
-      .brand-mark{width:74px;height:74px;margin-right:-2px}
-      .metrics{grid-template-columns:1fr 1fr 1fr}
-    }
-
-    @media (max-width:720px){
-      .container{width:min(1180px,calc(100% - 24px))}
-      nav a.link{display:none}
-      .brand{font-size:20px;gap:4px}
-      .brand-mark{width:58px;height:58px;margin-right:0}
-      .header-inner{min-height:74px}
-      .hero{padding-top:30px}
-      .hero-left h1{font-size:34px;letter-spacing:-.8px}
-      .hero-left p{font-size:15px}
-      .feature-grid,.cards,.steps,.metrics{grid-template-columns:1fr}
-      .section-head h2,.cta h2,.preview-head h2{font-size:26px}
-      .splash-brand{font-size:34px}
-      .splash-copy{font-size:14px}
-      .splash-logo{width:min(320px,82vw)}
-      .hero-logo{width:min(420px,96%)}
-      .hero-brand{font-size:26px}
-      .hero-note{font-size:13px}
-      .hero-right{min-height:340px}
-      .hero-logo-wrap{gap:6px}
-      .preview-shell{padding:18px}
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LADRAME Registro por pasos</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --orange:#ff6b00;
+    --orange2:#ff944d;
+    --bg:#f3f5f9;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:linear-gradient(180deg,#fff7f1 0%,#f3f5f9 100%);
+    color:var(--text);
+  }
+  .wrap{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .card{
+    width:100%;
+    max-width:460px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:28px;
+    box-shadow:0 18px 46px rgba(0,0,0,.08);
+    overflow:hidden;
+  }
+  .top{
+    padding:24px 24px 12px;
+    background:linear-gradient(180deg,#fff 0%,#fff8f3 100%);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:30px;
+    font-weight:900;
+    color:var(--orange);
+  }
+  .logo{
+    width:56px;height:56px;border-radius:16px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--orange),var(--orange2));
+    color:#fff;font-size:26px;
+  }
+  .stepbar{display:flex;gap:8px;margin-top:16px}
+  .dot{flex:1;height:10px;border-radius:999px;background:#eceff4}
+  .dot.active{background:linear-gradient(90deg,var(--orange),var(--orange2))}
+  .content{padding:24px}
+  .screen{display:none}
+  .screen.active{display:block}
+  h2{margin:0 0 8px;font-size:30px}
+  .subtitle{margin:0 0 18px;color:var(--muted);line-height:1.5;font-size:14px}
+  .field{margin-bottom:12px}
+  .label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}
+  .input,.select{
+    width:100%;
+    padding:14px 15px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    font-size:15px;
+    outline:none;
+    background:#fff;
+  }
+  .btn{
+    width:100%;
+    border:none;
+    border-radius:16px;
+    padding:15px 16px;
+    font-size:15px;
+    font-weight:900;
+    cursor:pointer;
+    margin-top:6px;
+    background:linear-gradient(135deg,var(--orange),var(--orange2));
+    color:#fff;
+  }
+  .btn.secondary{
+    background:#f3f4f6;
+    color:#111827;
+    border:1px solid var(--line);
+  }
+  .msg{
+    margin:0 0 14px;
+    padding:13px 14px;
+    border-radius:14px;
+    font-size:14px;
+    font-weight:700;
+    white-space:pre-wrap;
+    background:#eef5ff;
+    color:#2859b3;
+  }
+  video,img{
+    width:100%;
+    border-radius:18px;
+    background:#111;
+    margin-top:10px;
+  }
+  .preview{display:none}
+  .preview.show{display:block}
+  .homeCard{
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px;
+    margin-top:10px;
+  }
+</style>
 </head>
 <body>
-
-  <div id="splash">
-    <div class="splash-card">
-      <div class="splash-inner">
-        <img class="splash-logo" src="/logo.png" alt="Logo LADRAME">
-        <h1 class="splash-brand"><span class="o">LADRA</span><span class="d">ME</span></h1>
-        <p class="splash-copy">Paseos, cuidado y hospedaje para perros con una experiencia más premium, segura y en tiempo real.</p>
-        <div class="splash-pill"><span class="pulse"></span> Cargando experiencia</div>
+<div class="wrap">
+  <div class="card">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">🐶</div>
+        <div>LADRAME</div>
       </div>
+      <div class="stepbar">
+        <div class="dot active" id="dot1"></div>
+        <div class="dot" id="dot2"></div>
+        <div class="dot" id="dot3"></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="statusBox" class="msg">Estado: listo</div>
+
+      <section id="screen1" class="screen active">
+        <h2>Paso 1</h2>
+        <p class="subtitle">Primero ingresa tu correo y tu contraseña. Luego te mandamos el OTP al correo.</p>
+
+        <div class="field">
+          <label class="label">Correo</label>
+          <input id="email" class="input" type="email" placeholder="tucorreo@gmail.com">
+        </div>
+
+        <div class="field">
+          <label class="label">Contraseña</label>
+          <input id="password" class="input" type="password" placeholder="Mínimo 6 caracteres">
+        </div>
+
+        <button id="btnSendOtp" class="btn" type="button">Enviar código</button>
+      </section>
+
+      <section id="screen2" class="screen">
+        <h2>Paso 2</h2>
+        <p class="subtitle">Escribe el último código de 8 dígitos que llegó a tu correo.</p>
+
+        <div class="field">
+          <label class="label">Código OTP</label>
+          <input id="code" class="input" placeholder="8 dígitos">
+        </div>
+
+        <button id="btnVerifyOtp" class="btn" type="button">Verificar código</button>
+        <button id="btnBack1" class="btn secondary" type="button">Volver</button>
+      </section>
+
+      <section id="screen3" class="screen">
+        <h2>Paso 3</h2>
+        <p class="subtitle">Ahora sí completa tus datos, tómate la selfie con cámara y la foto del DNI con cámara.</p>
+
+        <div class="field">
+          <label class="label">Nombre completo</label>
+          <input id="name" class="input" placeholder="Nombre completo">
+        </div>
+
+        <div class="field">
+          <label class="label">Número de DNI</label>
+          <input id="dni" class="input" placeholder="Número de DNI">
+        </div>
+
+        <div class="field">
+          <label class="label">Modo inicial</label>
+          <select id="roleMode" class="select">
+            <option value="owner">Solo dueño</option>
+            <option value="walker">Solo paseador</option>
+            <option value="both">Dueño y paseador</option>
+          </select>
+        </div>
+
+        <div class="homeCard">
+          <strong>Selfie obligatoria</strong>
+          <video id="selfieVideo" autoplay playsinline muted></video>
+          <img id="selfiePreview" class="preview" alt="Selfie capturada">
+          <button id="btnOpenSelfie" class="btn secondary" type="button">Abrir cámara selfie</button>
+          <button id="btnTakeSelfie" class="btn secondary" type="button">Tomar selfie</button>
+        </div>
+
+        <div class="homeCard">
+          <strong>Foto de DNI obligatoria</strong>
+          <video id="dniVideo" autoplay playsinline muted></video>
+          <img id="dniPreview" class="preview" alt="DNI capturado">
+          <button id="btnOpenDni" class="btn secondary" type="button">Abrir cámara DNI</button>
+          <button id="btnTakeDni" class="btn secondary" type="button">Tomar foto DNI</button>
+        </div>
+
+        <button id="btnCreate" class="btn" type="button">Finalizar registro</button>
+      </section>
+
+      <section id="homeScreen" class="screen">
+        <h2>Bienvenido</h2>
+        <p class="subtitle">Tu cuenta ya quedó creada correctamente.</p>
+        <div class="homeCard">
+          <div><strong id="userEmail">-</strong></div>
+          <div style="margin-top:10px">Créditos: <strong id="credits">0</strong></div>
+          <div style="margin-top:10px" id="roleInfo">-</div>
+        </div>
+      </section>
     </div>
   </div>
+</div>
 
-  <audio id="barkAudio" preload="auto">
-    <source src="https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" type="audio/mpeg">
-  </audio>
+<script>
+(() => {
+  const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0";
+  const SEND_OTP_URL = `${SUPABASE_URL}/functions/v1/send-otp`;
+  const VERIFY_OTP_URL = `${SUPABASE_URL}/functions/v1/verify-otp`;
+  const CREATE_ACCOUNT_URL = `${SUPABASE_URL}/functions/v1/create-account-full`;
 
-  <header>
-    <div class="container header-inner">
-      <a href="#" class="brand">
-        <img class="brand-mark" src="/logo.png" alt="Logo LADRAME">
-        <span class="brand-word"><span class="o">LADRA</span><span class="d">ME</span></span>
-      </a>
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      <nav>
-        <a class="link" href="#funciones">Funciones</a>
-        <a class="link" href="#servicios">Servicios</a>
-        <a class="link" href="#como">Cómo funciona</a>
-        <a class="link" href="#confianza">Confianza</a>
-        <a href="/app/" class="btn btn-primary">Abrir app</a>
-      </nav>
-    </div>
-  </header>
+  let userEmail = "";
+  let userPassword = "";
+  let otpVerified = false;
+  let selfieBase64 = "";
+  let dniBase64 = "";
+  let selfieStream = null;
+  let dniStream = null;
 
-  <main>
-    <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-left">
-          <div class="eyebrow">🐾 Plataforma premium para paseos y hospedaje canino</div>
-          <h1>Tu perro cuidado con una experiencia más segura, moderna y profesional.</h1>
-          <p>LADRAME conecta dueños, paseadores y hoteles para perros con seguimiento en vivo, comunicación directa y una imagen de marca mucho más sólida.</p>
+  const $ = (id) => document.getElementById(id);
 
-          <div class="hero-actions">
-            <a href="/app/" class="btn btn-primary">Entrar a la app</a>
-            <a href="/app/" class="btn btn-secondary">Crear cuenta</a>
-          </div>
+  function setStatus(text){
+    $("statusBox").textContent = text;
+  }
 
-          <div class="hero-badges">
-            <div class="badge">Usuarios verificados</div>
-            <div class="badge">Seguimiento en vivo</div>
-            <div class="badge">Hospedaje flexible</div>
-            <div class="badge">Chat y videollamadas</div>
-          </div>
-        </div>
+  function setStep(step){
+    ["screen1","screen2","screen3","homeScreen"].forEach(id => $(id).classList.remove("active"));
+    if ($(`screen${step}`)) $(`screen${step}`).classList.add("active");
+    $("dot1").classList.toggle("active", step >= 1);
+    $("dot2").classList.toggle("active", step >= 2);
+    $("dot3").classList.toggle("active", step >= 3);
+  }
 
-        <div class="hero-right">
-          <div class="hero-orb"></div>
-          <div class="hero-floor"></div>
+  function showHome(){
+    ["screen1","screen2","screen3","homeScreen"].forEach(id => $(id).classList.remove("active"));
+    $("homeScreen").classList.add("active");
+    $("dot1").classList.add("active");
+    $("dot2").classList.add("active");
+    $("dot3").classList.add("active");
+  }
 
-          <div class="hero-logo-wrap">
-            <img class="hero-logo" src="/logo.png" alt="Logo LADRAME">
-            <h2 class="hero-brand"><span class="o">LADRA</span><span class="d">ME</span></h2>
-            <p class="hero-note">Una marca más fuerte, más visible y mejor integrada desde el primer segundo.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+  async function readJsonSafe(res){
+    const text = await res.text();
+    try { return text ? JSON.parse(text) : {}; } catch { return { raw:text }; }
+  }
 
-    <section id="funciones" class="preview">
-      <div class="container preview-shell">
-        <div class="preview-head">
-          <div>
-            <h2>Así se siente la experiencia real de la app</h2>
-            <p>LADRAME ya contempla seguimiento en vivo, solicitudes, ofertas, reservas de hotel, chat, videollamadas, notificaciones y manejo de créditos. Esta web ahora lo muestra con una presentación más premium, tipo dashboard real.</p>
-          </div>
+  async function openCamera(videoEl, facingMode){
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode },
+      audio: false
+    });
+    videoEl.srcObject = stream;
+    return stream;
+  }
 
-          <div class="preview-status">
-            <div class="status-chip"><span class="status-dot"></span> Servicios activos</div>
-            <div class="status-chip">Mapa en tiempo real</div>
-            <div class="status-chip">Chat y video</div>
-          </div>
-        </div>
+  function stopStream(stream){
+    if(stream) stream.getTracks().forEach(track => track.stop());
+  }
 
-        <div class="dashboard">
-          <aside class="side-panel">
-            <div class="side-brand">
-              <img src="/logo.png" alt="Logo">
-              <div>
-                <strong><span class="o">LADRA</span><span class="d">ME</span></strong>
-                <p style="font-size:12px;color:#777;margin-top:6px">Panel de experiencia canina</p>
-              </div>
-            </div>
+  function capture(videoEl, imgEl){
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth || 720;
+    canvas.height = videoEl.videoHeight || 1280;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const base64 = canvas.toDataURL("image/jpeg", 0.92);
+    imgEl.src = base64;
+    imgEl.classList.add("show");
+    return base64;
+  }
 
-            <div class="side-list">
-              <div class="side-item">
-                <div class="side-icon">📍</div>
-                <div>
-                  <strong>Seguimiento en vivo</strong>
-                  <span>Mapa dinámico con ubicación de servicio y referencias cercanas.</span>
-                </div>
-              </div>
+  $("btnSendOtp").addEventListener("click", async () => {
+    const email = $("email").value.trim().toLowerCase();
+    const password = $("password").value;
 
-              <div class="side-item">
-                <div class="side-icon">💬</div>
-                <div>
-                  <strong>Chat y videollamadas</strong>
-                  <span>Comunicación directa entre dueño, paseador y hotel.</span>
-                </div>
-              </div>
+    if(!email || !password) return setStatus("Escribe correo y contraseña.");
+    if(password.length < 6) return setStatus("La contraseña debe tener al menos 6 caracteres.");
 
-              <div class="side-item">
-                <div class="side-icon">🏨</div>
-                <div>
-                  <strong>Hoteles caninos</strong>
-                  <span>Perfiles, tarifas, check-in y reservas flexibles.</span>
-                </div>
-              </div>
+    userEmail = email;
+    userPassword = password;
+    otpVerified = false;
+    setStatus("Enviando código...");
 
-              <div class="side-item">
-                <div class="side-icon">🔔</div>
-                <div>
-                  <strong>Notificaciones</strong>
-                  <span>Avisos de ofertas, estados del paseo y actividad importante.</span>
-                </div>
-              </div>
-
-              <div class="side-item">
-                <div class="side-icon">💳</div>
-                <div>
-                  <strong>Créditos</strong>
-                  <span>Flujo para compras, comprobantes y control de saldo.</span>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          <div class="main-panel">
-            <div class="panel-col">
-              <div class="ui-card map-card">
-                <div class="card-top">
-                  <div>
-                    <div class="card-title">Panel de seguimiento</div>
-                    <div class="card-sub">Vista tipo app en tiempo real</div>
-                  </div>
-                  <div class="mini-chip">Servicio activo</div>
-                </div>
-
-                <div class="map-area">
-                  <span class="map-pin pin-a">📍</span>
-                  <span class="map-pin pin-b">🚶</span>
-                  <span class="map-pin pin-c">🐕</span>
-                  <span class="map-pin pin-d">🏨</span>
-                  <span class="map-pin pin-e">📣</span>
-                </div>
-              </div>
-
-              <div class="metrics">
-                <div class="metric">
-                  <strong>4.9★</strong>
-                  <span>Promedio visual de confianza y experiencia del servicio.</span>
-                </div>
-                <div class="metric">
-                  <strong>Live</strong>
-                  <span>Ubicación y actividad visibles mientras el paseo está en curso.</span>
-                </div>
-                <div class="metric">
-                  <strong>24/7</strong>
-                  <span>Comunicación constante entre las partes durante el servicio.</span>
-                </div>
-              </div>
-
-              <div class="ui-card stack-card">
-                <div class="card-top">
-                  <div>
-                    <div class="card-title">Funciones clave</div>
-                    <div class="card-sub">Experiencia completa de la plataforma</div>
-                  </div>
-                </div>
-
-                <div class="stack-list">
-                  <div class="stack-row">
-                    <div class="stack-bullet">🐶</div>
-                    <div>
-                      <strong>Perfil del perro</strong>
-                      <span>Foto, tamaño, personalidad, comportamiento y recomendaciones.</span>
-                    </div>
-                  </div>
-
-                  <div class="stack-row">
-                    <div class="stack-bullet">📨</div>
-                    <div>
-                      <strong>Solicitudes y ofertas</strong>
-                      <span>Publicación de paseo, propuestas y aceptación del servicio.</span>
-                    </div>
-                  </div>
-
-                  <div class="stack-row">
-                    <div class="stack-bullet">🔐</div>
-                    <div>
-                      <strong>Verificación y seguridad</strong>
-                      <span>Identidad, confianza y experiencia visual más seria.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="panel-col">
-              <div class="ui-card notif-card">
-                <div class="card-top">
-                  <div>
-                    <div class="card-title">Centro de notificaciones</div>
-                    <div class="card-sub">Alertas y novedades del servicio</div>
-                  </div>
-                </div>
-
-                <div class="notif-list">
-                  <div class="notif">
-                    <div>🔔</div>
-                    <div>
-                      <strong>Nueva oferta recibida</strong>
-                      <span>Un paseador respondió a tu solicitud con una nueva tarifa.</span>
-                    </div>
-                  </div>
-
-                  <div class="notif">
-                    <div>📍</div>
-                    <div>
-                      <strong>Paseo en curso</strong>
-                      <span>La ubicación del servicio se actualiza en tiempo real.</span>
-                    </div>
-                  </div>
-
-                  <div class="notif">
-                    <div>🏨</div>
-                    <div>
-                      <strong>Hotel disponible</strong>
-                      <span>Se encontró una opción de hospedaje compatible con tu búsqueda.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="ui-card wallet-card">
-                <div class="card-top">
-                  <div>
-                    <div class="card-title">Créditos y órdenes</div>
-                    <div class="card-sub">Control visual del flujo operativo</div>
-                  </div>
-                </div>
-
-                <div class="wallet-amount">S/ 120</div>
-                <div class="wallet-sub">Saldo de referencia para solicitudes, ofertas y movimientos de operación dentro de la plataforma.</div>
-
-                <div class="wallet-actions">
-                  <div class="mini-btn">Comprar créditos</div>
-                  <div class="mini-btn">Ver órdenes</div>
-                </div>
-              </div>
-
-              <div class="ui-card stack-card">
-                <div class="card-top">
-                  <div>
-                    <div class="card-title">Comunicación directa</div>
-                    <div class="card-sub">Interacción dentro del servicio</div>
-                  </div>
-                </div>
-
-                <div class="stack-list">
-                  <div class="stack-row">
-                    <div class="stack-bullet">💬</div>
-                    <div>
-                      <strong>Chat activo</strong>
-                      <span>Mensajes directos mientras el servicio está en curso.</span>
-                    </div>
-                  </div>
-
-                  <div class="stack-row">
-                    <div class="stack-bullet">📞</div>
-                    <div>
-                      <strong>Llamadas</strong>
-                      <span>Comunicación inmediata sin salir de la plataforma.</span>
-                    </div>
-                  </div>
-
-                  <div class="stack-row">
-                    <div class="stack-bullet">🎥</div>
-                    <div>
-                      <strong>Videollamada</strong>
-                      <span>Más confianza y contacto visual entre usuario y proveedor.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="feature-strip">
-      <div class="container feature-grid">
-        <div class="feature">
-          <strong>GPS</strong>
-          <span>Seguimiento en vivo durante el paseo o servicio.</span>
-        </div>
-        <div class="feature">
-          <strong>Chat</strong>
-          <span>Comunicación directa con paseadores y hoteles.</span>
-        </div>
-        <div class="feature">
-          <strong>Video</strong>
-          <span>Llamadas y videollamadas dentro de la plataforma.</span>
-        </div>
-        <div class="feature">
-          <strong>Hotel</strong>
-          <span>Reservas por horas, días o semanas para tu perro.</span>
-        </div>
-      </div>
-    </section>
-
-    <section id="servicios" class="block">
-      <div class="container">
-        <div class="section-head">
-          <h2>Servicios pensados para una marca seria</h2>
-          <p>LADRAME debe sentirse como una plataforma real para cuidado canino, con identidad, claridad y confianza.</p>
-        </div>
-
-        <div class="cards">
-          <div class="card">
-            <div class="icon-box">🐕</div>
-            <h3>Paseos</h3>
-            <p>Publica solicitudes, recibe ofertas y elige la mejor opción para tu perro con una experiencia más ordenada.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">🏨</div>
-            <h3>Hospedaje</h3>
-            <p>Encuentra hoteles caninos y administra estadías por horas, días o semanas de forma simple.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">📍</div>
-            <h3>Seguimiento</h3>
-            <p>Ve la ubicación del servicio y acompaña el recorrido con una experiencia más tranquila.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">💬</div>
-            <h3>Comunicación</h3>
-            <p>Conecta por chat, llamada y videollamada sin salir de la app.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">📸</div>
-            <h3>Actualizaciones</h3>
-            <p>Recibe fotos y novedades del estado de tu perro durante el servicio.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">🪪</div>
-            <h3>Confianza</h3>
-            <p>Usuarios verificados, perfiles más claros y una experiencia que se siente mucho más profesional.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="como" class="block">
-      <div class="container">
-        <div class="section-head">
-          <h2>Cómo funciona</h2>
-          <p>La web presenta el producto; la app ejecuta toda la experiencia real.</p>
-        </div>
-
-        <div class="steps">
-          <div class="step">
-            <div class="step-num">1</div>
-            <h3>Crea tu cuenta</h3>
-            <p>Regístrate como dueño, paseador o proveedor de hospedaje.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <h3>Publica o responde</h3>
-            <p>Solicita un paseo, responde una oferta o administra una reserva.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">3</div>
-            <h3>Confirma y conecta</h3>
-            <p>Revisa perfiles, elige la mejor opción y mantén comunicación directa.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">4</div>
-            <h3>Sigue todo en vivo</h3>
-            <p>Acompaña el servicio con mapa, notificaciones y actualizaciones.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="confianza" class="block">
-      <div class="container">
-        <div class="section-head">
-          <h2>Más tranquilidad en cada servicio</h2>
-          <p>Tu perro no es un detalle. La experiencia debe transmitir cuidado, control y confianza real.</p>
-        </div>
-
-        <div class="cards">
-          <div class="card">
-            <div class="icon-box">⭐</div>
-            <h3>Calificaciones</h3>
-            <p>Consulta comentarios y valoraciones antes de elegir.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">🐶</div>
-            <h3>Perfil del perro</h3>
-            <p>Guarda tamaño, personalidad, comportamiento y recomendaciones importantes.</p>
-          </div>
-          <div class="card">
-            <div class="icon-box">🔐</div>
-            <h3>Experiencia segura</h3>
-            <p>Más claridad, mejor comunicación y una plataforma visualmente más sólida.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="block">
-      <div class="container">
-        <div class="cta">
-          <h2>Explora la experiencia completa en la app</h2>
-          <p>La web presenta la marca y las funciones. La experiencia completa vive en la app de LADRAME, con mapa, solicitudes, chat, videollamadas, hoteles y notificaciones.</p>
-          <div class="cta-actions">
-            <a href="/app/" class="btn btn-primary">Abrir app</a>
-            <a href="/app/" class="btn btn-secondary">Crear cuenta</a>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="container">© LADRAME — Paseos, cuidado y hospedaje para perros.</div>
-  </footer>
-
-  <script>
-    const splash = document.getElementById("splash");
-    const barkAudio = document.getElementById("barkAudio");
-    let barkPlayed = false;
-
-    function playBarkOnce() {
-      if (barkPlayed || !barkAudio) return;
-      barkPlayed = true;
-      barkAudio.volume = 0.24;
-      barkAudio.play().catch(() => {
-        barkPlayed = false;
-      });
-    }
-
-    window.addEventListener("load", () => {
-      setTimeout(() => { playBarkOnce(); }, 450);
-      setTimeout(() => { splash.classList.add("hide"); }, 1700);
+    const res = await fetch(SEND_OTP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      body: JSON.stringify({ email })
     });
 
-    document.addEventListener("click", playBarkOnce, { once:true });
-    document.addEventListener("touchstart", playBarkOnce, { once:true });
-  </script>
+    const data = await readJsonSafe(res);
+    if(!res.ok || data.success === false){
+      alert(data.error || "No se pudo enviar el código");
+      return;
+    }
+
+    setStatus("Código enviado. Revisa tu correo.");
+    setStep(2);
+  });
+
+  $("btnVerifyOtp").addEventListener("click", async () => {
+    const code = $("code").value.trim();
+    if(!userEmail) return setStatus("Primero envía el código.");
+    if(!code) return setStatus("Escribe el código OTP.");
+
+    setStatus("Verificando código...");
+
+    const res = await fetch(VERIFY_OTP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      body: JSON.stringify({ email: userEmail, code })
+    });
+
+    const data = await readJsonSafe(res);
+    if(!res.ok || !data.success){
+      alert(data.error || "Código inválido");
+      return;
+    }
+
+    otpVerified = true;
+    setStatus("Código verificado. Ahora completa tus datos.");
+    setStep(3);
+  });
+
+  $("btnBack1").addEventListener("click", () => setStep(1));
+
+  $("btnOpenSelfie").addEventListener("click", async () => {
+    try{
+      stopStream(selfieStream);
+      selfieStream = await openCamera($("selfieVideo"), "user");
+      setStatus("Cámara selfie abierta.");
+    }catch(e){
+      alert("No se pudo abrir la cámara selfie. Usa HTTPS.");
+    }
+  });
+
+  $("btnTakeSelfie").addEventListener("click", () => {
+    selfieBase64 = capture($("selfieVideo"), $("selfiePreview"));
+    stopStream(selfieStream);
+    setStatus("Selfie capturada.");
+  });
+
+  $("btnOpenDni").addEventListener("click", async () => {
+    try{
+      stopStream(dniStream);
+      dniStream = await openCamera($("dniVideo"), "environment");
+      setStatus("Cámara DNI abierta.");
+    }catch(e){
+      alert("No se pudo abrir la cámara DNI. Usa HTTPS.");
+    }
+  });
+
+  $("btnTakeDni").addEventListener("click", () => {
+    dniBase64 = capture($("dniVideo"), $("dniPreview"));
+    stopStream(dniStream);
+    setStatus("Foto del DNI capturada.");
+  });
+
+  $("btnCreate").addEventListener("click", async () => {
+    const name = $("name").value.trim();
+    const dni = $("dni").value.trim();
+    const roleMode = $("roleMode").value;
+
+    if(!otpVerified) return setStatus("Primero verifica el código.");
+    if(!name || !dni) return setStatus("Completa nombre y DNI.");
+    if(!selfieBase64) return setStatus("Primero toma la selfie.");
+    if(!dniBase64) return setStatus("Primero toma la foto del DNI.");
+
+    setStatus("Creando cuenta final...");
+
+    const res = await fetch(CREATE_ACCOUNT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        email: userEmail,
+        password: userPassword,
+        name,
+        dni,
+        role_mode: roleMode,
+        selfie_base64: selfieBase64,
+        dni_base64: dniBase64
+      })
+    });
+
+    const data = await readJsonSafe(res);
+    if(!res.ok || !data.success){
+      alert(data.error || "No se pudo crear la cuenta");
+      return;
+    }
+
+    const login = await supabaseClient.auth.signInWithPassword({
+      email: userEmail,
+      password: userPassword
+    });
+
+    if(login.error){
+      alert(login.error.message);
+      return;
+    }
+
+    const user = login.data.user;
+    $("userEmail").textContent = user.email || userEmail;
+
+    const { data: bal } = await supabaseClient
+      .from("provider_wallet_balances")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    $("credits").textContent = bal?.balance ?? 0;
+    $("roleInfo").textContent =
+      roleMode === "both" ? "Modo activo: dueño y paseador" :
+      roleMode === "walker" ? "Modo activo: paseador" :
+      "Modo activo: dueño";
+
+    setStatus("Cuenta creada correctamente.");
+    showHome();
+  });
+})();
+</script>
 </body>
 </html>
