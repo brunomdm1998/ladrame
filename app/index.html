@@ -28,22 +28,23 @@
 
 <video id="video" autoplay style="width:100%"></video><br>
 <button onclick="abrirCamara()">Abrir cámara</button>
-<button onclick="tomarFoto()">Tomar foto</button><br><br>
+<button onclick="tomarFoto()">Tomar selfie / DNI</button><br><br>
 
 <button onclick="crearCuenta()">FINALIZAR</button>
 
 <script>
 const supabase = window.supabase.createClient(
   "https://dnxiaronekfbbwqzslon.supabase.co",
-  "TU_ANON_KEY"
+  "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 );
 
 let selfie = "";
-let dni = "";
+let dniFoto = "";
 
 async function enviarOTP(){
   await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-otp",{
     method:"POST",
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify({email:email.value})
   });
   alert("OTP enviado");
@@ -52,6 +53,7 @@ async function enviarOTP(){
 async function verificarOTP(){
   await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/verify-otp",{
     method:"POST",
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify({email:email.value,code:code.value})
   });
   alert("Verificado");
@@ -68,13 +70,23 @@ function tomarFoto(){
   canvas.height = video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
 
-  if(!selfie) selfie = canvas.toDataURL("image/jpeg");
-  else dni = canvas.toDataURL("image/jpeg");
+  const foto = canvas.toDataURL("image/jpeg");
 
-  alert("Foto tomada");
+  if(!selfie){
+    selfie = foto;
+    alert("Selfie tomada");
+  } else {
+    dniFoto = foto;
+    alert("DNI tomado");
+  }
 }
 
 async function crearCuenta(){
+
+  if(!selfie || !dniFoto){
+    alert("Falta selfie o DNI");
+    return;
+  }
 
   await fetch("https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/create-account-full",{
     method:"POST",
@@ -86,7 +98,7 @@ async function crearCuenta(){
       dni:dni.value,
       role_mode:role.value,
       selfie_base64:selfie,
-      dni_base64:dni
+      dni_base64:dniFoto
     })
   });
 
