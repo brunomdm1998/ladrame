@@ -1,456 +1,201 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LADRAME Registro por pasos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LADRAME</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-  :root{
-    --orange:#ff6b00;
-    --orange2:#ff944d;
-    --bg:#f3f5f9;
-    --card:#ffffff;
-    --text:#1f2937;
-    --muted:#6b7280;
-    --line:#e5e7eb;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    font-family:Arial,Helvetica,sans-serif;
-    background:linear-gradient(180deg,#fff7f1 0%,#f3f5f9 100%);
-    color:var(--text);
-  }
-  .wrap{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  }
-  .card{
-    width:100%;
-    max-width:460px;
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:28px;
-    box-shadow:0 18px 46px rgba(0,0,0,.08);
-    overflow:hidden;
-  }
-  .top{
-    padding:24px 24px 12px;
-    background:linear-gradient(180deg,#fff 0%,#fff8f3 100%);
-    border-bottom:1px solid var(--line);
-  }
-  .brand{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    font-size:30px;
-    font-weight:900;
-    color:var(--orange);
-  }
-  .logo{
-    width:56px;height:56px;border-radius:16px;
-    display:grid;place-items:center;
-    background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;font-size:26px;
-  }
-  .stepbar{display:flex;gap:8px;margin-top:16px}
-  .dot{flex:1;height:10px;border-radius:999px;background:#eceff4}
-  .dot.active{background:linear-gradient(90deg,var(--orange),var(--orange2))}
-  .content{padding:24px}
-  .screen{display:none}
-  .screen.active{display:block}
-  h2{margin:0 0 8px;font-size:30px}
-  .subtitle{margin:0 0 18px;color:var(--muted);line-height:1.5;font-size:14px}
-  .field{margin-bottom:12px}
-  .label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}
-  .input,.select{
-    width:100%;
-    padding:14px 15px;
-    border-radius:14px;
-    border:1px solid var(--line);
-    font-size:15px;
-    outline:none;
-    background:#fff;
-  }
-  .btn{
-    width:100%;
-    border:none;
-    border-radius:16px;
-    padding:15px 16px;
-    font-size:15px;
-    font-weight:900;
-    cursor:pointer;
-    margin-top:6px;
-    background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;
-  }
-  .btn.secondary{
-    background:#f3f4f6;
-    color:#111827;
-    border:1px solid var(--line);
-  }
-  .msg{
-    margin:0 0 14px;
-    padding:13px 14px;
-    border-radius:14px;
-    font-size:14px;
-    font-weight:700;
-    white-space:pre-wrap;
-    background:#eef5ff;
-    color:#2859b3;
-  }
-  video,img{
-    width:100%;
-    border-radius:18px;
-    background:#111;
-    margin-top:10px;
-  }
-  .preview{display:none}
-  .preview.show{display:block}
-  .homeCard{
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:16px;
-    margin-top:10px;
-  }
+body{
+  margin:0;
+  font-family:Arial;
+  background:#f3f5f9;
+}
+
+.container{
+  max-width:420px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:white;
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.08);
+}
+
+.title{
+  font-size:26px;
+  font-weight:bold;
+  color:#ff6b00;
+}
+
+.mode-switch{
+  display:flex;
+  gap:10px;
+  margin-top:15px;
+}
+
+.mode-btn{
+  flex:1;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.active{
+  background:#ff6b00;
+  color:white;
+}
+
+.inactive{
+  background:#eee;
+}
+
+.button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#ff6b00;
+  color:white;
+  font-weight:bold;
+  margin-top:10px;
+}
+
+.map{
+  height:250px;
+  background:#ddd;
+  border-radius:15px;
+  margin-top:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
 </style>
+
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div class="top">
-      <div class="brand">
-        <div class="logo">🐶</div>
-        <div>LADRAME</div>
-      </div>
-      <div class="stepbar">
-        <div class="dot active" id="dot1"></div>
-        <div class="dot" id="dot2"></div>
-        <div class="dot" id="dot3"></div>
-      </div>
-    </div>
 
-    <div class="content">
-      <div id="statusBox" class="msg">Estado: listo</div>
+<div class="container">
 
-      <section id="screen1" class="screen active">
-        <h2>Paso 1</h2>
-        <p class="subtitle">Primero ingresa tu correo y tu contraseña. Luego te mandamos el OTP al correo.</p>
+<div class="card">
+<div class="title">🐶 LADRAME</div>
 
-        <div class="field">
-          <label class="label">Correo</label>
-          <input id="email" class="input" type="email" placeholder="tucorreo@gmail.com">
-        </div>
+<div id="userInfo"></div>
 
-        <div class="field">
-          <label class="label">Contraseña</label>
-          <input id="password" class="input" type="password" placeholder="Mínimo 6 caracteres">
-        </div>
+<div id="modeSwitch" class="mode-switch"></div>
 
-        <button id="btnSendOtp" class="btn" type="button">Enviar código</button>
-      </section>
+<div id="content"></div>
 
-      <section id="screen2" class="screen">
-        <h2>Paso 2</h2>
-        <p class="subtitle">Escribe el último código de 8 dígitos que llegó a tu correo.</p>
+</div>
 
-        <div class="field">
-          <label class="label">Código OTP</label>
-          <input id="code" class="input" placeholder="8 dígitos">
-        </div>
-
-        <button id="btnVerifyOtp" class="btn" type="button">Verificar código</button>
-        <button id="btnBack1" class="btn secondary" type="button">Volver</button>
-      </section>
-
-      <section id="screen3" class="screen">
-        <h2>Paso 3</h2>
-        <p class="subtitle">Ahora sí completa tus datos, tómate la selfie con cámara y la foto del DNI con cámara.</p>
-
-        <div class="field">
-          <label class="label">Nombre completo</label>
-          <input id="name" class="input" placeholder="Nombre completo">
-        </div>
-
-        <div class="field">
-          <label class="label">Número de DNI</label>
-          <input id="dni" class="input" placeholder="Número de DNI">
-        </div>
-
-        <div class="field">
-          <label class="label">Modo inicial</label>
-          <select id="roleMode" class="select">
-            <option value="owner">Solo dueño</option>
-            <option value="walker">Solo paseador</option>
-            <option value="both">Dueño y paseador</option>
-          </select>
-        </div>
-
-        <div class="homeCard">
-          <strong>Selfie obligatoria</strong>
-          <video id="selfieVideo" autoplay playsinline muted></video>
-          <img id="selfiePreview" class="preview" alt="Selfie capturada">
-          <button id="btnOpenSelfie" class="btn secondary" type="button">Abrir cámara selfie</button>
-          <button id="btnTakeSelfie" class="btn secondary" type="button">Tomar selfie</button>
-        </div>
-
-        <div class="homeCard">
-          <strong>Foto de DNI obligatoria</strong>
-          <video id="dniVideo" autoplay playsinline muted></video>
-          <img id="dniPreview" class="preview" alt="DNI capturado">
-          <button id="btnOpenDni" class="btn secondary" type="button">Abrir cámara DNI</button>
-          <button id="btnTakeDni" class="btn secondary" type="button">Tomar foto DNI</button>
-        </div>
-
-        <button id="btnCreate" class="btn" type="button">Finalizar registro</button>
-      </section>
-
-      <section id="homeScreen" class="screen">
-        <h2>Bienvenido</h2>
-        <p class="subtitle">Tu cuenta ya quedó creada correctamente.</p>
-        <div class="homeCard">
-          <div><strong id="userEmail">-</strong></div>
-          <div style="margin-top:10px">Créditos: <strong id="credits">0</strong></div>
-          <div style="margin-top:10px" id="roleInfo">-</div>
-        </div>
-      </section>
-    </div>
-  </div>
 </div>
 
 <script>
-(() => {
-  const SUPABASE_URL = "https://dnxiaronekfbbwqzslon.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0";
-  const SEND_OTP_URL = `${SUPABASE_URL}/functions/v1/send-otp`;
-  const VERIFY_OTP_URL = `${SUPABASE_URL}/functions/v1/verify-otp`;
-  const CREATE_ACCOUNT_URL = `${SUPABASE_URL}/functions/v1/create-account-full`;
+const supabase = window.supabase.createClient(
+  "https://dnxiaronekfbbwqzslon.supabase.co",
+  "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+);
 
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentMode = "owner";
+let userData = null;
 
-  let userEmail = "";
-  let userPassword = "";
-  let otpVerified = false;
-  let selfieBase64 = "";
-  let dniBase64 = "";
-  let selfieStream = null;
-  let dniStream = null;
+init();
 
-  const $ = (id) => document.getElementById(id);
+async function init(){
 
-  function setStatus(text){
-    $("statusBox").textContent = text;
+  const { data:{ session } } = await supabase.auth.getSession();
+
+  if(!session){
+    document.body.innerHTML = "<h2 style='text-align:center'>No hay sesión</h2>";
+    return;
   }
 
-  function setStep(step){
-    ["screen1","screen2","screen3","homeScreen"].forEach(id => $(id).classList.remove("active"));
-    if ($(`screen${step}`)) $(`screen${step}`).classList.add("active");
-    $("dot1").classList.toggle("active", step >= 1);
-    $("dot2").classList.toggle("active", step >= 2);
-    $("dot3").classList.toggle("active", step >= 3);
+  const user = session.user;
+
+  const { data } = await supabase
+  .from("users")
+  .select("*")
+  .eq("id", user.id)
+  .single();
+
+  userData = data;
+
+  renderUser();
+  renderModes();
+  renderContent();
+}
+
+function renderUser(){
+  document.getElementById("userInfo").innerHTML = `
+    <p><b>${userData.email}</b></p>
+    <p>Créditos: ${userData.balance || 0}</p>
+  `;
+}
+
+function renderModes(){
+
+  let html = "";
+
+  if(userData.owner_enabled){
+    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}"
+    onclick="changeMode('owner')">Dueño</button>`;
   }
 
-  function showHome(){
-    ["screen1","screen2","screen3","homeScreen"].forEach(id => $(id).classList.remove("active"));
-    $("homeScreen").classList.add("active");
-    $("dot1").classList.add("active");
-    $("dot2").classList.add("active");
-    $("dot3").classList.add("active");
+  if(userData.walker_enabled){
+    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}"
+    onclick="changeMode('walker')">Paseador</button>`;
   }
 
-  async function readJsonSafe(res){
-    const text = await res.text();
-    try { return text ? JSON.parse(text) : {}; } catch { return { raw:text }; }
+  document.getElementById("modeSwitch").innerHTML = html;
+}
+
+function changeMode(mode){
+  currentMode = mode;
+  renderModes();
+  renderContent();
+}
+
+function renderContent(){
+
+  if(currentMode==="owner"){
+    renderOwner();
+  } else {
+    renderWalker();
   }
+}
 
-  async function openCamera(videoEl, facingMode){
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode },
-      audio: false
-    });
-    videoEl.srcObject = stream;
-    return stream;
-  }
+function renderOwner(){
+  document.getElementById("content").innerHTML = `
+    <h3>Modo Dueño</h3>
 
-  function stopStream(stream){
-    if(stream) stream.getTracks().forEach(track => track.stop());
-  }
+    <div class="map">Mapa (dueño)</div>
 
-  function capture(videoEl, imgEl){
-    const canvas = document.createElement("canvas");
-    canvas.width = videoEl.videoWidth || 720;
-    canvas.height = videoEl.videoHeight || 1280;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-    const base64 = canvas.toDataURL("image/jpeg", 0.92);
-    imgEl.src = base64;
-    imgEl.classList.add("show");
-    return base64;
-  }
+    <button class="button">Pedir paseo</button>
+    <button class="button">Buscar hotel</button>
+    <button class="button">Mis solicitudes</button>
+  `;
+}
 
-  $("btnSendOtp").addEventListener("click", async () => {
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
+function renderWalker(){
+  document.getElementById("content").innerHTML = `
+    <h3>Modo Paseador</h3>
 
-    if(!email || !password) return setStatus("Escribe correo y contraseña.");
-    if(password.length < 6) return setStatus("La contraseña debe tener al menos 6 caracteres.");
+    <div class="map">Mapa (paseador)</div>
 
-    userEmail = email;
-    userPassword = password;
-    otpVerified = false;
-    setStatus("Enviando código...");
-
-    const res = await fetch(SEND_OTP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type":"application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify({ email })
-    });
-
-    const data = await readJsonSafe(res);
-    if(!res.ok || data.success === false){
-      alert(data.error || "No se pudo enviar el código");
-      return;
-    }
-
-    setStatus("Código enviado. Revisa tu correo.");
-    setStep(2);
-  });
-
-  $("btnVerifyOtp").addEventListener("click", async () => {
-    const code = $("code").value.trim();
-    if(!userEmail) return setStatus("Primero envía el código.");
-    if(!code) return setStatus("Escribe el código OTP.");
-
-    setStatus("Verificando código...");
-
-    const res = await fetch(VERIFY_OTP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type":"application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify({ email: userEmail, code })
-    });
-
-    const data = await readJsonSafe(res);
-    if(!res.ok || !data.success){
-      alert(data.error || "Código inválido");
-      return;
-    }
-
-    otpVerified = true;
-    setStatus("Código verificado. Ahora completa tus datos.");
-    setStep(3);
-  });
-
-  $("btnBack1").addEventListener("click", () => setStep(1));
-
-  $("btnOpenSelfie").addEventListener("click", async () => {
-    try{
-      stopStream(selfieStream);
-      selfieStream = await openCamera($("selfieVideo"), "user");
-      setStatus("Cámara selfie abierta.");
-    }catch(e){
-      alert("No se pudo abrir la cámara selfie. Usa HTTPS.");
-    }
-  });
-
-  $("btnTakeSelfie").addEventListener("click", () => {
-    selfieBase64 = capture($("selfieVideo"), $("selfiePreview"));
-    stopStream(selfieStream);
-    setStatus("Selfie capturada.");
-  });
-
-  $("btnOpenDni").addEventListener("click", async () => {
-    try{
-      stopStream(dniStream);
-      dniStream = await openCamera($("dniVideo"), "environment");
-      setStatus("Cámara DNI abierta.");
-    }catch(e){
-      alert("No se pudo abrir la cámara DNI. Usa HTTPS.");
-    }
-  });
-
-  $("btnTakeDni").addEventListener("click", () => {
-    dniBase64 = capture($("dniVideo"), $("dniPreview"));
-    stopStream(dniStream);
-    setStatus("Foto del DNI capturada.");
-  });
-
-  $("btnCreate").addEventListener("click", async () => {
-    const name = $("name").value.trim();
-    const dni = $("dni").value.trim();
-    const roleMode = $("roleMode").value;
-
-    if(!otpVerified) return setStatus("Primero verifica el código.");
-    if(!name || !dni) return setStatus("Completa nombre y DNI.");
-    if(!selfieBase64) return setStatus("Primero toma la selfie.");
-    if(!dniBase64) return setStatus("Primero toma la foto del DNI.");
-
-    setStatus("Creando cuenta final...");
-
-    const res = await fetch(CREATE_ACCOUNT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type":"application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify({
-        email: userEmail,
-        password: userPassword,
-        name,
-        dni,
-        role_mode: roleMode,
-        selfie_base64: selfieBase64,
-        dni_base64: dniBase64
-      })
-    });
-
-    const data = await readJsonSafe(res);
-    if(!res.ok || !data.success){
-      alert(data.error || "No se pudo crear la cuenta");
-      return;
-    }
-
-    const login = await supabaseClient.auth.signInWithPassword({
-      email: userEmail,
-      password: userPassword
-    });
-
-    if(login.error){
-      alert(login.error.message);
-      return;
-    }
-
-    const user = login.data.user;
-    $("userEmail").textContent = user.email || userEmail;
-
-    const { data: bal } = await supabaseClient
-      .from("provider_wallet_balances")
-      .select("balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    $("credits").textContent = bal?.balance ?? 0;
-    $("roleInfo").textContent =
-      roleMode === "both" ? "Modo activo: dueño y paseador" :
-      roleMode === "walker" ? "Modo activo: paseador" :
-      "Modo activo: dueño";
-
-    setStatus("Cuenta creada correctamente.");
-    showHome();
-  });
-})();
+    <button class="button">Ver solicitudes cercanas</button>
+    <button class="button">Mis ofertas</button>
+    <button class="button">Mis ganancias</button>
+  `;
+}
 </script>
+
 </body>
 </html>
