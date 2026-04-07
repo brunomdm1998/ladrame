@@ -31,30 +31,15 @@ body{
   font-size:26px;
   font-weight:bold;
   color:#ff6b00;
+  text-align:center;
 }
 
-.mode-switch{
-  display:flex;
-  gap:10px;
-  margin-top:15px;
-}
-
-.mode-btn{
-  flex:1;
-  padding:10px;
+.input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
   border-radius:10px;
-  border:none;
-  cursor:pointer;
-  font-weight:bold;
-}
-
-.active{
-  background:#ff6b00;
-  color:white;
-}
-
-.inactive{
-  background:#eee;
+  border:1px solid #ccc;
 }
 
 .button{
@@ -68,6 +53,29 @@ body{
   margin-top:10px;
 }
 
+.mode-switch{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+
+.mode-btn{
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+.active{
+  background:#ff6b00;
+  color:white;
+}
+
+.inactive{
+  background:#eee;
+}
+
 .map{
   height:250px;
   background:#ddd;
@@ -76,8 +84,8 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight:bold;
 }
+
 </style>
 
 </head>
@@ -85,7 +93,16 @@ body{
 
 <div class="container">
 
-<div class="card">
+<div id="loginScreen" class="card">
+<div class="title">🐶 LADRAME</div>
+
+<input id="email" class="input" placeholder="Correo">
+<input id="password" class="input" type="password" placeholder="Contraseña">
+
+<button class="button" onclick="login()">Entrar</button>
+</div>
+
+<div id="homeScreen" class="card" style="display:none;">
 <div class="title">🐶 LADRAME</div>
 
 <div id="userInfo"></div>
@@ -93,6 +110,8 @@ body{
 <div id="modeSwitch" class="mode-switch"></div>
 
 <div id="content"></div>
+
+<button class="button" onclick="logout()">Cerrar sesión</button>
 
 </div>
 
@@ -104,8 +123,8 @@ const supabase = window.supabase.createClient(
   "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 );
 
-let currentMode = "owner";
 let userData = null;
+let currentMode = "owner";
 
 init();
 
@@ -113,20 +132,38 @@ async function init(){
 
   const { data:{ session } } = await supabase.auth.getSession();
 
-  if(!session){
-    document.body.innerHTML = "<h2 style='text-align:center'>No hay sesión</h2>";
+  if(session){
+    loadUser(session.user.id);
+  }
+}
+
+async function login(){
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email:email.value,
+    password:password.value
+  });
+
+  if(error){
+    alert(error.message);
     return;
   }
 
-  const user = session.user;
+  loadUser(data.user.id);
+}
+
+async function loadUser(userId){
 
   const { data } = await supabase
   .from("users")
   .select("*")
-  .eq("id", user.id)
+  .eq("id", userId)
   .single();
 
   userData = data;
+
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("homeScreen").style.display = "block";
 
   renderUser();
   renderModes();
@@ -136,7 +173,6 @@ async function init(){
 function renderUser(){
   document.getElementById("userInfo").innerHTML = `
     <p><b>${userData.email}</b></p>
-    <p>Créditos: ${userData.balance || 0}</p>
   `;
 }
 
@@ -166,34 +202,23 @@ function changeMode(mode){
 function renderContent(){
 
   if(currentMode==="owner"){
-    renderOwner();
+    document.getElementById("content").innerHTML = `
+      <h3>Modo Dueño</h3>
+      <div class="map">Mapa dueño</div>
+      <button class="button">Pedir paseo</button>
+    `;
   } else {
-    renderWalker();
+    document.getElementById("content").innerHTML = `
+      <h3>Modo Paseador</h3>
+      <div class="map">Mapa paseador</div>
+      <button class="button">Ver solicitudes</button>
+    `;
   }
 }
 
-function renderOwner(){
-  document.getElementById("content").innerHTML = `
-    <h3>Modo Dueño</h3>
-
-    <div class="map">Mapa (dueño)</div>
-
-    <button class="button">Pedir paseo</button>
-    <button class="button">Buscar hotel</button>
-    <button class="button">Mis solicitudes</button>
-  `;
-}
-
-function renderWalker(){
-  document.getElementById("content").innerHTML = `
-    <h3>Modo Paseador</h3>
-
-    <div class="map">Mapa (paseador)</div>
-
-    <button class="button">Ver solicitudes cercanas</button>
-    <button class="button">Mis ofertas</button>
-    <button class="button">Mis ganancias</button>
-  `;
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
 }
 </script>
 
