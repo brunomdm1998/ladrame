@@ -4,16 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LADRAME</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body{margin:0;font-family:Arial;background:#f3f5f9}
 .container{max-width:420px;margin:auto;padding:20px;min-height:100vh;display:flex;align-items:center}
-.card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.08);width:100%}
+.card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,0.08);width:100%}
 .title{font-size:28px;font-weight:900;color:#ff6b00;display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .logo{width:46px;height:46px;border-radius:12px;background:#ff6b00;color:#fff;display:grid;place-items:center}
-.input{width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;margin-top:10px}
+.input{width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box}
 .button{width:100%;padding:14px;border:none;border-radius:14px;background:#ff6b00;color:#fff;font-weight:900;margin-top:12px;cursor:pointer}
 .button.gray{background:#e5e7eb;color:#111}
 .hidden{display:none}
@@ -22,43 +20,51 @@ body{margin:0;font-family:Arial;background:#f3f5f9}
 .active{background:#ff6b00;color:#fff}
 .inactive{background:#eee}
 .map{height:220px;background:#ddd;border-radius:16px;margin-top:15px;display:flex;align-items:center;justify-content:center;font-weight:900}
-.msg{padding:12px;border-radius:12px;margin-bottom:10px;background:#eef5ff}
+.msg{padding:12px;border-radius:12px;margin-bottom:10px;background:#eef5ff;white-space:pre-wrap}
 </style>
-
 </head>
 <body>
 
 <div class="container">
 
-<!-- LOGIN -->
-<div id="loginScreen" class="card">
-<div class="title"><div class="logo">🐶</div>LADRAME</div>
+  <div id="loginScreen" class="card">
+    <div class="title"><div class="logo">🐶</div>LADRAME</div>
 
-<div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
+    <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
 
-<input id="email" class="input" placeholder="Correo">
-<input id="password" class="input" type="password" placeholder="Contraseña">
+    <input id="email" class="input" placeholder="Correo">
+    <input id="password" class="input" type="password" placeholder="Contraseña">
 
-<button id="btnLogin" class="button">Entrar</button>
+    <button id="btnLogin" class="button" type="button">Entrar</button>
+    <button id="btnShowReset" class="button gray" type="button">Olvidé mi contraseña</button>
+  </div>
 
-<button class="button gray" onclick="resetPassword()">
-Olvidé mi contraseña
-</button>
+  <div id="resetScreen" class="card hidden">
+    <div class="title"><div class="logo">🔐</div>Recuperar</div>
 
-</div>
+    <div id="resetMsg" class="msg">Primero manda el código al correo.</div>
 
-<!-- HOME -->
-<div id="homeScreen" class="card hidden">
-<div class="title"><div class="logo">🐶</div>LADRAME</div>
+    <input id="resetEmail" class="input" placeholder="Correo">
+    <button id="btnSendResetOtp" class="button" type="button">Enviar OTP</button>
 
-<div id="userInfo"></div>
+    <input id="resetCode" class="input" placeholder="Código OTP">
+    <button id="btnVerifyResetOtp" class="button" type="button">Verificar OTP</button>
 
-<div id="modeSwitch" class="mode-switch"></div>
+    <input id="newPassword" class="input" type="password" placeholder="Nueva contraseña">
+    <button id="btnResetPassword" class="button" type="button">Guardar nueva contraseña</button>
 
-<div id="content"></div>
+    <button id="btnBackLogin" class="button gray" type="button">Volver al login</button>
+  </div>
 
-<button class="button gray" onclick="logout()">Cerrar sesión</button>
-</div>
+  <div id="homeScreen" class="card hidden">
+    <div class="title"><div class="logo">🐶</div>LADRAME</div>
+
+    <div id="userInfo"></div>
+    <div id="modeSwitch" class="mode-switch"></div>
+    <div id="content"></div>
+
+    <button id="btnLogout" class="button gray" type="button">Cerrar sesión</button>
+  </div>
 
 </div>
 
@@ -68,27 +74,54 @@ const supabaseClient = window.supabase.createClient(
   "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 );
 
+const SEND_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-otp";
+const VERIFY_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/verify-otp";
+const RESET_PASSWORD_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/reset-password-otp";
+
 let userData = null;
 let currentMode = "owner";
+let resetVerified = false;
 
 init();
 
 async function init(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
-
   if(session){
     loadUser(session.user.id);
   }
 }
 
+function showLogin(){
+  loginScreen.classList.remove("hidden");
+  resetScreen.classList.add("hidden");
+  homeScreen.classList.add("hidden");
+}
+
+function showReset(){
+  loginScreen.classList.add("hidden");
+  resetScreen.classList.remove("hidden");
+  homeScreen.classList.add("hidden");
+}
+
+function showHome(){
+  loginScreen.classList.add("hidden");
+  resetScreen.classList.add("hidden");
+  homeScreen.classList.remove("hidden");
+}
+
 document.getElementById("btnLogin").onclick = login;
+document.getElementById("btnShowReset").onclick = showReset;
+document.getElementById("btnBackLogin").onclick = showLogin;
+document.getElementById("btnSendResetOtp").onclick = sendResetOtp;
+document.getElementById("btnVerifyResetOtp").onclick = verifyResetOtp;
+document.getElementById("btnResetPassword").onclick = saveNewPassword;
 
 async function login(){
-  const email = document.getElementById("email").value.trim();
+  const email = document.getElementById("email").value.trim().toLowerCase();
   const password = document.getElementById("password").value;
 
   if(!email || !password){
-    alert("Completa correo y contraseña");
+    loginMsg.textContent = "Completa correo y contraseña";
     return;
   }
 
@@ -98,7 +131,7 @@ async function login(){
   });
 
   if(error){
-    alert("Error: " + error.message);
+    loginMsg.textContent = "Error al entrar: " + error.message;
     return;
   }
 
@@ -106,20 +139,22 @@ async function login(){
 }
 
 async function loadUser(id){
-  const { data } = await supabaseClient
-  .from("users")
-  .select("*")
-  .eq("id", id)
-  .single();
+  const { data, error } = await supabaseClient
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if(error){
+    alert(error.message);
+    return;
+  }
 
   userData = data;
-
-  document.getElementById("loginScreen").classList.add("hidden");
-  document.getElementById("homeScreen").classList.remove("hidden");
-
   renderUser();
   renderModes();
   renderContent();
+  showHome();
 }
 
 function renderUser(){
@@ -133,13 +168,11 @@ function renderModes(){
   let html = "";
 
   if(userData.owner_enabled){
-    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}"
-    onclick="changeMode('owner')">Dueño</button>`;
+    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="changeMode('owner')">Dueño</button>`;
   }
 
   if(userData.walker_enabled){
-    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}"
-    onclick="changeMode('walker')">Paseador</button>`;
+    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="changeMode('walker')">Paseador</button>`;
   }
 
   modeSwitch.innerHTML = html;
@@ -152,7 +185,6 @@ function changeMode(mode){
 }
 
 function renderContent(){
-
   if(currentMode==="owner"){
     content.innerHTML = `
       <h3>Modo Dueño</h3>
@@ -166,27 +198,102 @@ function renderContent(){
       <button class="button">Ver solicitudes</button>
     `;
   }
-
 }
 
-async function resetPassword(){
-  const email = document.getElementById("email").value.trim();
+async function sendResetOtp(){
+  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
 
   if(!email){
-    alert("Escribe tu correo primero");
+    resetMsg.textContent = "Escribe tu correo";
     return;
   }
 
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin
+  const res = await fetch(SEND_OTP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
+      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+    },
+    body: JSON.stringify({ email })
   });
 
-  if(error){
-    alert(error.message);
+  const data = await res.json().catch(() => ({}));
+
+  if(!res.ok || data.success === false){
+    resetMsg.textContent = "Error enviando OTP: " + (data.error || "Error");
     return;
   }
 
-  alert("Revisa tu correo para cambiar la contraseña");
+  resetMsg.textContent = "OTP enviado. Revisa tu correo.";
+}
+
+async function verifyResetOtp(){
+  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
+  const code = document.getElementById("resetCode").value.trim();
+
+  if(!email || !code){
+    resetMsg.textContent = "Escribe correo y código";
+    return;
+  }
+
+  const res = await fetch(VERIFY_OTP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
+      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+    },
+    body: JSON.stringify({ email, code })
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if(!res.ok || !data.success){
+    resetMsg.textContent = "Error verificando OTP: " + (data.error || "Error");
+    return;
+  }
+
+  resetVerified = true;
+  resetMsg.textContent = "OTP verificado. Ahora escribe tu nueva contraseña.";
+}
+
+async function saveNewPassword(){
+  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
+  const newPassword = document.getElementById("newPassword").value;
+
+  if(!resetVerified){
+    resetMsg.textContent = "Primero verifica el OTP";
+    return;
+  }
+
+  if(!newPassword || newPassword.length < 6){
+    resetMsg.textContent = "La nueva contraseña debe tener al menos 6 caracteres";
+    return;
+  }
+
+  const res = await fetch(RESET_PASSWORD_OTP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
+      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+    },
+    body: JSON.stringify({
+      email,
+      new_password: newPassword
+    })
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if(!res.ok || !data.success){
+    resetMsg.textContent = "Error cambiando contraseña: " + (data.error || "Error");
+    return;
+  }
+
+  resetMsg.textContent = "Contraseña cambiada correctamente. Ya puedes volver e iniciar sesión.";
+  resetVerified = false;
 }
 
 async function logout(){
