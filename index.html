@@ -4,216 +4,196 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LADRAME</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body{margin:0;font-family:Arial;background:#f3f5f9}
 .container{max-width:420px;margin:auto;padding:20px;min-height:100vh;display:flex;align-items:center}
 .card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.08);width:100%}
 .title{font-size:28px;font-weight:900;color:#ff6b00;display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .logo{width:46px;height:46px;border-radius:12px;background:#ff6b00;color:#fff;display:grid;place-items:center}
-.input{width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box}
+.input{width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;margin-top:10px}
 .button{width:100%;padding:14px;border:none;border-radius:14px;background:#ff6b00;color:#fff;font-weight:900;margin-top:12px;cursor:pointer}
-.button:disabled{opacity:.65;cursor:not-allowed}
-.msg{padding:12px 14px;border-radius:14px;font-size:14px;font-weight:700;margin-bottom:12px;background:#eef5ff;color:#2859b3;white-space:pre-wrap}
+.button.gray{background:#e5e7eb;color:#111}
 .hidden{display:none}
 .mode-switch{display:flex;gap:10px;margin-top:12px}
-.mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
+.mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900}
 .active{background:#ff6b00;color:#fff}
-.inactive{background:#eee;color:#111}
+.inactive{background:#eee}
 .map{height:220px;background:#ddd;border-radius:16px;margin-top:15px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.msg{padding:12px;border-radius:12px;margin-bottom:10px;background:#eef5ff}
 </style>
+
 </head>
 <body>
+
 <div class="container">
 
-  <div id="loginScreen" class="card">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="loginMsg" class="msg">Ingresa con tu correo y contraseña.</div>
-    <input id="email" class="input" placeholder="Correo">
-    <input id="password" class="input" type="password" placeholder="Contraseña">
-    <button id="btnLogin" class="button" type="button">Entrar</button>
-  </div>
+<!-- LOGIN -->
+<div id="loginScreen" class="card">
+<div class="title"><div class="logo">🐶</div>LADRAME</div>
 
-  <div id="homeScreen" class="card hidden">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="homeMsg" class="msg">Sesión iniciada.</div>
-    <div id="userInfo"></div>
-    <div id="modeSwitch" class="mode-switch"></div>
-    <div id="content"></div>
-    <button id="btnLogout" class="button" type="button" style="background:#e5e7eb;color:#111">Cerrar sesión</button>
-  </div>
+<div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
+
+<input id="email" class="input" placeholder="Correo">
+<input id="password" class="input" type="password" placeholder="Contraseña">
+
+<button id="btnLogin" class="button">Entrar</button>
+
+<button class="button gray" onclick="resetPassword()">
+Olvidé mi contraseña
+</button>
+
+</div>
+
+<!-- HOME -->
+<div id="homeScreen" class="card hidden">
+<div class="title"><div class="logo">🐶</div>LADRAME</div>
+
+<div id="userInfo"></div>
+
+<div id="modeSwitch" class="mode-switch"></div>
+
+<div id="content"></div>
+
+<button class="button gray" onclick="logout()">Cerrar sesión</button>
+</div>
 
 </div>
 
 <script>
-(() => {
-  const supabaseClient = window.supabase.createClient(
-    "https://dnxiaronekfbbwqzslon.supabase.co",
-    "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-  );
+const supabaseClient = window.supabase.createClient(
+  "https://dnxiaronekfbbwqzslon.supabase.co",
+  "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+);
 
-  let userData = null;
-  let currentMode = "owner";
+let userData = null;
+let currentMode = "owner";
 
-  const $ = (id) => document.getElementById(id);
+init();
 
-  function showLogin(){
-    $("loginScreen").classList.remove("hidden");
-    $("homeScreen").classList.add("hidden");
+async function init(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+
+  if(session){
+    loadUser(session.user.id);
+  }
+}
+
+document.getElementById("btnLogin").onclick = login;
+
+async function login(){
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  if(!email || !password){
+    alert("Completa correo y contraseña");
+    return;
   }
 
-  function showHome(){
-    $("loginScreen").classList.add("hidden");
-    $("homeScreen").classList.remove("hidden");
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if(error){
+    alert("Error: " + error.message);
+    return;
   }
 
-  function setLoginMsg(text){
-    $("loginMsg").textContent = text;
+  loadUser(data.user.id);
+}
+
+async function loadUser(id){
+  const { data } = await supabaseClient
+  .from("users")
+  .select("*")
+  .eq("id", id)
+  .single();
+
+  userData = data;
+
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("homeScreen").classList.remove("hidden");
+
+  renderUser();
+  renderModes();
+  renderContent();
+}
+
+function renderUser(){
+  userInfo.innerHTML = `
+    <p><b>${userData.name || "Usuario"}</b></p>
+    <p>${userData.email}</p>
+  `;
+}
+
+function renderModes(){
+  let html = "";
+
+  if(userData.owner_enabled){
+    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}"
+    onclick="changeMode('owner')">Dueño</button>`;
   }
 
-  function setHomeMsg(text){
-    $("homeMsg").textContent = text;
+  if(userData.walker_enabled){
+    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}"
+    onclick="changeMode('walker')">Paseador</button>`;
   }
 
-  function setLoading(btn, state, text){
-    if(state){
-      btn.disabled = true;
-      btn.dataset.original = btn.textContent;
-      btn.textContent = text;
-    } else {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.original || "Entrar";
-    }
-  }
+  modeSwitch.innerHTML = html;
+}
 
-  async function init(){
-    try{
-      setLoginMsg("Revisando sesión...");
-      const { data, error } = await supabaseClient.auth.getSession();
-      if(error) throw error;
+function changeMode(mode){
+  currentMode = mode;
+  renderModes();
+  renderContent();
+}
 
-      if(data?.session?.user){
-        await loadUser(data.session.user.id, true);
-      } else {
-        setLoginMsg("Ingresa con tu correo y contraseña.");
-        showLogin();
-      }
-    }catch(err){
-      console.error(err);
-      setLoginMsg("Error revisando sesión: " + err.message);
-      showLogin();
-    }
-  }
+function renderContent(){
 
-  async function login(){
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
-
-    if(!email || !password){
-      setLoginMsg("Escribe tu correo y contraseña.");
-      return;
-    }
-
-    setLoading($("btnLogin"), true, "Entrando...");
-    setLoginMsg("Iniciando sesión...");
-
-    try{
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if(error) throw error;
-      if(!data.user) throw new Error("No se recibió el usuario");
-
-      await loadUser(data.user.id, false);
-    }catch(err){
-      console.error(err);
-      setLoginMsg("Error al entrar: " + err.message);
-      showLogin();
-    }finally{
-      setLoading($("btnLogin"), false);
-    }
-  }
-
-  async function loadUser(userId, fromSession){
-    const { data, error } = await supabaseClient
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-
-    if(error) throw error;
-    if(!data) throw new Error("No se encontró el perfil del usuario");
-
-    userData = data;
-    currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
-
-    renderUser();
-    renderModes();
-    renderContent();
-    setHomeMsg(fromSession ? "Sesión restaurada." : "Sesión iniciada correctamente.");
-    showHome();
-  }
-
-  function renderUser(){
-    $("userInfo").innerHTML = `
-      <p><b>${userData.name || "Usuario"}</b></p>
-      <p><b>${userData.email}</b></p>
-      <p>DNI: ${userData.dni || "-"}</p>
+  if(currentMode==="owner"){
+    content.innerHTML = `
+      <h3>Modo Dueño</h3>
+      <div class="map">Mapa dueño</div>
+      <button class="button">Pedir paseo</button>
+    `;
+  } else {
+    content.innerHTML = `
+      <h3>Modo Paseador</h3>
+      <div class="map">Mapa paseador</div>
+      <button class="button">Ver solicitudes</button>
     `;
   }
 
-  function renderModes(){
-    let html = "";
-    if(userData.owner_enabled){
-      html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="window.__changeMode('owner')">Dueño</button>`;
-    }
-    if(userData.walker_enabled){
-      html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="window.__changeMode('walker')">Paseador</button>`;
-    }
-    $("modeSwitch").innerHTML = html;
+}
+
+async function resetPassword(){
+  const email = document.getElementById("email").value.trim();
+
+  if(!email){
+    alert("Escribe tu correo primero");
+    return;
   }
 
-  function renderContent(){
-    if(currentMode === "owner"){
-      $("content").innerHTML = `
-        <h3>Modo Dueño</h3>
-        <div class="map">Mapa dueño</div>
-        <button class="button" type="button">Pedir paseo</button>
-        <button class="button" type="button">Buscar hotel</button>
-        <button class="button" type="button">Mis solicitudes</button>
-      `;
-    } else {
-      $("content").innerHTML = `
-        <h3>Modo Paseador</h3>
-        <div class="map">Mapa paseador</div>
-        <button class="button" type="button">Ver solicitudes</button>
-        <button class="button" type="button">Mis ofertas</button>
-        <button class="button" type="button">Mis ganancias</button>
-      `;
-    }
-  }
-
-  async function logout(){
-    await supabaseClient.auth.signOut();
-    location.reload();
-  }
-
-  $("btnLogin").addEventListener("click", login);
-  $("btnLogout").addEventListener("click", logout);
-  $("password").addEventListener("keydown", (e) => {
-    if(e.key === "Enter") login();
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
   });
 
-  window.__changeMode = (mode) => {
-    currentMode = mode;
-    renderModes();
-    renderContent();
-  };
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-  init();
-})();
+  alert("Revisa tu correo para cambiar la contraseña");
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
 </script>
+
 </body>
 </html>
