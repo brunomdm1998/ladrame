@@ -7,76 +7,47 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{margin:0;font-family:Arial;background:#f3f5f9}
-.container{max-width:420px;margin:auto;padding:20px;min-height:100vh;display:flex;align-items:center}
-.card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,0.08);width:100%}
-.title{font-size:28px;font-weight:900;color:#ff6b00;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.container{max-width:430px;margin:auto;padding:20px}
+.card{background:#fff;border-radius:22px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.title{font-size:28px;font-weight:900;color:#ff6b00;display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .logo{width:46px;height:46px;border-radius:12px;background:#ff6b00;color:#fff;display:grid;place-items:center}
-.input{width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box}
+.input,.select,.textarea{width:100%;padding:13px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box}
+.textarea{min-height:90px;resize:vertical}
 .button{width:100%;padding:14px;border:none;border-radius:14px;background:#ff6b00;color:#fff;font-weight:900;margin-top:12px;cursor:pointer}
 .button.gray{background:#e5e7eb;color:#111}
 .hidden{display:none}
 .mode-switch{display:flex;gap:10px;margin-top:12px}
-.mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900}
+.mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
 .active{background:#ff6b00;color:#fff}
 .inactive{background:#eee}
-.map{height:220px;background:#ddd;border-radius:16px;margin-top:15px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.map{height:180px;background:#ddd;border-radius:16px;margin-top:14px;display:flex;align-items:center;justify-content:center;font-weight:900}
 .msg{padding:12px;border-radius:12px;margin-bottom:10px;background:#eef5ff;white-space:pre-wrap}
+.section{margin-top:18px;padding-top:14px;border-top:1px solid #eee}
+.item{border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;margin-top:8px}
+.green{background:#16a34a;color:#fff}
+.yellow{background:#eab308;color:#111}
+.red{background:#dc2626;color:#fff}
+.small{font-size:13px;color:#666;line-height:1.45}
 </style>
 </head>
 <body>
-
 <div class="container">
 
-  <!-- LOGIN -->
   <div id="loginScreen" class="card">
     <div class="title"><div class="logo">🐶</div>LADRAME</div>
     <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
-
     <input id="email" class="input" placeholder="Correo">
     <input id="password" class="input" type="password" placeholder="Contraseña">
-
     <button id="btnLogin" class="button" type="button">Entrar</button>
-    <button id="btnShowReset" class="button gray" type="button">Olvidé mi contraseña</button>
   </div>
 
-  <!-- RESET PASO 1 -->
-  <div id="resetEmailScreen" class="card hidden">
-    <div class="title"><div class="logo">🔐</div>Recuperar</div>
-    <div id="resetMsg1" class="msg">Paso 1: escribe tu correo.</div>
-
-    <input id="resetEmail" class="input" placeholder="Correo">
-    <button id="btnSendResetOtp" class="button" type="button">Enviar OTP</button>
-    <button id="btnBackLogin1" class="button gray" type="button">Volver al login</button>
-  </div>
-
-  <!-- RESET PASO 2 -->
-  <div id="resetOtpScreen" class="card hidden">
-    <div class="title"><div class="logo">🔐</div>Verificar</div>
-    <div id="resetMsg2" class="msg">Paso 2: escribe el OTP.</div>
-
-    <input id="resetCode" class="input" placeholder="Código OTP">
-    <button id="btnVerifyResetOtp" class="button" type="button">Verificar OTP</button>
-    <button id="btnBackReset1" class="button gray" type="button">Volver</button>
-  </div>
-
-  <!-- RESET PASO 3 -->
-  <div id="resetPasswordScreen" class="card hidden">
-    <div class="title"><div class="logo">🔐</div>Nueva contraseña</div>
-    <div id="resetMsg3" class="msg">Paso 3: escribe tu nueva contraseña.</div>
-
-    <input id="newPassword" class="input" type="password" placeholder="Nueva contraseña">
-    <button id="btnResetPassword" class="button" type="button">Guardar nueva contraseña</button>
-    <button id="btnBackLogin2" class="button gray" type="button">Volver al login</button>
-  </div>
-
-  <!-- HOME -->
   <div id="homeScreen" class="card hidden">
     <div class="title"><div class="logo">🐶</div>LADRAME</div>
-
+    <div id="homeMsg" class="msg">Sesión iniciada.</div>
     <div id="userInfo"></div>
     <div id="modeSwitch" class="mode-switch"></div>
     <div id="content"></div>
-
     <button id="btnLogout" class="button gray" type="button">Cerrar sesión</button>
   </div>
 
@@ -88,106 +59,87 @@ const supabaseClient = window.supabase.createClient(
   "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 );
 
-const SEND_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/send-otp";
-const VERIFY_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/verify-otp";
-const RESET_PASSWORD_OTP_URL = "https://dnxiaronekfbbwqzslon.supabase.co/functions/v1/reset-password-otp";
-
 let userData = null;
 let currentMode = "owner";
-let resetVerified = false;
+let ownerDogs = [];
+let ownerRequests = [];
+let ownerOffers = [];
+let walkerOpenRequests = [];
+let walkerMyOffers = [];
 
 init();
+
+function $(id){ return document.getElementById(id); }
 
 async function init(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(session){
-    loadUser(session.user.id);
+    await loadUser(session.user.id);
   }
 }
 
-function hideAll(){
-  loginScreen.classList.add("hidden");
-  resetEmailScreen.classList.add("hidden");
-  resetOtpScreen.classList.add("hidden");
-  resetPasswordScreen.classList.add("hidden");
-  homeScreen.classList.add("hidden");
-}
-
-function showLogin(){
-  hideAll();
-  loginScreen.classList.remove("hidden");
-}
-
-function showResetEmail(){
-  hideAll();
-  resetEmailScreen.classList.remove("hidden");
-}
-
-function showResetOtp(){
-  hideAll();
-  resetOtpScreen.classList.remove("hidden");
-}
-
-function showResetPassword(){
-  hideAll();
-  resetPasswordScreen.classList.remove("hidden");
-}
-
-function showHome(){
-  hideAll();
-  homeScreen.classList.remove("hidden");
-}
-
-document.getElementById("btnLogin").onclick = login;
-document.getElementById("btnShowReset").onclick = showResetEmail;
-document.getElementById("btnBackLogin1").onclick = showLogin;
-document.getElementById("btnBackReset1").onclick = showResetEmail;
-document.getElementById("btnBackLogin2").onclick = showLogin;
-
-document.getElementById("btnSendResetOtp").onclick = sendResetOtp;
-document.getElementById("btnVerifyResetOtp").onclick = verifyResetOtp;
-document.getElementById("btnResetPassword").onclick = saveNewPassword;
+$("btnLogin").onclick = login;
+$("btnLogout").onclick = logout;
 
 async function login(){
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("password").value;
 
   if(!email || !password){
-    loginMsg.textContent = "Completa correo y contraseña";
+    $("loginMsg").textContent = "Completa correo y contraseña";
     return;
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if(error){
-    loginMsg.textContent = "Error al entrar: " + error.message;
+    $("loginMsg").textContent = "Error al entrar: " + error.message;
     return;
   }
 
-  loadUser(data.user.id);
+  await loadUser(data.user.id);
 }
 
 async function loadUser(id){
-  const { data } = await supabaseClient
-  .from("users")
-  .select("*")
-  .eq("id", id)
-  .single();
+  const { data, error } = await supabaseClient
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if(error){
+    alert(error.message);
+    return;
+  }
 
   userData = data;
+  currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
+
+  await refreshAll();
+
+  $("loginScreen").classList.add("hidden");
+  $("homeScreen").classList.remove("hidden");
+
   renderUser();
   renderModes();
   renderContent();
-  showHome();
+}
+
+async function refreshAll(){
+  await Promise.all([
+    loadDogs(),
+    loadOwnerRequests(),
+    loadOwnerOffers(),
+    loadWalkerOpenRequests(),
+    loadWalkerMyOffers()
+  ]);
 }
 
 function renderUser(){
-  userInfo.innerHTML = `
+  $("userInfo").innerHTML = `
     <p><b>${userData.name || "Usuario"}</b></p>
     <p>${userData.email}</p>
+    <p>DNI: ${userData.dni || "-"}</p>
   `;
 }
 
@@ -202,7 +154,7 @@ function renderModes(){
     html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="changeMode('walker')">Paseador</button>`;
   }
 
-  modeSwitch.innerHTML = html;
+  $("modeSwitch").innerHTML = html;
 }
 
 function changeMode(mode){
@@ -211,118 +163,282 @@ function changeMode(mode){
   renderContent();
 }
 
+function difficultyClass(color){
+  if(color === "rojo") return "red";
+  if(color === "amarillo") return "yellow";
+  return "green";
+}
+
+async function loadDogs(){
+  const { data } = await supabaseClient
+    .from("dogs")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerDogs = data || [];
+}
+
+async function loadOwnerRequests(){
+  const { data } = await supabaseClient
+    .from("walk_requests")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerRequests = data || [];
+}
+
+async function loadOwnerOffers(){
+  const { data } = await supabaseClient
+    .from("walk_offers")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerOffers = data || [];
+}
+
+async function loadWalkerOpenRequests(){
+  const { data } = await supabaseClient
+    .from("walk_requests")
+    .select("*")
+    .eq("status", "open")
+    .neq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  walkerOpenRequests = data || [];
+}
+
+async function loadWalkerMyOffers(){
+  const { data } = await supabaseClient
+    .from("walk_offers")
+    .select("*")
+    .eq("walker_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  walkerMyOffers = data || [];
+}
+
+function renderOwnerDogsSelect(){
+  if(!ownerDogs.length){
+    return `<div class="item">Primero registra al menos un perro.</div>`;
+  }
+
+  return `
+    <select id="requestDogId" class="select">
+      <option value="">Selecciona un perro</option>
+      ${ownerDogs.map(dog => `
+        <option value="${dog.id}">
+          ${dog.name} - ${dog.size} - ${dog.dificultad || "verde"}
+        </option>
+      `).join("")}
+    </select>
+  `;
+}
+
+function renderOwnerRequestsList(){
+  if(!ownerRequests.length) return `<div class="item">No tienes solicitudes aún.</div>`;
+
+  return ownerRequests.map(req => `
+    <div class="item">
+      <b>Solicitud</b><br>
+      Tarifa máxima: S/${req.tariff || 0}<br>
+      Tiempo: ${req.time || 0} min<br>
+      Estado: ${req.status || "-"}<br>
+      Lugar: ${req.location || "-"}<br>
+      <div class="small">${req.comments || ""}</div>
+    </div>
+  `).join("");
+}
+
+function renderOwnerOffersList(){
+  if(!ownerOffers.length) return `<div class="item">No has recibido ofertas aún.</div>`;
+
+  return ownerOffers.map(offer => `
+    <div class="item">
+      <b>Oferta</b><br>
+      Precio: S/${offer.price}<br>
+      Estado: ${offer.status}<br>
+      ${offer.status === "pending" ? `
+        <button class="button" onclick="acceptOffer('${offer.id}')">Aceptar oferta</button>
+      ` : ""}
+    </div>
+  `).join("");
+}
+
+function renderWalkerRequestsList(){
+  if(!walkerOpenRequests.length) return `<div class="item">No hay solicitudes abiertas por ahora.</div>`;
+
+  return walkerOpenRequests.map(req => `
+    <div class="item">
+      <b>Solicitud abierta</b><br>
+      Tarifa máxima: S/${req.tariff || 0}<br>
+      Tiempo: ${req.time || 0} min<br>
+      Lugar: ${req.location || "-"}<br>
+      Estado: ${req.status || "-"}<br>
+      <div class="small">${req.comments || ""}</div>
+
+      <input id="offerPrice_${req.id}" class="input" type="number" placeholder="Tu oferta en soles">
+      <button class="button" onclick="sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
+    </div>
+  `).join("");
+}
+
+function renderWalkerOffersList(){
+  if(!walkerMyOffers.length) return `<div class="item">No has enviado ofertas aún.</div>`;
+
+  return walkerMyOffers.map(offer => `
+    <div class="item">
+      <b>Mi oferta</b><br>
+      Precio: S/${offer.price}<br>
+      Estado: ${offer.status}
+    </div>
+  `).join("");
+}
+
+function renderOwnerContent(){
+  $("content").innerHTML = `
+    <h3>Modo Dueño</h3>
+    <div class="map">Mapa dueño (simulado)</div>
+
+    <div class="section">
+      <h3>Pedir paseo</h3>
+      ${renderOwnerDogsSelect()}
+      <input id="requestTariff" class="input" type="number" placeholder="Tarifa máxima">
+      <input id="requestTime" class="input" type="number" placeholder="Tiempo en minutos">
+      <input id="requestLocation" class="input" placeholder="Ubicación">
+      <textarea id="requestComments" class="textarea" placeholder="Notas para el paseador"></textarea>
+      <button class="button" onclick="createWalkRequest()">Crear solicitud</button>
+    </div>
+
+    <div class="section">
+      <h3>Mis solicitudes</h3>
+      ${renderOwnerRequestsList()}
+    </div>
+
+    <div class="section">
+      <h3>Ofertas recibidas</h3>
+      ${renderOwnerOffersList()}
+    </div>
+  `;
+}
+
+function renderWalkerContent(){
+  $("content").innerHTML = `
+    <h3>Modo Paseador</h3>
+    <div class="map">Mapa paseador (simulado)</div>
+
+    <div class="section">
+      <h3>Solicitudes disponibles</h3>
+      ${renderWalkerRequestsList()}
+    </div>
+
+    <div class="section">
+      <h3>Mis ofertas</h3>
+      ${renderWalkerOffersList()}
+    </div>
+  `;
+}
+
 function renderContent(){
-  if(currentMode==="owner"){
-    content.innerHTML = `
-      <h3>Modo Dueño</h3>
-      <div class="map">Mapa dueño</div>
-      <button class="button">Pedir paseo</button>
-    `;
+  if(currentMode === "owner"){
+    renderOwnerContent();
   } else {
-    content.innerHTML = `
-      <h3>Modo Paseador</h3>
-      <div class="map">Mapa paseador</div>
-      <button class="button">Ver solicitudes</button>
-    `;
+    renderWalkerContent();
   }
 }
 
-async function sendResetOtp(){
-  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
+async function createWalkRequest(){
+  const dogId = $("requestDogId")?.value;
+  const tariff = Number($("requestTariff")?.value || 0);
+  const time = Number($("requestTime")?.value || 0);
+  const location = $("requestLocation")?.value?.trim() || "";
+  const comments = $("requestComments")?.value?.trim() || "";
 
-  if(!email){
-    resetMsg1.textContent = "Escribe tu correo";
+  if(!dogId){
+    alert("Selecciona un perro.");
     return;
   }
 
-  const res = await fetch(SEND_OTP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
-      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-    },
-    body: JSON.stringify({ email })
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if(!res.ok || data.success === false){
-    resetMsg1.textContent = "Error enviando OTP: " + (data.error || "Error");
+  if(!tariff || tariff <= 0){
+    alert("Pon una tarifa máxima válida.");
     return;
   }
 
-  resetMsg1.textContent = "OTP enviado. Revisa tu correo.";
-  showResetOtp();
+  if(!time || time <= 0){
+    alert("Pon un tiempo válido.");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("walk_requests")
+    .insert({
+      owner_id: userData.id,
+      dog_id: dogId,
+      tariff,
+      time,
+      location,
+      comments,
+      status: "open"
+    });
+
+  if(error){
+    alert("Error creando solicitud: " + error.message);
+    return;
+  }
+
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Solicitud creada correctamente.";
 }
 
-async function verifyResetOtp(){
-  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
-  const code = document.getElementById("resetCode").value.trim();
+async function sendOffer(requestId, ownerId){
+  const price = Number($("offerPrice_" + requestId)?.value || 0);
 
-  if(!email || !code){
-    resetMsg2.textContent = "Escribe el código OTP";
+  if(!price || price <= 0){
+    alert("Pon un precio válido.");
     return;
   }
 
-  const res = await fetch(VERIFY_OTP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
-      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-    },
-    body: JSON.stringify({ email, code })
-  });
+  const { error } = await supabaseClient
+    .from("walk_offers")
+    .insert({
+      request_id: requestId,
+      walker_id: userData.id,
+      owner_id: ownerId,
+      price,
+      status: "pending"
+    });
 
-  const data = await res.json().catch(() => ({}));
-
-  if(!res.ok || !data.success){
-    resetMsg2.textContent = "Error verificando OTP: " + (data.error || "Error");
+  if(error){
+    alert("Error enviando oferta: " + error.message);
     return;
   }
 
-  resetVerified = true;
-  resetMsg2.textContent = "OTP verificado correctamente.";
-  showResetPassword();
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Oferta enviada correctamente.";
 }
 
-async function saveNewPassword(){
-  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
-  const newPassword = document.getElementById("newPassword").value;
-
-  if(!resetVerified){
-    resetMsg3.textContent = "Primero verifica el OTP";
-    return;
-  }
-
-  if(!newPassword || newPassword.length < 6){
-    resetMsg3.textContent = "La nueva contraseña debe tener al menos 6 caracteres";
-    return;
-  }
-
-  const res = await fetch(RESET_PASSWORD_OTP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0",
-      "Authorization": "Bearer sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-    },
-    body: JSON.stringify({
-      email,
-      new_password: newPassword
-    })
+async function acceptOffer(offerId){
+  const { data, error } = await supabaseClient.rpc("accept_walk_offer", {
+    p_offer_id: offerId
   });
 
-  const data = await res.json().catch(() => ({}));
-
-  if(!res.ok || !data.success){
-    resetMsg3.textContent = "Error cambiando contraseña: " + (data.error || "Error");
+  if(error){
+    alert("Error aceptando oferta: " + error.message);
     return;
   }
 
-  resetMsg3.textContent = "Contraseña cambiada correctamente. Ya puedes iniciar sesión.";
-  resetVerified = false;
+  if(!data?.success){
+    alert(data?.error || "No se pudo aceptar la oferta");
+    return;
+  }
+
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Oferta aceptada y saldo descontado correctamente.";
 }
 
 async function logout(){
@@ -330,6 +446,454 @@ async function logout(){
   location.reload();
 }
 </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LADRAME</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;font-family:Arial;background:#f3f5f9}
+.container{max-width:430px;margin:auto;padding:20px}
+.card{background:#fff;border-radius:22px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.title{font-size:28px;font-weight:900;color:#ff6b00;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo{width:46px;height:46px;border-radius:12px;background:#ff6b00;color:#fff;display:grid;place-items:center}
+.input,.select,.textarea{width:100%;padding:13px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box}
+.textarea{min-height:90px;resize:vertical}
+.button{width:100%;padding:14px;border:none;border-radius:14px;background:#ff6b00;color:#fff;font-weight:900;margin-top:12px;cursor:pointer}
+.button.gray{background:#e5e7eb;color:#111}
+.hidden{display:none}
+.mode-switch{display:flex;gap:10px;margin-top:12px}
+.mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
+.active{background:#ff6b00;color:#fff}
+.inactive{background:#eee}
+.map{height:180px;background:#ddd;border-radius:16px;margin-top:14px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.msg{padding:12px;border-radius:12px;margin-bottom:10px;background:#eef5ff;white-space:pre-wrap}
+.section{margin-top:18px;padding-top:14px;border-top:1px solid #eee}
+.item{border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;margin-top:8px}
+.green{background:#16a34a;color:#fff}
+.yellow{background:#eab308;color:#111}
+.red{background:#dc2626;color:#fff}
+.small{font-size:13px;color:#666;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="container">
 
+  <div id="loginScreen" class="card">
+    <div class="title"><div class="logo">🐶</div>LADRAME</div>
+    <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
+    <input id="email" class="input" placeholder="Correo">
+    <input id="password" class="input" type="password" placeholder="Contraseña">
+    <button id="btnLogin" class="button" type="button">Entrar</button>
+  </div>
+
+  <div id="homeScreen" class="card hidden">
+    <div class="title"><div class="logo">🐶</div>LADRAME</div>
+    <div id="homeMsg" class="msg">Sesión iniciada.</div>
+    <div id="userInfo"></div>
+    <div id="modeSwitch" class="mode-switch"></div>
+    <div id="content"></div>
+    <button id="btnLogout" class="button gray" type="button">Cerrar sesión</button>
+  </div>
+
+</div>
+
+<script>
+const supabaseClient = window.supabase.createClient(
+  "https://dnxiaronekfbbwqzslon.supabase.co",
+  "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+);
+
+let userData = null;
+let currentMode = "owner";
+let ownerDogs = [];
+let ownerRequests = [];
+let ownerOffers = [];
+let walkerOpenRequests = [];
+let walkerMyOffers = [];
+
+init();
+
+function $(id){ return document.getElementById(id); }
+
+async function init(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(session){
+    await loadUser(session.user.id);
+  }
+}
+
+$("btnLogin").onclick = login;
+$("btnLogout").onclick = logout;
+
+async function login(){
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("password").value;
+
+  if(!email || !password){
+    $("loginMsg").textContent = "Completa correo y contraseña";
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if(error){
+    $("loginMsg").textContent = "Error al entrar: " + error.message;
+    return;
+  }
+
+  await loadUser(data.user.id);
+}
+
+async function loadUser(id){
+  const { data, error } = await supabaseClient
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  userData = data;
+  currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
+
+  await refreshAll();
+
+  $("loginScreen").classList.add("hidden");
+  $("homeScreen").classList.remove("hidden");
+
+  renderUser();
+  renderModes();
+  renderContent();
+}
+
+async function refreshAll(){
+  await Promise.all([
+    loadDogs(),
+    loadOwnerRequests(),
+    loadOwnerOffers(),
+    loadWalkerOpenRequests(),
+    loadWalkerMyOffers()
+  ]);
+}
+
+function renderUser(){
+  $("userInfo").innerHTML = `
+    <p><b>${userData.name || "Usuario"}</b></p>
+    <p>${userData.email}</p>
+    <p>DNI: ${userData.dni || "-"}</p>
+  `;
+}
+
+function renderModes(){
+  let html = "";
+
+  if(userData.owner_enabled){
+    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="changeMode('owner')">Dueño</button>`;
+  }
+
+  if(userData.walker_enabled){
+    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="changeMode('walker')">Paseador</button>`;
+  }
+
+  $("modeSwitch").innerHTML = html;
+}
+
+function changeMode(mode){
+  currentMode = mode;
+  renderModes();
+  renderContent();
+}
+
+function difficultyClass(color){
+  if(color === "rojo") return "red";
+  if(color === "amarillo") return "yellow";
+  return "green";
+}
+
+async function loadDogs(){
+  const { data } = await supabaseClient
+    .from("dogs")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerDogs = data || [];
+}
+
+async function loadOwnerRequests(){
+  const { data } = await supabaseClient
+    .from("walk_requests")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerRequests = data || [];
+}
+
+async function loadOwnerOffers(){
+  const { data } = await supabaseClient
+    .from("walk_offers")
+    .select("*")
+    .eq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  ownerOffers = data || [];
+}
+
+async function loadWalkerOpenRequests(){
+  const { data } = await supabaseClient
+    .from("walk_requests")
+    .select("*")
+    .eq("status", "open")
+    .neq("owner_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  walkerOpenRequests = data || [];
+}
+
+async function loadWalkerMyOffers(){
+  const { data } = await supabaseClient
+    .from("walk_offers")
+    .select("*")
+    .eq("walker_id", userData.id)
+    .order("created_at", { ascending: false });
+
+  walkerMyOffers = data || [];
+}
+
+function renderOwnerDogsSelect(){
+  if(!ownerDogs.length){
+    return `<div class="item">Primero registra al menos un perro.</div>`;
+  }
+
+  return `
+    <select id="requestDogId" class="select">
+      <option value="">Selecciona un perro</option>
+      ${ownerDogs.map(dog => `
+        <option value="${dog.id}">
+          ${dog.name} - ${dog.size} - ${dog.dificultad || "verde"}
+        </option>
+      `).join("")}
+    </select>
+  `;
+}
+
+function renderOwnerRequestsList(){
+  if(!ownerRequests.length) return `<div class="item">No tienes solicitudes aún.</div>`;
+
+  return ownerRequests.map(req => `
+    <div class="item">
+      <b>Solicitud</b><br>
+      Tarifa máxima: S/${req.tariff || 0}<br>
+      Tiempo: ${req.time || 0} min<br>
+      Estado: ${req.status || "-"}<br>
+      Lugar: ${req.location || "-"}<br>
+      <div class="small">${req.comments || ""}</div>
+    </div>
+  `).join("");
+}
+
+function renderOwnerOffersList(){
+  if(!ownerOffers.length) return `<div class="item">No has recibido ofertas aún.</div>`;
+
+  return ownerOffers.map(offer => `
+    <div class="item">
+      <b>Oferta</b><br>
+      Precio: S/${offer.price}<br>
+      Estado: ${offer.status}<br>
+      ${offer.status === "pending" ? `
+        <button class="button" onclick="acceptOffer('${offer.id}')">Aceptar oferta</button>
+      ` : ""}
+    </div>
+  `).join("");
+}
+
+function renderWalkerRequestsList(){
+  if(!walkerOpenRequests.length) return `<div class="item">No hay solicitudes abiertas por ahora.</div>`;
+
+  return walkerOpenRequests.map(req => `
+    <div class="item">
+      <b>Solicitud abierta</b><br>
+      Tarifa máxima: S/${req.tariff || 0}<br>
+      Tiempo: ${req.time || 0} min<br>
+      Lugar: ${req.location || "-"}<br>
+      Estado: ${req.status || "-"}<br>
+      <div class="small">${req.comments || ""}</div>
+
+      <input id="offerPrice_${req.id}" class="input" type="number" placeholder="Tu oferta en soles">
+      <button class="button" onclick="sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
+    </div>
+  `).join("");
+}
+
+function renderWalkerOffersList(){
+  if(!walkerMyOffers.length) return `<div class="item">No has enviado ofertas aún.</div>`;
+
+  return walkerMyOffers.map(offer => `
+    <div class="item">
+      <b>Mi oferta</b><br>
+      Precio: S/${offer.price}<br>
+      Estado: ${offer.status}
+    </div>
+  `).join("");
+}
+
+function renderOwnerContent(){
+  $("content").innerHTML = `
+    <h3>Modo Dueño</h3>
+    <div class="map">Mapa dueño (simulado)</div>
+
+    <div class="section">
+      <h3>Pedir paseo</h3>
+      ${renderOwnerDogsSelect()}
+      <input id="requestTariff" class="input" type="number" placeholder="Tarifa máxima">
+      <input id="requestTime" class="input" type="number" placeholder="Tiempo en minutos">
+      <input id="requestLocation" class="input" placeholder="Ubicación">
+      <textarea id="requestComments" class="textarea" placeholder="Notas para el paseador"></textarea>
+      <button class="button" onclick="createWalkRequest()">Crear solicitud</button>
+    </div>
+
+    <div class="section">
+      <h3>Mis solicitudes</h3>
+      ${renderOwnerRequestsList()}
+    </div>
+
+    <div class="section">
+      <h3>Ofertas recibidas</h3>
+      ${renderOwnerOffersList()}
+    </div>
+  `;
+}
+
+function renderWalkerContent(){
+  $("content").innerHTML = `
+    <h3>Modo Paseador</h3>
+    <div class="map">Mapa paseador (simulado)</div>
+
+    <div class="section">
+      <h3>Solicitudes disponibles</h3>
+      ${renderWalkerRequestsList()}
+    </div>
+
+    <div class="section">
+      <h3>Mis ofertas</h3>
+      ${renderWalkerOffersList()}
+    </div>
+  `;
+}
+
+function renderContent(){
+  if(currentMode === "owner"){
+    renderOwnerContent();
+  } else {
+    renderWalkerContent();
+  }
+}
+
+async function createWalkRequest(){
+  const dogId = $("requestDogId")?.value;
+  const tariff = Number($("requestTariff")?.value || 0);
+  const time = Number($("requestTime")?.value || 0);
+  const location = $("requestLocation")?.value?.trim() || "";
+  const comments = $("requestComments")?.value?.trim() || "";
+
+  if(!dogId){
+    alert("Selecciona un perro.");
+    return;
+  }
+
+  if(!tariff || tariff <= 0){
+    alert("Pon una tarifa máxima válida.");
+    return;
+  }
+
+  if(!time || time <= 0){
+    alert("Pon un tiempo válido.");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("walk_requests")
+    .insert({
+      owner_id: userData.id,
+      dog_id: dogId,
+      tariff,
+      time,
+      location,
+      comments,
+      status: "open"
+    });
+
+  if(error){
+    alert("Error creando solicitud: " + error.message);
+    return;
+  }
+
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Solicitud creada correctamente.";
+}
+
+async function sendOffer(requestId, ownerId){
+  const price = Number($("offerPrice_" + requestId)?.value || 0);
+
+  if(!price || price <= 0){
+    alert("Pon un precio válido.");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("walk_offers")
+    .insert({
+      request_id: requestId,
+      walker_id: userData.id,
+      owner_id: ownerId,
+      price,
+      status: "pending"
+    });
+
+  if(error){
+    alert("Error enviando oferta: " + error.message);
+    return;
+  }
+
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Oferta enviada correctamente.";
+}
+
+async function acceptOffer(offerId){
+  const { data, error } = await supabaseClient.rpc("accept_walk_offer", {
+    p_offer_id: offerId
+  });
+
+  if(error){
+    alert("Error aceptando oferta: " + error.message);
+    return;
+  }
+
+  if(!data?.success){
+    alert(data?.error || "No se pudo aceptar la oferta");
+    return;
+  }
+
+  await refreshAll();
+  renderContent();
+  $("homeMsg").textContent = "Oferta aceptada y saldo descontado correctamente.";
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
+</script>
 </body>
 </html>
