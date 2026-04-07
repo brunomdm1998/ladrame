@@ -5,500 +5,218 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LADRAME</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-  :root{
-    --orange:#ff6b00;
-    --orange2:#ff944d;
-    --bg:#f3f5f9;
-    --card:#fff;
-    --text:#1f2937;
-    --muted:#6b7280;
-    --line:#e5e7eb;
-    --green:#16a34a;
-    --yellow:#eab308;
-    --red:#dc2626;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#fff7f1 0%,#f3f5f9 100%);color:var(--text)}
-  .container{max-width:460px;margin:auto;padding:22px;min-height:100vh;display:flex;align-items:center}
-  .card{width:100%;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 16px 40px rgba(0,0,0,.08)}
-  .title{display:flex;align-items:center;gap:10px;font-size:28px;font-weight:900;color:var(--orange);margin-bottom:18px}
-  .logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--orange),var(--orange2));display:grid;place-items:center;color:#fff;font-size:24px}
-  .subtitle{color:var(--muted);margin:0 0 14px;line-height:1.5}
-  .input,.select,.textarea{
-    width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;
-    margin-top:10px;font-size:15px;background:#fff
-  }
-  .textarea{min-height:90px;resize:vertical}
-  .button{
-    width:100%;padding:14px;border:none;border-radius:14px;
-    background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;font-weight:900;margin-top:12px;cursor:pointer
-  }
-  .button:disabled{opacity:.65;cursor:not-allowed}
-  .button.secondary{background:#f3f4f6;color:#111827;border:1px solid #d1d5db}
-  .msg{padding:12px 14px;border-radius:14px;font-size:14px;font-weight:700;margin-bottom:12px;white-space:pre-wrap;background:#eef5ff;color:#2859b3}
-  .mode-switch{display:flex;gap:10px;margin-top:14px}
-  .mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
-  .active{background:#ff6b00;color:white}
-  .inactive{background:#eee;color:#111827}
-  .map{height:230px;background:#ddd;border-radius:16px;margin-top:15px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#374151}
-  .hidden{display:none}
-  .section-card{
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:14px;
-    margin-top:14px;
-    background:#fff;
-  }
-  .row{display:flex;gap:10px}
-  .row > *{flex:1}
-  .checks{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:8px;
-    margin-top:12px;
-    color:#111827;
-  }
-  .checks label{
-    display:flex;gap:8px;align-items:flex-start;
-    font-size:14px;
-  }
-  .dog-card{
-    border:1px solid var(--line);
-    border-radius:16px;
-    padding:14px;
-    margin-top:12px;
-    background:#fff;
-  }
-  .badge{
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
-    color:#fff;
-    font-size:12px;
-    font-weight:900;
-    margin-top:8px;
-  }
-  .badge.green{background:var(--green)}
-  .badge.yellow{background:var(--yellow); color:#111827}
-  .badge.red{background:var(--red)}
-  .dog-meta{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.5}
-  .dog-name{font-size:18px;font-weight:900}
+body{margin:0;font-family:Arial;background:#f3f5f9}
+.container{max-width:420px;margin:auto;padding:20px}
+.card{background:white;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,0.08)}
+.title{font-size:26px;font-weight:bold;color:#ff6b00}
+.input,select,textarea{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:1px solid #ccc}
+.button{width:100%;padding:14px;border:none;border-radius:12px;background:#ff6b00;color:white;font-weight:bold;margin-top:10px}
+.mode-switch{display:flex;gap:10px;margin-top:10px}
+.mode-btn{flex:1;padding:10px;border:none;border-radius:10px;font-weight:bold}
+.active{background:#ff6b00;color:white}
+.inactive{background:#eee}
+.map{height:200px;background:#ddd;border-radius:15px;margin-top:15px;display:flex;align-items:center;justify-content:center}
+.badge{padding:5px 10px;border-radius:10px;color:white;font-size:12px;font-weight:bold}
+.green{background:#16a34a}
+.yellow{background:#eab308;color:black}
+.red{background:#dc2626}
+.hidden{display:none}
 </style>
 </head>
+
 <body>
 <div class="container">
-  <div id="loginScreen" class="card">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="loginMsg" class="msg">Ingresa con tu correo y contraseña.</div>
-    <p class="subtitle">Si ya tenías sesión, la app intentará entrar sola.</p>
-    <input id="email" class="input" placeholder="Correo">
-    <input id="password" class="input" type="password" placeholder="Contraseña">
-    <button id="btnLogin" class="button" type="button">Entrar</button>
-  </div>
 
-  <div id="homeScreen" class="card hidden">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="homeMsg" class="msg">Sesión iniciada.</div>
-    <div id="userInfo"></div>
-    <div id="modeSwitch" class="mode-switch"></div>
-    <div id="content"></div>
-    <button id="btnLogout" class="button secondary" type="button">Cerrar sesión</button>
-  </div>
+<div id="loginScreen" class="card">
+<div class="title">🐶 LADRAME</div>
+<input id="email" class="input" placeholder="Correo">
+<input id="password" class="input" type="password" placeholder="Contraseña">
+<button class="button" onclick="login()">Entrar</button>
+</div>
+
+<div id="homeScreen" class="card hidden">
+<div class="title">🐶 LADRAME</div>
+
+<div id="userInfo"></div>
+<div id="modeSwitch" class="mode-switch"></div>
+<div id="content"></div>
+
+<button class="button" onclick="logout()">Cerrar sesión</button>
+</div>
+
 </div>
 
 <script>
-(() => {
-  const supabaseClient = window.supabase.createClient(
-    "https://dnxiaronekfbbwqzslon.supabase.co",
-    "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-  );
+const supabase = window.supabase.createClient(
+  "https://dnxiaronekfbbwqzslon.supabase.co",
+  "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
+);
 
-  let userData = null;
-  let currentMode = "owner";
-  let ownerDogs = [];
+let userData = null;
+let currentMode = "owner";
+let dogs = [];
 
-  const $ = (id) => document.getElementById(id);
+init();
 
-  function setLoginMsg(text){ $("loginMsg").textContent = text; }
-  function setHomeMsg(text){ $("homeMsg").textContent = text; }
+async function init(){
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(session){
+    loadUser(session.user.id);
+  }
+}
 
-  function showLogin(){
-    $("loginScreen").classList.remove("hidden");
-    $("homeScreen").classList.add("hidden");
+async function login(){
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email:email.value,
+    password:password.value
+  });
+
+  if(error){
+    alert(error.message);
+    return;
   }
 
-  function showHome(){
-    $("loginScreen").classList.add("hidden");
-    $("homeScreen").classList.remove("hidden");
+  loadUser(data.user.id);
+}
+
+async function loadUser(id){
+  const { data } = await supabase.from("users").select("*").eq("id", id).single();
+  userData = data;
+
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("homeScreen").classList.remove("hidden");
+
+  loadDogs();
+  renderUser();
+  renderModes();
+  renderContent();
+}
+
+async function loadDogs(){
+  const { data } = await supabase.from("dogs").select("*").eq("owner_id", userData.id);
+  dogs = data || [];
+}
+
+function renderUser(){
+  userInfo.innerHTML = `<p>${userData.email}</p>`;
+}
+
+function renderModes(){
+  let html = "";
+
+  if(userData.owner_enabled){
+    html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="changeMode('owner')">Dueño</button>`;
   }
 
-  function setLoading(btn, state, text){
-    if(state){
-      btn.disabled = true;
-      btn.dataset.original = btn.textContent;
-      btn.textContent = text;
-    } else {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.original || btn.textContent;
-    }
+  if(userData.walker_enabled){
+    html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="changeMode('walker')">Paseador</button>`;
   }
 
-  async function init(){
-    setLoginMsg("Revisando sesión...");
-    const { data, error } = await supabaseClient.auth.getSession();
+  modeSwitch.innerHTML = html;
+}
 
-    if(error){
-      setLoginMsg("No se pudo revisar la sesión: " + error.message);
-      return showLogin();
-    }
+function changeMode(mode){
+  currentMode = mode;
+  renderModes();
+  renderContent();
+}
 
-    if(data?.session?.user){
-      await loadUser(data.session.user.id, true);
-    } else {
-      setLoginMsg("Ingresa con tu correo y contraseña.");
-      showLogin();
-    }
-  }
+function calculateDifficulty(){
+  if(dogAgresivo.checked || !dogControlable.checked) return "rojo";
+  if(dogCorrea.checked || dogAsusta.checked || dogAsustaPerros.checked || dogEnergy.value!=="tranquilo") return "amarillo";
+  return "verde";
+}
 
-  async function login(){
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
+function renderContent(){
+  if(currentMode==="owner"){
+    content.innerHTML = `
+    <h3>Modo Dueño</h3>
 
-    if(!email || !password){
-      return setLoginMsg("Escribe tu correo y contraseña.");
-    }
+    <div class="map">Mapa</div>
 
-    setLoading($("btnLogin"), true, "Entrando...");
-    setLoginMsg("Iniciando sesión...");
+    <button class="button">Pedir paseo</button>
 
-    try{
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if(error) throw error;
-      if(!data.user) throw new Error("No se recibió el usuario");
-      await loadUser(data.user.id, false);
-    }catch(err){
-      console.error(err);
-      setLoginMsg("Error al entrar: " + err.message);
-      showLogin();
-    }finally{
-      setLoading($("btnLogin"), false);
-    }
-  }
+    <h3>Registrar perro</h3>
 
-  async function loadUser(userId, fromSession){
-    try{
-      const { data, error } = await supabaseClient
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
+    <input id="dogName" class="input" placeholder="Nombre">
+    
+    <select id="dogSize" class="input">
+    <option value="pequeño">Pequeño</option>
+    <option value="mediano">Mediano</option>
+    <option value="grande">Grande</option>
+    </select>
 
-      if(error) throw error;
-      if(!data) throw new Error("No se encontró el perfil del usuario");
+    <select id="dogEnergy" class="input">
+    <option value="tranquilo">Tranquilo</option>
+    <option value="nervioso">Nervioso</option>
+    <option value="hiperactivo">Hiperactivo</option>
+    </select>
 
-      userData = data;
-      currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
+    <label><input type="checkbox" id="dogControlable"> Controlable</label><br>
+    <label><input type="checkbox" id="dogSociable"> Sociable</label><br>
+    <label><input type="checkbox" id="dogAgresivo"> Agresivo</label><br>
+    <label><input type="checkbox" id="dogResponde"> Responde a su nombre</label><br>
+    <label><input type="checkbox" id="dogCorrea"> Tira de la correa</label><br>
+    <label><input type="checkbox" id="dogAsusta"> Se asusta fácil</label><br>
+    <label><input type="checkbox" id="dogAsustaPerros"> Se asusta con perros</label><br>
 
-      await loadDogs();
-      renderUser();
-      renderModes();
-      renderContent();
+    <textarea id="dogNotes" placeholder="Recomendaciones"></textarea>
 
-      setHomeMsg(fromSession ? "Sesión restaurada." : "Sesión iniciada correctamente.");
-      showHome();
-    }catch(err){
-      console.error(err);
-      setLoginMsg("La sesión existe, pero no se pudo cargar el perfil: " + err.message);
-      showLogin();
-    }
-  }
+    <button class="button" onclick="saveDog()">Guardar perro</button>
 
-  async function loadDogs(){
-    if(!userData?.id) return;
-    const { data, error } = await supabaseClient
-      .from("dogs")
-      .select("*")
-      .eq("owner_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    if(error){
-      console.error("Error cargando perros:", error);
-      ownerDogs = [];
-      return;
-    }
-
-    ownerDogs = data || [];
-  }
-
-  function renderUser(){
-    $("userInfo").innerHTML = `
-      <p><b>${userData.name || "Usuario"}</b></p>
-      <p><b>${userData.email}</b></p>
-      <p>DNI: ${userData.dni || "-"}</p>
-    `;
-  }
-
-  function renderModes(){
-    let html = "";
-
-    if(userData.owner_enabled){
-      html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="window.__changeMode('owner')">Dueño</button>`;
-    }
-
-    if(userData.walker_enabled){
-      html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="window.__changeMode('walker')">Paseador</button>`;
-    }
-
-    $("modeSwitch").innerHTML = html;
-  }
-
-  function difficultyClass(color){
-    if(color === "rojo") return "red";
-    if(color === "amarillo") return "yellow";
-    return "green";
-  }
-
-  function renderDogsList(){
-    if(!ownerDogs.length){
-      return `<div class="dog-card">Todavía no has registrado perros.</div>`;
-    }
-
-    return ownerDogs.map(dog => `
-      <div class="dog-card">
-        <div class="dog-name">${dog.name || "Sin nombre"}</div>
-        <div class="badge ${difficultyClass(dog.dificultad)}">
-          Dificultad ${String(dog.dificultad || "verde").toUpperCase()}
-        </div>
-        <div class="dog-meta">
-          Tamaño: ${dog.size || "-"}<br>
-          Energía: ${dog.energy || "-"}<br>
-          Controlable: ${dog.controllable ? "Sí" : "No"}<br>
-          Sociable: ${dog.sociable ? "Sí" : "No"}<br>
-          Agresivo: ${dog.agresivo ? "Sí" : "No"}<br>
-          Responde a su nombre: ${dog.responds_to_name ? "Sí" : "No"}<br>
-          Tira de la correa: ${dog.tira_correa ? "Sí" : "No"}<br>
-          Se asusta fácil: ${dog.se_asusta ? "Sí" : "No"}<br>
-          Se asusta con perros: ${dog.asusta_perros ? "Sí" : "No"}
-        </div>
-        <div class="dog-meta" style="margin-top:10px;">
-          Recomendaciones: ${dog.recommendations || dog.notes || "Sin recomendaciones"}
-        </div>
+    <h3>Mis perros</h3>
+    ${dogs.map(d => `
+      <div>
+        <b>${d.name}</b>
+        <span class="badge ${d.dificultad==='rojo'?'red':d.dificultad==='amarillo'?'yellow':'green'}">
+        ${d.dificultad}
+        </span>
       </div>
-    `).join("");
-  }
-
-  function renderOwnerContent(){
-    $("content").innerHTML = `
-      <h3>Modo Dueño</h3>
-      <div class="map">Mapa dueño</div>
-      <button class="button" type="button">Pedir paseo</button>
-      <button class="button" type="button">Buscar hotel</button>
-      <button class="button" type="button">Mis solicitudes</button>
-
-      <div class="section-card">
-        <h3 style="margin-top:0;">Registrar perro</h3>
-        <div class="row">
-          <input id="dogName" class="input" placeholder="Nombre del perro">
-          <select id="dogSize" class="select">
-            <option value="">Tamaño</option>
-            <option value="pequeño">Pequeño</option>
-            <option value="mediano">Mediano</option>
-            <option value="grande">Grande</option>
-          </select>
-        </div>
-
-        <select id="dogEnergy" class="select">
-          <option value="">Nivel de energía</option>
-          <option value="tranquilo">Tranquilo</option>
-          <option value="nervioso">Nervioso</option>
-          <option value="hiperactivo">Hiperactivo</option>
-        </select>
-
-        <div class="checks">
-          <label><input type="checkbox" id="dogControllable"> Es controlable</label>
-          <label><input type="checkbox" id="dogSociable"> Es sociable</label>
-          <label><input type="checkbox" id="dogAgresivo"> Es agresivo</label>
-          <label><input type="checkbox" id="dogResponds"> Responde a su nombre</label>
-          <label><input type="checkbox" id="dogLeash"> Tira de la correa</label>
-          <label><input type="checkbox" id="dogScared"> Se asusta fácil</label>
-          <label><input type="checkbox" id="dogScaredDogs"> Se asusta con perros</label>
-        </div>
-
-        <textarea id="dogRecommendations" class="textarea" placeholder="Recomendaciones para el paseador"></textarea>
-
-        <div id="dogDifficultyPreview" class="dog-card" style="margin-top:12px;">
-          Dificultad automática: <strong>VERDE</strong>
-        </div>
-
-        <button id="btnSaveDog" class="button" type="button">Guardar perro</button>
-      </div>
-
-      <div class="section-card">
-        <h3 style="margin-top:0;">Mis perros</h3>
-        <div id="dogsList">${renderDogsList()}</div>
-      </div>
+    `).join("")}
     `;
-
-    bindDogForm();
-    updateDifficultyPreview();
-  }
-
-  function renderWalkerContent(){
-    $("content").innerHTML = `
-      <h3>Modo Paseador</h3>
-      <div class="map">Mapa paseador</div>
-      <button class="button" type="button">Ver solicitudes</button>
-      <button class="button" type="button">Mis ofertas</button>
-      <button class="button" type="button">Mis ganancias</button>
+  } else {
+    content.innerHTML = `
+    <h3>Modo Paseador</h3>
+    <div class="map">Mapa paseador</div>
     `;
   }
+}
 
-  function renderContent(){
-    if(currentMode === "owner"){
-      renderOwnerContent();
-    } else {
-      renderWalkerContent();
-    }
+async function saveDog(){
+  const dificultad = calculateDifficulty();
+
+  const { error } = await supabase.from("dogs").insert({
+    owner_id:userData.id,
+    name:dogName.value,
+    size:dogSize.value,
+    energy:dogEnergy.value,
+    controllable:dogControlable.checked,
+    sociable:dogSociable.checked,
+    agresivo:dogAgresivo.checked,
+    responds_to_name:dogResponde.checked,
+    tira_correa:dogCorrea.checked,
+    se_asusta:dogAsusta.checked,
+    asusta_perros:dogAsustaPerros.checked,
+    dificultad,
+    notes:dogNotes.value
+  });
+
+  if(error){
+    alert(error.message);
+    return;
   }
 
-  function calculateDifficulty(){
-    const size = $("dogSize")?.value || "";
-    const energy = $("dogEnergy")?.value || "";
-    const controllable = $("dogControllable")?.checked || false;
-    const sociable = $("dogSociable")?.checked || false;
-    const agresivo = $("dogAgresivo")?.checked || false;
-    const responds = $("dogResponds")?.checked || false;
-    const leash = $("dogLeash")?.checked || false;
-    const scared = $("dogScared")?.checked || false;
-    const scaredDogs = $("dogScaredDogs")?.checked || false;
+  alert("Perro guardado");
+  loadDogs();
+  renderContent();
+}
 
-    if(
-      agresivo ||
-      !controllable ||
-      (size === "grande" && leash) ||
-      (energy === "hiperactivo" && !responds) ||
-      (scared && !sociable)
-    ){
-      return "rojo";
-    }
-
-    if(
-      leash ||
-      scared ||
-      scaredDogs ||
-      energy === "nervioso" ||
-      energy === "hiperactivo" ||
-      size === "grande"
-    ){
-      return "amarillo";
-    }
-
-    return "verde";
-  }
-
-  function updateDifficultyPreview(){
-    const color = calculateDifficulty();
-    const box = $("dogDifficultyPreview");
-    if(!box) return;
-
-    const colorName = color.toUpperCase();
-    const cls = difficultyClass(color);
-
-    box.innerHTML = `
-      Dificultad automática:
-      <span class="badge ${cls}" style="margin-left:8px;">${colorName}</span>
-    `;
-  }
-
-  function bindDogForm(){
-    [
-      "dogSize","dogEnergy","dogControllable","dogSociable","dogAgresivo",
-      "dogResponds","dogLeash","dogScared","dogScaredDogs"
-    ].forEach(id => {
-      const el = $(id);
-      if(el){
-        el.addEventListener("change", updateDifficultyPreview);
-      }
-    });
-
-    const btn = $("btnSaveDog");
-    if(btn){
-      btn.addEventListener("click", saveDog);
-    }
-  }
-
-  async function saveDog(){
-    const name = $("dogName").value.trim();
-    const size = $("dogSize").value;
-    const energy = $("dogEnergy").value;
-    const recommendations = $("dogRecommendations").value.trim();
-
-    if(!name || !size || !energy){
-      alert("Completa nombre, tamaño y energía del perro.");
-      return;
-    }
-
-    const dificultad = calculateDifficulty();
-
-    setLoading($("btnSaveDog"), true, "Guardando perro...");
-
-    try{
-      const payload = {
-        owner_id: userData.id,
-        name,
-        size,
-        energy,
-        sociable: $("dogSociable").checked,
-        controllable: $("dogControllable").checked,
-        aggressive: $("dogAgresivo").checked,
-        agressivo: $("dogAgresivo").checked,
-        agresivo: $("dogAgresivo").checked,
-        responds_to_name: $("dogResponds").checked,
-        tira_correa: $("dogLeash").checked,
-        se_asusta: $("dogScared").checked,
-        asusta_perros: $("dogScaredDogs").checked,
-        dificultad,
-        personality: dificultad,
-        recommendations,
-        notes: recommendations
-      };
-
-      const { error } = await supabaseClient
-        .from("dogs")
-        .insert(payload);
-
-      if(error) throw error;
-
-      await loadDogs();
-      renderContent();
-      setHomeMsg("Perro registrado correctamente.");
-    }catch(err){
-      console.error(err);
-      alert("Error guardando perro: " + err.message);
-    }finally{
-      setLoading($("btnSaveDog"), false);
-    }
-  }
-
-  async function logout(){
-    await supabaseClient.auth.signOut();
-    location.reload();
-  }
-
-  $("btnLogin").addEventListener("click", login);
-  $("btnLogout").addEventListener("click", logout);
-  $("password").addEventListener("keydown", (e) => { if(e.key === "Enter") login(); });
-
-  window.__changeMode = (mode) => {
-    currentMode = mode;
-    renderModes();
-    renderContent();
-  };
-
-  init();
-})();
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
+}
 </script>
 </body>
 </html>
