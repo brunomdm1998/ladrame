@@ -27,9 +27,9 @@ body{margin:0;font-family:Arial;background:#f3f5f9}
 
 <div class="container">
 
+  <!-- LOGIN -->
   <div id="loginScreen" class="card">
     <div class="title"><div class="logo">🐶</div>LADRAME</div>
-
     <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
 
     <input id="email" class="input" placeholder="Correo">
@@ -39,23 +39,37 @@ body{margin:0;font-family:Arial;background:#f3f5f9}
     <button id="btnShowReset" class="button gray" type="button">Olvidé mi contraseña</button>
   </div>
 
-  <div id="resetScreen" class="card hidden">
+  <!-- RESET PASO 1 -->
+  <div id="resetEmailScreen" class="card hidden">
     <div class="title"><div class="logo">🔐</div>Recuperar</div>
-
-    <div id="resetMsg" class="msg">Primero manda el código al correo.</div>
+    <div id="resetMsg1" class="msg">Paso 1: escribe tu correo.</div>
 
     <input id="resetEmail" class="input" placeholder="Correo">
     <button id="btnSendResetOtp" class="button" type="button">Enviar OTP</button>
+    <button id="btnBackLogin1" class="button gray" type="button">Volver al login</button>
+  </div>
+
+  <!-- RESET PASO 2 -->
+  <div id="resetOtpScreen" class="card hidden">
+    <div class="title"><div class="logo">🔐</div>Verificar</div>
+    <div id="resetMsg2" class="msg">Paso 2: escribe el OTP.</div>
 
     <input id="resetCode" class="input" placeholder="Código OTP">
     <button id="btnVerifyResetOtp" class="button" type="button">Verificar OTP</button>
+    <button id="btnBackReset1" class="button gray" type="button">Volver</button>
+  </div>
+
+  <!-- RESET PASO 3 -->
+  <div id="resetPasswordScreen" class="card hidden">
+    <div class="title"><div class="logo">🔐</div>Nueva contraseña</div>
+    <div id="resetMsg3" class="msg">Paso 3: escribe tu nueva contraseña.</div>
 
     <input id="newPassword" class="input" type="password" placeholder="Nueva contraseña">
     <button id="btnResetPassword" class="button" type="button">Guardar nueva contraseña</button>
-
-    <button id="btnBackLogin" class="button gray" type="button">Volver al login</button>
+    <button id="btnBackLogin2" class="button gray" type="button">Volver al login</button>
   </div>
 
+  <!-- HOME -->
   <div id="homeScreen" class="card hidden">
     <div class="title"><div class="logo">🐶</div>LADRAME</div>
 
@@ -91,33 +105,51 @@ async function init(){
   }
 }
 
-function showLogin(){
-  loginScreen.classList.remove("hidden");
-  resetScreen.classList.add("hidden");
+function hideAll(){
+  loginScreen.classList.add("hidden");
+  resetEmailScreen.classList.add("hidden");
+  resetOtpScreen.classList.add("hidden");
+  resetPasswordScreen.classList.add("hidden");
   homeScreen.classList.add("hidden");
 }
 
-function showReset(){
-  loginScreen.classList.add("hidden");
-  resetScreen.classList.remove("hidden");
-  homeScreen.classList.add("hidden");
+function showLogin(){
+  hideAll();
+  loginScreen.classList.remove("hidden");
+}
+
+function showResetEmail(){
+  hideAll();
+  resetEmailScreen.classList.remove("hidden");
+}
+
+function showResetOtp(){
+  hideAll();
+  resetOtpScreen.classList.remove("hidden");
+}
+
+function showResetPassword(){
+  hideAll();
+  resetPasswordScreen.classList.remove("hidden");
 }
 
 function showHome(){
-  loginScreen.classList.add("hidden");
-  resetScreen.classList.add("hidden");
+  hideAll();
   homeScreen.classList.remove("hidden");
 }
 
 document.getElementById("btnLogin").onclick = login;
-document.getElementById("btnShowReset").onclick = showReset;
-document.getElementById("btnBackLogin").onclick = showLogin;
+document.getElementById("btnShowReset").onclick = showResetEmail;
+document.getElementById("btnBackLogin1").onclick = showLogin;
+document.getElementById("btnBackReset1").onclick = showResetEmail;
+document.getElementById("btnBackLogin2").onclick = showLogin;
+
 document.getElementById("btnSendResetOtp").onclick = sendResetOtp;
 document.getElementById("btnVerifyResetOtp").onclick = verifyResetOtp;
 document.getElementById("btnResetPassword").onclick = saveNewPassword;
 
 async function login(){
-  const email = document.getElementById("email").value.trim().toLowerCase();
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
 
   if(!email || !password){
@@ -139,16 +171,11 @@ async function login(){
 }
 
 async function loadUser(id){
-  const { data, error } = await supabaseClient
-    .from("users")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if(error){
-    alert(error.message);
-    return;
-  }
+  const { data } = await supabaseClient
+  .from("users")
+  .select("*")
+  .eq("id", id)
+  .single();
 
   userData = data;
   renderUser();
@@ -204,7 +231,7 @@ async function sendResetOtp(){
   const email = document.getElementById("resetEmail").value.trim().toLowerCase();
 
   if(!email){
-    resetMsg.textContent = "Escribe tu correo";
+    resetMsg1.textContent = "Escribe tu correo";
     return;
   }
 
@@ -221,11 +248,12 @@ async function sendResetOtp(){
   const data = await res.json().catch(() => ({}));
 
   if(!res.ok || data.success === false){
-    resetMsg.textContent = "Error enviando OTP: " + (data.error || "Error");
+    resetMsg1.textContent = "Error enviando OTP: " + (data.error || "Error");
     return;
   }
 
-  resetMsg.textContent = "OTP enviado. Revisa tu correo.";
+  resetMsg1.textContent = "OTP enviado. Revisa tu correo.";
+  showResetOtp();
 }
 
 async function verifyResetOtp(){
@@ -233,7 +261,7 @@ async function verifyResetOtp(){
   const code = document.getElementById("resetCode").value.trim();
 
   if(!email || !code){
-    resetMsg.textContent = "Escribe correo y código";
+    resetMsg2.textContent = "Escribe el código OTP";
     return;
   }
 
@@ -250,12 +278,13 @@ async function verifyResetOtp(){
   const data = await res.json().catch(() => ({}));
 
   if(!res.ok || !data.success){
-    resetMsg.textContent = "Error verificando OTP: " + (data.error || "Error");
+    resetMsg2.textContent = "Error verificando OTP: " + (data.error || "Error");
     return;
   }
 
   resetVerified = true;
-  resetMsg.textContent = "OTP verificado. Ahora escribe tu nueva contraseña.";
+  resetMsg2.textContent = "OTP verificado correctamente.";
+  showResetPassword();
 }
 
 async function saveNewPassword(){
@@ -263,12 +292,12 @@ async function saveNewPassword(){
   const newPassword = document.getElementById("newPassword").value;
 
   if(!resetVerified){
-    resetMsg.textContent = "Primero verifica el OTP";
+    resetMsg3.textContent = "Primero verifica el OTP";
     return;
   }
 
   if(!newPassword || newPassword.length < 6){
-    resetMsg.textContent = "La nueva contraseña debe tener al menos 6 caracteres";
+    resetMsg3.textContent = "La nueva contraseña debe tener al menos 6 caracteres";
     return;
   }
 
@@ -288,11 +317,11 @@ async function saveNewPassword(){
   const data = await res.json().catch(() => ({}));
 
   if(!res.ok || !data.success){
-    resetMsg.textContent = "Error cambiando contraseña: " + (data.error || "Error");
+    resetMsg3.textContent = "Error cambiando contraseña: " + (data.error || "Error");
     return;
   }
 
-  resetMsg.textContent = "Contraseña cambiada correctamente. Ya puedes volver e iniciar sesión.";
+  resetMsg3.textContent = "Contraseña cambiada correctamente. Ya puedes iniciar sesión.";
   resetVerified = false;
 }
 
