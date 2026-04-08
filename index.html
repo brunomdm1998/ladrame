@@ -213,6 +213,9 @@
   let currentMode = "owner";
   let ownerDogs = [];
   let ownerRequests = [];
+  let ownerOffers = [];
+  let walkerOpenRequests = [];
+  let walkerMyOffers = [];
 
   const $ = (id) => document.getElementById(id);
 
@@ -279,7 +282,7 @@
     userData = data;
     currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
 
-    await refreshOwnerData();
+    await refreshAll();
 
     renderUser();
     renderModes();
@@ -288,24 +291,66 @@
     showHome();
   }
 
-  async function refreshOwnerData(){
+  async function refreshAll(){
     if(!userData) return;
-
-    const [dogsRes, reqRes] = await Promise.all([
-      supabaseClient
-        .from("dogs")
-        .select("*")
-        .eq("owner_id", userData.id)
-        .order("created_at", { ascending: false }),
-      supabaseClient
-        .from("walk_requests")
-        .select("*")
-        .eq("owner_id", userData.id)
-        .order("created_at", { ascending: false })
+    await Promise.all([
+      loadDogs(),
+      loadOwnerRequests(),
+      loadOwnerOffers(),
+      loadWalkerOpenRequests(),
+      loadWalkerMyOffers()
     ]);
+  }
 
-    ownerDogs = dogsRes.data || [];
-    ownerRequests = reqRes.data || [];
+  async function loadDogs(){
+    const { data } = await supabaseClient
+      .from("dogs")
+      .select("*")
+      .eq("owner_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    ownerDogs = data || [];
+  }
+
+  async function loadOwnerRequests(){
+    const { data } = await supabaseClient
+      .from("walk_requests")
+      .select("*")
+      .eq("owner_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    ownerRequests = data || [];
+  }
+
+  async function loadOwnerOffers(){
+    const { data } = await supabaseClient
+      .from("walk_offers")
+      .select("*")
+      .eq("owner_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    ownerOffers = data || [];
+  }
+
+  async function loadWalkerOpenRequests(){
+    const { data } = await supabaseClient
+      .from("walk_requests")
+      .select("*")
+      .eq("status", "open")
+      .neq("owner_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    walkerOpenRequests = data || [];
+  }
+
+  async function loadWalkerMyOffers(){
+    const { data } = await supabaseClient
+      .from("walk_offers")
+      .select("*")
+      .eq("walker_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    walkerMyOffers = data || [];
   }
 
   function renderUser(){
@@ -368,6 +413,53 @@
         Estado: ${req.status || "-"}<br>
         Ubicación: ${req.location || "-"}<br>
         <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderOwnerOffersList(){
+    if(!ownerOffers.length){
+      return `<div class="item">No has recibido ofertas aún.</div>`;
+    }
+
+    return ownerOffers.map(offer => `
+      <div class="item">
+        <b>Oferta recibida</b><br>
+        Precio: S/${offer.price}<br>
+        Estado: ${offer.status}<br>
+        ${offer.status === "pending" ? `<button class="button" onclick="window.__acceptOffer('${offer.id}')">Aceptar oferta</button>` : ""}
+      </div>
+    `).join("");
+  }
+
+  function renderWalkerRequestsList(){
+    if(!walkerOpenRequests.length){
+      return `<div class="item">No hay solicitudes abiertas por ahora.</div>`;
+    }
+
+    return walkerOpenRequests.map(req => `
+      <div class="item">
+        <b>Solicitud abierta</b><br>
+        Tarifa máxima: S/${req.tariff || 0}<br>
+        Tiempo: ${req.time || 0} min<br>
+        Ubicación: ${req.location || "-"}<br>
+        <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
+        <input id="offerPrice_${req.id}" class="input" type="number" placeholder="Tu oferta en soles">
+        <button class="button" onclick="window.__sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
+      </div>
+    `).join("");
+  }
+
+  function renderWalkerOffersList(){
+    if(!walkerMyOffers.length){
+      return `<div class="item">No has enviado ofertas aún.</div>`;
+    }
+
+    return walkerMyOffers.map(offer => `
+      <div class="item">
+        <b>Mi oferta</b><br>
+        Precio: S/${offer.price}<br>
+        Estado: ${offer.status}
       </div>
     `).join("");
   }
@@ -468,7 +560,7 @@
       return;
     }
 
-    await refreshOwnerData();
+    await refreshAll();
     renderContent();
     setHomeMsg("Perro guardado correctamente.");
   }
@@ -508,9 +600,55 @@
       return;
     }
 
-    await refreshOwnerData();
+    await refreshAll();
     renderContent();
     setHomeMsg("Solicitud creada correctamente.");
+  }
+
+  async function sendOffer(requestId, ownerId){
+    const price = Number($("offerPrice_" + requestId)?.value || 0);
+
+    if(!price || price <= 0){
+      alert("Pon un precio válido.");
+      return;
+    }
+
+    const { error } = await supabaseClient.from("walk_offers").insert({
+      request_id: requestId,
+      walker_id: userData.id,
+      owner_id: ownerId,
+      price,
+      status: "pending"
+    });
+
+    if(error){
+      alert("Error enviando oferta: " + error.message);
+      return;
+    }
+
+    await refreshAll();
+    renderContent();
+    setHomeMsg("Oferta enviada correctamente.");
+  }
+
+  async function acceptOffer(offerId){
+    const { data, error } = await supabaseClient.rpc("accept_walk_offer", {
+      p_offer_id: offerId
+    });
+
+    if(error){
+      alert("Error aceptando oferta: " + error.message);
+      return;
+    }
+
+    if(!data?.success){
+      alert(data?.error || "No se pudo aceptar la oferta");
+      return;
+    }
+
+    await refreshAll();
+    renderContent();
+    setHomeMsg("Oferta aceptada y saldo descontado correctamente.");
   }
 
   function renderOwnerContent(){
@@ -527,7 +665,6 @@
           <option value="mediano">Mediano</option>
           <option value="grande">Grande</option>
         </select>
-
         <select id="dogEnergy" class="select">
           <option value="">Nivel de energía</option>
           <option value="tranquilo">Tranquilo</option>
@@ -546,11 +683,7 @@
         </div>
 
         <textarea id="dogNotes" class="textarea" placeholder="Recomendaciones para el paseador"></textarea>
-
-        <div id="dogDifficultyPreview" class="item" style="margin-top:12px;">
-          Dificultad automática:
-        </div>
-
+        <div id="dogDifficultyPreview" class="item" style="margin-top:12px;">Dificultad automática:</div>
         <button id="btnSaveDog" class="button" type="button">Guardar perro</button>
       </div>
 
@@ -587,6 +720,11 @@
         <h3>Mis solicitudes</h3>
         ${renderOwnerRequestsList()}
       </div>
+
+      <div class="section">
+        <h3>Ofertas recibidas</h3>
+        ${renderOwnerOffersList()}
+      </div>
     `;
 
     bindDogForm();
@@ -596,9 +734,15 @@
     $("content").innerHTML = `
       <h3>Modo Paseador</h3>
       <div class="map">Mapa paseador (simulado)</div>
+
       <div class="section">
-        <h3>Solicitudes</h3>
-        <div class="item">Aquí sigue la vista del paseador en el siguiente paso.</div>
+        <h3>Solicitudes disponibles</h3>
+        ${renderWalkerRequestsList()}
+      </div>
+
+      <div class="section">
+        <h3>Mis ofertas</h3>
+        ${renderWalkerOffersList()}
       </div>
     `;
   }
@@ -626,6 +770,8 @@
   };
 
   window.__createWalkRequest = createWalkRequest;
+  window.__sendOffer = sendOffer;
+  window.__acceptOffer = acceptOffer;
 
   init();
 })();
