@@ -49,149 +49,59 @@
     margin-bottom:14px;
   }
   .logo{
-    width:46px;
-    height:46px;
-    border-radius:12px;
+    width:46px;height:46px;border-radius:12px;
     background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;
-    display:grid;
-    place-items:center;
-    font-size:24px;
+    color:#fff;display:grid;place-items:center;font-size:24px;
   }
   .msg{
-    background:#eef5ff;
-    color:#2859b3;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    white-space:pre-wrap;
-    font-size:14px;
-    font-weight:700;
+    background:#eef5ff;color:#2859b3;border-radius:12px;
+    padding:12px;margin-bottom:12px;white-space:pre-wrap;
+    font-size:14px;font-weight:700;
   }
   .input,.select,.textarea{
-    width:100%;
-    padding:13px;
-    border-radius:12px;
-    border:1px solid #ccc;
-    margin-top:10px;
-    box-sizing:border-box;
-    font-size:14px;
-    background:#fff;
+    width:100%;padding:13px;border-radius:12px;border:1px solid #ccc;
+    margin-top:10px;box-sizing:border-box;font-size:14px;background:#fff;
   }
-  .textarea{
-    min-height:90px;
-    resize:vertical;
-  }
+  .textarea{min-height:90px;resize:vertical}
   .button{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:14px;
+    width:100%;padding:14px;border:none;border-radius:14px;
     background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;
-    font-weight:900;
-    margin-top:12px;
-    cursor:pointer;
+    color:#fff;font-weight:900;margin-top:12px;cursor:pointer;
   }
-  .button:disabled{
-    opacity:.65;
-    cursor:not-allowed;
-  }
-  .button.gray{
-    background:#e5e7eb;
-    color:#111;
-  }
-  .button.secondary{
-    background:#fff;
-    color:#ff6b00;
-    border:2px solid #ffd0b0;
-  }
-  .mode-switch{
-    display:flex;
-    gap:10px;
-    margin-top:12px;
-    margin-bottom:14px;
-  }
+  .button.gray{background:#e5e7eb;color:#111}
+  .button.secondary{background:#fff;color:#ff6b00;border:2px solid #ff6b00}
+  .mode-switch{display:flex;gap:10px;margin-top:12px;margin-bottom:14px}
   .mode-btn{
-    flex:1;
-    padding:11px;
-    border:none;
-    border-radius:12px;
-    font-weight:900;
-    cursor:pointer;
+    flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer
   }
-  .active{
-    background:#ff6b00;
-    color:#fff;
-  }
-  .inactive{
-    background:#eee;
-    color:#111;
-  }
+  .active{background:#ff6b00;color:#fff}
+  .inactive{background:#eee;color:#111}
   .map{
-    height:180px;
-    background:#ddd;
-    border-radius:16px;
-    margin-top:14px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:900;
-    color:#374151;
+    height:180px;background:#ddd;border-radius:16px;margin-top:14px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;color:#374151;
   }
-  .section{
-    margin-top:18px;
-    padding-top:16px;
-    border-top:1px solid #eee;
-  }
-  .section h3{
-    margin:0 0 10px;
-    font-size:20px;
-  }
+  .section{margin-top:18px;padding-top:16px;border-top:1px solid #eee}
+  .section h3{margin:0 0 10px;font-size:20px}
   .item{
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:12px;
-    margin-top:10px;
-    background:#fff;
+    border:1px solid var(--line);border-radius:14px;padding:12px;
+    margin-top:10px;background:#fff;
   }
-  .small{
-    font-size:13px;
-    color:#666;
-    line-height:1.45;
-  }
+  .small{font-size:13px;color:#666;line-height:1.45}
   .badge{
-    display:inline-block;
-    padding:5px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:900;
-    margin-top:8px;
+    display:inline-block;padding:5px 10px;border-radius:999px;
+    font-size:12px;font-weight:900;margin-top:8px;
   }
   .green{background:var(--green);color:#fff}
   .yellow{background:var(--yellow);color:#111}
   .red{background:var(--red);color:#fff}
-  .checks{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:8px;
-    margin-top:12px;
-    font-size:14px;
+  .checks{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;font-size:14px}
+  .checks label{display:flex;gap:8px;align-items:flex-start}
+  .pill{
+    display:inline-block;padding:4px 8px;border-radius:999px;
+    font-size:12px;font-weight:900;background:#f3f4f6;color:#111;margin-top:8px;
   }
-  .checks label{
-    display:flex;
-    gap:8px;
-    align-items:flex-start;
-  }
-  .tariff-box{
-    margin-top:8px;
-    font-size:18px;
-    font-weight:900;
-    color:#ff6b00;
-  }
-  .status-open{color:#2563eb;font-weight:900}
-  .status-accepted{color:#16a34a;font-weight:900}
-  .status-expired{color:#dc2626;font-weight:900}
+  .top-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </style>
 </head>
 <body>
@@ -230,10 +140,7 @@
   let ownerOffers = [];
   let walkerOpenRequests = [];
   let walkerMyOffers = [];
-  let ownerForms = {
-    dog: false,
-    request: false
-  };
+  let refreshTimer = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -256,19 +163,37 @@
     return "green";
   }
 
-  function requestStatusClass(status){
-    if(status === "accepted") return "status-accepted";
-    if(status === "expired") return "status-expired";
-    return "status-open";
-  }
-
   function formatRemaining(expiresAt){
-    if(!expiresAt) return "Sin expiración";
+    if(!expiresAt) return "sin tiempo";
     const diff = new Date(expiresAt).getTime() - Date.now();
-    if(diff <= 0) return "Expirada";
+    if(diff <= 0) return "vencida";
     const mins = Math.floor(diff / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
     return `${mins}m ${secs}s`;
+  }
+
+  async function markExpiredRequests(){
+    const nowIso = new Date().toISOString();
+
+    const { data: expiredOpen } = await supabaseClient
+      .from("walk_requests")
+      .select("id")
+      .eq("status", "open")
+      .lt("expires_at", nowIso);
+
+    if(expiredOpen && expiredOpen.length){
+      const ids = expiredOpen.map(x => x.id);
+      await supabaseClient
+        .from("walk_requests")
+        .update({ status: "expired" })
+        .in("id", ids);
+
+      await supabaseClient
+        .from("walk_offers")
+        .update({ status: "expired" })
+        .in("request_id", ids)
+        .eq("status", "pending");
+    }
   }
 
   async function init(){
@@ -323,12 +248,6 @@
     setHomeMsg(restored ? "Sesión restaurada." : "Sesión iniciada.");
     showHome();
 
-    startAutoRefresh();
-  }
-
-  let refreshTimer = null;
-
-  function startAutoRefresh(){
     if(refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(async () => {
       if(!userData) return;
@@ -337,19 +256,9 @@
     }, 4000);
   }
 
-  async function expireOldRequests(){
-    try{
-      await supabaseClient.rpc("expire_walk_requests");
-    }catch(err){
-      console.error("Error expirando solicitudes:", err);
-    }
-  }
-
   async function refreshAll(){
     if(!userData) return;
-
-    await expireOldRequests();
-
+    await markExpiredRequests();
     await Promise.all([
       loadDogs(),
       loadOwnerRequests(),
@@ -390,489 +299,13 @@
   }
 
   async function loadWalkerOpenRequests(){
+    const nowIso = new Date().toISOString();
+
     const { data } = await supabaseClient
       .from("walk_requests")
       .select("*")
       .eq("status", "open")
-      .neq("owner_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    walkerOpenRequests = (data || []).filter(req => {
-      if(!req.expires_at) return true;
-      return new Date(req.expires_at).getTime() > Date.now();
-    });
-  }
-
-  async function loadWalkerMyOffers(){
-    const { data } = await supabaseClient
-      .from("walk_offers")
-      .select("*")
-      .eq("walker_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    walkerMyOffers = data || [];
-  }
-
-  function renderUser(){
-    $("userInfo").innerHTML = `
-      <p><b>${userData.name || "Usuario"}</b></p>
-      <p>${userData.email}</p>
-      <p>DNI: ${userData.dni || "-"}</p>
-    `;
-  }
-
-  function renderModes(){
-    let html = "";
-
-    if(userData.owner_enabled){
-      html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="window.__changeMode('owner')">Dueño</button>`;
-    }
-
-    if(userData.walker_enabled){
-      html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="window.__changeMode('walker')">Paseador</button>`;
-    }
-
-    $("modeSwitch").innerHTML = html;
-  }
-
-  function renderDogsList(){
-    if(!ownerDogs.length){
-      return `<div class="item">Todavía no has registrado perros.</div>`;
-    }
-
-    return ownerDogs.map(dog => `
-      <div class="item">
-        <b>${dog.name}</b><br>
-        <span class="badge ${difficultyClass(dog.dificultad)}">${(dog.dificultad || "verde").toUpperCase()}</span>
-        <div class="small" style="margin-top:8px;">
-          Tamaño: ${dog.size || "-"}<br>
-          Energía: ${dog.energy || "-"}<br>
-          Controlable: ${dog.controllable ? "Sí" : "No"}<br>
-          Sociable: ${dog.sociable ? "Sí" : "No"}<br>
-          Agresivo: ${dog.agresivo ? "Sí" : "No"}<br>
-          Responde a su nombre: ${dog.responds_to_name ? "Sí" : "No"}<br>
-          Tira de la correa: ${dog.tira_correa ? "Sí" : "No"}<br>
-          Se asusta fácil: ${dog.se_asusta ? "Sí" : "No"}<br>
-          Se asusta con perros: ${dog.asusta_perros ? "Sí" : "No"}<br>
-          Recomendaciones: ${dog.notes || "-"}
-        </div>
-      </div>
-    `).join("");
-  }
-
-  function renderOwnerRequestsList(){
-    if(!ownerRequests.length){
-      return `<div class="item">No tienes solicitudes aún.</div>`;
-    }
-
-    return ownerRequests.map(req => `
-      <div class="item">
-        <b>Solicitud</b><br>
-        <span class="${requestStatusClass(req.status)}">${req.status || "-"}</span><br>
-        Tarifa máxima: S/${req.tariff || 0}<br>
-        Tiempo: ${req.time || 0} min<br>
-        Ubicación: ${req.location || "-"}<br>
-        Vence en: ${formatRemaining(req.expires_at)}<br>
-        <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
-      </div>
-    `).join("");
-  }
-
-  function renderOwnerOffersList(){
-    if(!ownerOffers.length){
-      return `<div class="item">No has recibido ofertas aún.</div>`;
-    }
-
-    return ownerOffers.map(offer => `
-      <div class="item">
-        <b>Oferta recibida</b><br>
-        Precio del paseador: S/${offer.price}<br>
-        Estado: ${offer.status}<br>
-        ${offer.status === "pending" ? `<button class="button" onclick="window.__acceptOffer('${offer.id}')">Aceptar oferta</button>` : ""}
-      </div>
-    `).join("");
-  }
-
-  function renderWalkerRequestsList(){
-    if(!walkerOpenRequests.length){
-      return `<div class="item">No hay solicitudes abiertas por ahora.</div>`;
-    }
-
-    return walkerOpenRequests.map(req => `
-      <div class="item">
-        <b>Solicitud abierta</b><br>
-        <div class="tariff-box">Tarifa máxima del dueño: S/${req.tariff || 0}</div>
-        Tiempo solicitado: ${req.time || 0} min<br>
-        Ubicación: ${req.location || "-"}<br>
-        Vence en: ${formatRemaining(req.expires_at)}<br>
-        <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
-        <input id="offerPrice_${req.id}" class="input" type="number" placeholder="Tu oferta en soles">
-        <button class="button" onclick="window.__sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
-      </div>
-    `).join("");
-  }
-
-  function renderWalkerOffersList(){
-    if(!walkerMyOffers.length){
-      return `<div class="item">No has enviado ofertas aún.</div>`;
-    }
-
-    return walkerMyOffers.map(offer => `
-      <div class="item">
-        <b>Mi oferta</b><br>
-        Precio enviado: S/${offer.price}<br>
-        Estado: ${offer.status}
-      </div>
-    `).join("");
-  }
-
-  function calculateDifficulty(){
-    const size = $("dogSize")?.value || "";
-    const energy = $("dogEnergy")?.value || "";
-    const controllable = $("dogControllable")?.checked || false;
-    const sociable = $("dogSociable")?.checked || false;
-    const agresivo = $("dogAgresivo")?.checked || false;
-    const responds = $("dogResponds")?.checked || false;
-    const leash = $("dogLeash")?.checked || false;
-    const scared = $("dogScared")?.checked || false;
-    const scaredDogs = $("dogScaredDogs")?.checked || false;
-
-    if(
-      agresivo ||
-      !controllable ||
-      (size === "grande" && leash) ||
-      (energy === "hiperactivo" && !responds) ||
-      (scared && !sociable)
-    ){
-      return "rojo";
-    }
-
-    if(
-      leash ||
-      scared ||
-      scaredDogs ||
-      energy === "nervioso" ||
-      energy === "hiperactivo" ||
-      size === "grande"
-    ){
-      return "amarillo";
-    }
-
-    return "verde";
-  }
-
-  function updateDifficultyPreview(){
-    const box = $("dogDifficultyPreview");
-    if(!box) return;
-
-    const diff = calculateDifficulty();
-    const cls = difficultyClass(diff);
-
-    box.innerHTML = `
-      Dificultad automática:
-      <span class="badge ${cls}" style="    border-radius:24px;
-    padding:20px;
-    box-shadow:0 14px 36px rgba(0,0,0,.08);
-  }
-  .hidden{display:none}
-  .title{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-size:28px;
-    font-weight:900;
-    color:var(--orange);
-    margin-bottom:14px;
-  }
-  .logo{
-    width:46px;
-    height:46px;
-    border-radius:12px;
-    background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;
-    display:grid;
-    place-items:center;
-    font-size:24px;
-  }
-  .msg{
-    background:#eef5ff;
-    color:#2859b3;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    white-space:pre-wrap;
-    font-size:14px;
-    font-weight:700;
-  }
-  .input,.select,.textarea{
-    width:100%;
-    padding:13px;
-    border-radius:12px;
-    border:1px solid #ccc;
-    margin-top:10px;
-    box-sizing:border-box;
-    font-size:14px;
-    background:#fff;
-  }
-  .textarea{
-    min-height:90px;
-    resize:vertical;
-  }
-  .button{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:14px;
-    background:linear-gradient(135deg,var(--orange),var(--orange2));
-    color:#fff;
-    font-weight:900;
-    margin-top:12px;
-    cursor:pointer;
-  }
-  .button:disabled{
-    opacity:.65;
-    cursor:not-allowed;
-  }
-  .button.gray{
-    background:#e5e7eb;
-    color:#111;
-  }
-  .mode-switch{
-    display:flex;
-    gap:10px;
-    margin-top:12px;
-    margin-bottom:14px;
-  }
-  .mode-btn{
-    flex:1;
-    padding:11px;
-    border:none;
-    border-radius:12px;
-    font-weight:900;
-    cursor:pointer;
-  }
-  .active{
-    background:#ff6b00;
-    color:#fff;
-  }
-  .inactive{
-    background:#eee;
-    color:#111;
-  }
-  .map{
-    height:180px;
-    background:#ddd;
-    border-radius:16px;
-    margin-top:14px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:900;
-    color:#374151;
-  }
-  .section{
-    margin-top:18px;
-    padding-top:16px;
-    border-top:1px solid #eee;
-  }
-  .section h3{
-    margin:0 0 10px;
-    font-size:20px;
-  }
-  .item{
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:12px;
-    margin-top:10px;
-    background:#fff;
-  }
-  .small{
-    font-size:13px;
-    color:#666;
-    line-height:1.45;
-  }
-  .badge{
-    display:inline-block;
-    padding:5px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:900;
-    margin-top:8px;
-  }
-  .green{background:var(--green);color:#fff}
-  .yellow{background:var(--yellow);color:#111}
-  .red{background:var(--red);color:#fff}
-  .checks{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:8px;
-    margin-top:12px;
-    font-size:14px;
-  }
-  .checks label{
-    display:flex;
-    gap:8px;
-    align-items:flex-start;
-  }
-</style>
-</head>
-<body>
-<div class="container">
-
-  <div id="loginScreen" class="card">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
-    <input id="email" class="input" placeholder="Correo">
-    <input id="password" class="input" type="password" placeholder="Contraseña">
-    <button id="btnLogin" class="button" type="button">Entrar</button>
-  </div>
-
-  <div id="homeScreen" class="card hidden">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="homeMsg" class="msg">Sesión iniciada.</div>
-    <div id="userInfo"></div>
-    <div id="modeSwitch" class="mode-switch"></div>
-    <div id="content"></div>
-    <button id="btnLogout" class="button gray" type="button">Cerrar sesión</button>
-  </div>
-
-</div>
-
-<script>
-(() => {
-  const supabaseClient = window.supabase.createClient(
-    "https://dnxiaronekfbbwqzslon.supabase.co",
-    "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-  );
-
-  let userData = null;
-  let currentMode = "owner";
-  let ownerDogs = [];
-  let ownerRequests = [];
-  let ownerOffers = [];
-  let walkerOpenRequests = [];
-  let walkerMyOffers = [];
-
-  const $ = (id) => document.getElementById(id);
-
-  function setLoginMsg(text){ $("loginMsg").textContent = text; }
-  function setHomeMsg(text){ $("homeMsg").textContent = text; }
-
-  function showLogin(){
-    $("loginScreen").classList.remove("hidden");
-    $("homeScreen").classList.add("hidden");
-  }
-
-  function showHome(){
-    $("loginScreen").classList.add("hidden");
-    $("homeScreen").classList.remove("hidden");
-  }
-
-  function difficultyClass(color){
-    if(color === "rojo") return "red";
-    if(color === "amarillo") return "yellow";
-    return "green";
-  }
-
-  async function init(){
-    const { data:{ session } } = await supabaseClient.auth.getSession();
-    if(session?.user){
-      await loadUser(session.user.id, true);
-    }else{
-      showLogin();
-    }
-  }
-
-  async function login(){
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
-
-    if(!email || !password){
-      setLoginMsg("Completa correo y contraseña.");
-      return;
-    }
-
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-    if(error){
-      setLoginMsg("Error al entrar: " + error.message);
-      return;
-    }
-
-    await loadUser(data.user.id, false);
-  }
-
-  async function loadUser(userId, restored){
-    const { data, error } = await supabaseClient
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-
-    if(error){
-      setLoginMsg("No se pudo cargar el perfil: " + error.message);
-      showLogin();
-      return;
-    }
-
-    userData = data;
-    currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
-
-    await refreshAll();
-
-    renderUser();
-    renderModes();
-    renderContent();
-    setHomeMsg(restored ? "Sesión restaurada." : "Sesión iniciada.");
-    showHome();
-  }
-
-  async function refreshAll(){
-    if(!userData) return;
-    await Promise.all([
-      loadDogs(),
-      loadOwnerRequests(),
-      loadOwnerOffers(),
-      loadWalkerOpenRequests(),
-      loadWalkerMyOffers()
-    ]);
-  }
-
-  async function loadDogs(){
-    const { data } = await supabaseClient
-      .from("dogs")
-      .select("*")
-      .eq("owner_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    ownerDogs = data || [];
-  }
-
-  async function loadOwnerRequests(){
-    const { data } = await supabaseClient
-      .from("walk_requests")
-      .select("*")
-      .eq("owner_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    ownerRequests = data || [];
-  }
-
-  async function loadOwnerOffers(){
-    const { data } = await supabaseClient
-      .from("walk_offers")
-      .select("*")
-      .eq("owner_id", userData.id)
-      .order("created_at", { ascending: false });
-
-    ownerOffers = data || [];
-  }
-
-  async function loadWalkerOpenRequests(){
-    const { data } = await supabaseClient
-      .from("walk_requests")
-      .select("*")
-      .eq("status", "open")
+      .gt("expires_at", nowIso)
       .neq("owner_id", userData.id)
       .order("created_at", { ascending: false });
 
@@ -948,6 +381,7 @@
         Tiempo: ${req.time || 0} min<br>
         Estado: ${req.status || "-"}<br>
         Ubicación: ${req.location || "-"}<br>
+        Expira en: ${formatRemaining(req.expires_at)}<br>
         <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
       </div>
     `).join("");
@@ -975,11 +409,13 @@
 
     return walkerOpenRequests.map(req => `
       <div class="item">
-        <b>Solicitud abierta</b><br>
-        Tarifa máxima: S/${req.tariff || 0}<br>
+        <b>Solicitud disponible</b><br>
+        <span class="pill">Tarifa máxima del dueño: S/${req.tariff || 0}</span><br>
         Tiempo: ${req.time || 0} min<br>
         Ubicación: ${req.location || "-"}<br>
+        Expira en: ${formatRemaining(req.expires_at)}<br>
         <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
+
         <input id="offerPrice_${req.id}" class="input" type="number" placeholder="Tu oferta en soles">
         <button class="button" onclick="window.__sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
       </div>
@@ -1017,9 +453,7 @@
       (size === "grande" && leash) ||
       (energy === "hiperactivo" && !responds) ||
       (scared && !sociable)
-    ){
-      return "rojo";
-    }
+    ) return "rojo";
 
     if(
       leash ||
@@ -1028,9 +462,7 @@
       energy === "nervioso" ||
       energy === "hiperactivo" ||
       size === "grande"
-    ){
-      return "amarillo";
-    }
+    ) return "amarillo";
 
     return "verde";
   }
@@ -1038,14 +470,9 @@
   function updateDifficultyPreview(){
     const box = $("dogDifficultyPreview");
     if(!box) return;
-
     const diff = calculateDifficulty();
     const cls = difficultyClass(diff);
-
-    box.innerHTML = `
-      Dificultad automática:
-      <span class="badge ${cls}" style="margin-left:8px;">${diff.toUpperCase()}</span>
-    `;
+    box.innerHTML = `Dificultad automática: <span class="badge ${cls}" style="margin-left:8px;">${diff.toUpperCase()}</span>`;
   }
 
   function bindDogForm(){
@@ -1059,7 +486,6 @@
 
     const saveBtn = $("btnSaveDog");
     if(saveBtn) saveBtn.onclick = saveDog;
-
     updateDifficultyPreview();
   }
 
@@ -1107,6 +533,7 @@
     const time = Number($("requestTime")?.value || 0);
     const location = $("requestLocation")?.value?.trim() || "";
     const comments = $("requestComments")?.value?.trim() || "";
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     if(!dogId){
       alert("Selecciona un perro.");
@@ -1128,7 +555,8 @@
       time,
       location,
       comments,
-      status: "open"
+      status: "open",
+      expires_at: expiresAt
     });
 
     if(error){
@@ -1193,6 +621,13 @@
       <div class="map">Mapa dueño (simulado)</div>
 
       <div class="section">
+        <div class="top-actions">
+          <button class="button secondary" onclick="window.__toggleDogForm()">Registrar perro</button>
+          <button class="button secondary" onclick="window.__toggleRequestForm()">Pedir paseo</button>
+        </div>
+      </div>
+
+      <div id="dogFormWrap" class="section hidden">
         <h3>Registrar perro</h3>
         <input id="dogName" class="input" placeholder="Nombre del perro">
         <select id="dogSize" class="select">
@@ -1228,7 +663,7 @@
         ${renderDogsList()}
       </div>
 
-      <div class="section">
+      <div id="requestFormWrap" class="section hidden">
         <h3>Pedir paseo</h3>
         ${
           ownerDogs.length
@@ -1286,12 +721,23 @@
   function renderContent(){
     if(currentMode === "owner"){
       renderOwnerContent();
-    }else{
+    } else {
       renderWalkerContent();
     }
   }
 
+  function toggleDogForm(){
+    const el = $("dogFormWrap");
+    if(el) el.classList.toggle("hidden");
+  }
+
+  function toggleRequestForm(){
+    const el = $("requestFormWrap");
+    if(el) el.classList.toggle("hidden");
+  }
+
   async function logout(){
+    if(refreshTimer) clearInterval(refreshTimer);
     await supabaseClient.auth.signOut();
     location.reload();
   }
@@ -1308,6 +754,8 @@
   window.__createWalkRequest = createWalkRequest;
   window.__sendOffer = sendOffer;
   window.__acceptOffer = acceptOffer;
+  window.__toggleDogForm = toggleDogForm;
+  window.__toggleRequestForm = toggleRequestForm;
 
   init();
 })();
