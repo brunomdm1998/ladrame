@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LADRAME</title>
+<title>LADRAME FINAL</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body{font-family:Arial;margin:0;background:#f3f5f9}
 .container{max-width:430px;margin:auto;padding:20px}
@@ -16,7 +15,6 @@ body{font-family:Arial;margin:0;background:#f3f5f9}
 .item{border:1px solid #ddd;border-radius:10px;padding:10px;margin-top:10px}
 </style>
 </head>
-
 <body>
 <div class="container">
 
@@ -29,10 +27,10 @@ body{font-family:Arial;margin:0;background:#f3f5f9}
 
 <div id="homeScreen" class="card hidden">
 <h3 id="userName"></h3>
-<button class="button" onclick="logout()">Salir</button>
+<button class="button" onclick="logout()">Cerrar sesión</button>
 
-<div id="ownerSection"></div>
-<div id="walkerSection"></div>
+<div id="owner"></div>
+<div id="walker"></div>
 
 </div>
 
@@ -44,103 +42,94 @@ const supabase = window.supabase.createClient(
 "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
 );
 
-let user = null;
-let wallet = 0;
+let user=null;
+let credits=0;
+
+async function checkSession(){
+const {data:{session}} = await supabase.auth.getSession();
+if(session?.user){
+loadUser(session.user.id);
+}
+}
 
 async function login(){
 const {data,error} = await supabase.auth.signInWithPassword({
 email:email.value,
 password:password.value
 });
-if(error)return alert(error.message);
+if(error) return alert(error.message);
 loadUser(data.user.id);
 }
 
 async function loadUser(id){
 const {data} = await supabase.from("users").select("*").eq("id",id).single();
-user = data;
+user=data;
 
-document.getElementById("loginScreen").classList.add("hidden");
-document.getElementById("homeScreen").classList.remove("hidden");
-document.getElementById("userName").innerText = user.name;
+loginScreen.classList.add("hidden");
+homeScreen.classList.remove("hidden");
+userName.innerText=user.name;
 
-loadWallet();
-loadOwner();
-loadWalker();
+loadCredits();
+render();
 }
 
-async function loadWallet(){
+async function loadCredits(){
 const {data} = await supabase.from("provider_wallets")
-.select("*")
-.eq("user_id",user.id)
-.single();
-
-wallet = data?.balance || 0;
+.select("*").eq("user_id",user.id).single();
+credits=data?.balance||0;
 }
 
-async function loadOwner(){
-const {data:requests} = await supabase.from("walk_requests")
-.select("*")
-.eq("owner_id",user.id)
-.order("created_at",{ascending:false});
+async function render(){
+await loadCredits();
 
-let active = requests.find(r=>r.status=="open"||r.status=="accepted");
+const {data:reqs} = await supabase.from("walk_requests")
+.select("*").order("created_at",{ascending:false});
 
-let html = "<h4>Dueño</h4>";
+const myReq = reqs.find(r=>r.owner_id===user.id && (r.status==="open"||r.status==="accepted"));
 
-if(!active){
-html+=`
-<input id="priceOwner" class="input" placeholder="Tarifa">
-<button class="button" onclick="createRequest()">Crear solicitud</button>
+let ownerHTML="<h3>Dueño</h3>";
+
+if(!myReq){
+ownerHTML+=`
+<input id="price" class="input" placeholder="Tarifa">
+<button class="button" onclick="createReq()">Crear solicitud</button>
 `;
 }else{
-html+=`<div class="item">Solicitud activa S/${active.tariff}</div>`;
+ownerHTML+=`<div class="item">Solicitud S/${myReq.tariff}</div>`;
 
 const {data:offers} = await supabase.from("walk_offers")
-.select("*")
-.eq("request_id",active.id);
+.select("*").eq("request_id",myReq.id);
 
 offers.forEach(o=>{
-html+=`
+ownerHTML+=`
 <div class="item">
 Oferta S/${o.price}
-<button onclick="acceptOffer('${o.id}')">Aceptar</button>
-<button onclick="rejectOffer('${o.id}')">Rechazar</button>
-</div>
-`;
+<button onclick="accept('${o.id}')">Aceptar</button>
+<button onclick="reject('${o.id}')">Rechazar</button>
+</div>`;
 });
 }
 
-document.getElementById("ownerSection").innerHTML = html;
-}
+owner.innerHTML=ownerHTML;
 
-async function loadWalker(){
-const {data:reqs} = await supabase.from("walk_requests")
-.select("*")
-.eq("status","open");
+let walkerHTML=`<h3>Paseador</h3>
+<div>Créditos: ${credits}</div>
+<div>Máx: S/${credits*10}</div>`;
 
-let max = wallet*10;
-
-let html = `<h4>Paseador</h4>
-<div>Créditos: ${wallet}</div>
-<div>Máximo oferta: S/${max}</div>
-`;
-
-reqs.forEach(r=>{
-html+=`
+reqs.filter(r=>r.status==="open" && r.owner_id!==user.id).forEach(r=>{
+walkerHTML+=`
 <div class="item">
-Dueño paga S/${r.tariff}
-<input id="offer_${r.id}" class="input" placeholder="Tu oferta">
-<button onclick="sendOffer('${r.id}','${r.owner_id}')">Enviar</button>
-</div>
-`;
+Dueño ofrece S/${r.tariff}
+<input id="of_${r.id}" class="input" placeholder="Tu oferta">
+<button onclick="send('${r.id}','${r.owner_id}')">Enviar</button>
+</div>`;
 });
 
-document.getElementById("walkerSection").innerHTML = html;
+walker.innerHTML=walkerHTML;
 }
 
-async function createRequest(){
-const price = Number(document.getElementById("priceOwner").value);
+async function createReq(){
+const price=Number(document.getElementById("price").value);
 await supabase.rpc("create_walk_request",{
 p_owner_id:user.id,
 p_dog_id:null,
@@ -151,40 +140,41 @@ p_comments:"",
 p_lat:0,
 p_lng:0
 });
-loadOwner();
+render();
 }
 
-async function sendOffer(id,owner){
-const price = Number(document.getElementById("offer_"+id).value);
+async function send(id,ownerId){
+const price=Number(document.getElementById("of_"+id).value);
 
-if(price > wallet*10){
+if(price>credits*10){
 alert("No tienes créditos suficientes");
 return;
 }
 
 await supabase.rpc("send_walk_offer",{
 p_request_id:id,
-p_owner_id:owner,
+p_owner_id:ownerId,
 p_price:price
 });
-
-loadWalker();
+render();
 }
 
-async function acceptOffer(id){
+async function accept(id){
 await supabase.rpc("accept_walk_offer",{p_offer_id:id});
-loadOwner();
+render();
 }
 
-async function rejectOffer(id){
+async function reject(id){
 await supabase.rpc("reject_walk_offer",{p_offer_id:id});
-loadOwner();
+render();
 }
 
 async function logout(){
 await supabase.auth.signOut();
 location.reload();
 }
+
+checkSession();
 </script>
 
 </body>
