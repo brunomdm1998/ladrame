@@ -1,135 +1,148 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { showError, showSuccess } from '@/utils/toast';
+import { Auth } from '@/components/Auth';
+import { OwnerDashboard } from '@/components/OwnerDashboard';
+import { WalkerDashboard } from '@/components/WalkerDashboard';
+import { LogOut, Dog, AlertCircle } from 'lucide-react';
 
-export const Auth = () => {
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
+const Index = () => {
+  const [session, setSession] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useState<'owner' | 'walker'>('owner');
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
+        setSession(session);
+        if (session) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err: any) {
+        console.error("Error inicializando sesión:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    initSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchProfile = async (userId: string) => {
     try {
-      if (isRegister) {
-        // 1. Crear el usuario en Supabase Auth
-        const { data, error: signUpError } = await supabase.auth.signUp({ 
-          email, 
-          password,
-          options: {
-            data: { full_name: name }
-          }
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        if (data.user) {
-          // 2. Crear el perfil en la tabla 'users'
-          const { error: profileError } = await supabase.from('users').insert({ 
-            id: data.user.id, 
-            email: email, 
-            name: name || email.split('@')[0],
-            role: 'owner',
-            owner_enabled: true,
-            walker_enabled: false
-          });
-          
-          if (profileError) {
-            console.error("Error perfil:", profileError);
-          }
-
-          showSuccess('¡Cuenta creada con éxito!');
-          setIsRegister(false);
+      const { data, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (profileError) throw profileError;
+      
+      if (data) {
+        setProfile(data);
+        if (!data.owner_enabled && data.walker_enabled) {
+          setCurrentMode('walker');
         }
       } else {
-        // CORRECCIÓN: Se agregó .auth antes de signInWithPassword
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
-        showSuccess('¡Bienvenido de nuevo!');
+        console.warn("No se encontró perfil para el usuario:", userId);
       }
-    } catch (error: any) {
-      console.error("Auth error:", error);
-      showError(error.message || 'Error en el proceso');
+    } catch (err: any) {
+      console.error("Error cargando perfil:", err);
+      // No bloqueamos la app si falla el perfil, solo lo registramos
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fff7f1] p-4">
-      <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-        <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff944d] p-10 text-center text-white">
-          <div className="w-20 h-20 bg-white/20 rounded-3xl mx-auto mb-4 flex items-center justify-center text-4xl shadow-inner">
-            🐶
-          </div>
-          <CardTitle className="text-4xl font-black tracking-tighter mb-1">LÁDRAME</CardTitle>
-          <p className="text-sm font-bold opacity-90 uppercase tracking-widest">Paseos de confianza</p>
-        </div>
-        <CardContent className="p-8 pt-10 space-y-6">
-          <form onSubmit={handleAuth} className="space-y-4">
-            {isRegister && (
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Nombre Completo</label>
-                <Input
-                  type="text"
-                  placeholder="Ej: Juan Pérez"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="ladrame-input !mt-0 h-14 text-base"
-                  required
-                />
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Correo Electrónico</label>
-              <Input
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="ladrame-input !mt-0 h-14 text-base"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Contraseña</label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="ladrame-input !mt-0 h-14 text-base"
-                required
-              />
-            </div>
-            <button 
-              type="submit" 
-              className="ladrame-button h-14 text-lg shadow-lg shadow-orange-200 active:scale-95 transition-transform" 
-              disabled={loading}
-            >
-              {loading ? 'Procesando...' : isRegister ? 'CREAR CUENTA' : 'ENTRAR'}
-            </button>
-          </form>
-          
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100"></span></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-300 font-bold">o también</span></div>
-          </div>
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#fff7f1]">
+      <div className="animate-bounce text-[#ff6b00] font-black text-3xl flex items-center gap-2 mb-4">
+        <Dog size={40} /> LÁDRAME...
+      </div>
+      <div className="w-48 h-1.5 bg-orange-100 rounded-full overflow-hidden">
+        <div className="h-full bg-[#ff6b00] animate-progress-loading"></div>
+      </div>
+    </div>
+  );
 
+  if (!session) return <Auth />;
+
+  return (
+    <div className="container max-w-[430px] mx-auto p-4 min-h-screen">
+      {/* Header Principal */}
+      <div className="ladrame-card mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3 text-[28px] font-black text-[#ff6b00]">
+            <div className="w-[50px] h-[50px] rounded-2xl bg-gradient-to-br from-[#ff6b00] to-[#ff944d] text-white grid place-items-center text-2xl shadow-lg">
+              🐶
+            </div>
+            <div className="tracking-tighter">LÁDRAME</div>
+          </div>
+          {error && <AlertCircle className="text-red-500" size={20} title={error} />}
+        </div>
+        
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-4">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Usuario Activo</p>
+          <p className="text-sm font-black text-slate-700">{profile?.name || session.user.email}</p>
+        </div>
+
+        {/* Selector de Modo */}
+        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl mb-4">
           <button 
-            onClick={() => setIsRegister(!isRegister)}
-            className="w-full text-center text-sm text-slate-500 font-bold hover:text-[#ff6b00] transition-colors"
+            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${currentMode === 'owner' ? 'bg-white text-[#ff6b00] shadow-sm' : 'text-slate-500'}`}
+            onClick={() => setCurrentMode('owner')}
           >
-            {isRegister ? '¿YA TIENES CUENTA? INICIA SESIÓN' : '¿ERES NUEVO? REGÍSTRATE AQUÍ'}
+            DUEÑO
           </button>
-        </CardContent>
-      </Card>
+          <button 
+            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${currentMode === 'walker' ? 'bg-white text-[#ff6b00] shadow-sm' : 'text-slate-500'}`}
+            onClick={() => setCurrentMode('walker')}
+          >
+            PASEADOR
+          </button>
+        </div>
+
+        {/* Contenido Dinámico */}
+        <div className="min-h-[400px]">
+          {currentMode === 'owner' ? (
+            <OwnerDashboard user={session.user} />
+          ) : (
+            <WalkerDashboard user={session.user} />
+          )}
+        </div>
+
+        {/* Botón Salir */}
+        <button 
+          onClick={() => supabase.auth.signOut()}
+          className="w-full p-4 rounded-2xl bg-slate-100 text-slate-500 font-bold mt-6 flex items-center justify-center gap-2 hover:bg-red-50 hover:text-red-500 transition-colors"
+        >
+          <LogOut size={18} /> Cerrar sesión
+        </button>
+      </div>
+      
+      <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-4">
+        Ladrame App v2.0 • 2024
+      </p>
     </div>
   );
 };
+
+export default Index;
