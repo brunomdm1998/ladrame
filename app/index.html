@@ -1,631 +1,305 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LADRAME</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{--orange:#ff6b00;--orange2:#ff944d;--bg:#f3f5f9;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--green:#16a34a;--yellow:#eab308;--red:#dc2626;--blue:#2563eb}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#fff7f1 0%,#f3f5f9 100%);color:var(--text)}
-  .container{max-width:430px;margin:auto;padding:20px;min-height:100vh}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.08)}
-  .hidden{display:none}
-  .title{display:flex;align-items:center;gap:10px;font-size:28px;font-weight:900;color:var(--orange);margin-bottom:14px}
-  .logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;display:grid;place-items:center;font-size:24px}
-  .msg{background:#eef5ff;color:#2859b3;border-radius:12px;padding:12px;margin-bottom:12px;white-space:pre-wrap;font-size:14px;font-weight:700}
-  .error{background:#fff1f2;color:#b42318}
-  .ok{background:#ecfdf3;color:#027a48}
-  .input,.select,.textarea{width:100%;padding:13px;border-radius:12px;border:1px solid #ccc;margin-top:10px;box-sizing:border-box;font-size:14px;background:#fff}
-  .textarea{min-height:90px;resize:vertical}
-  .button{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;font-weight:900;margin-top:12px;cursor:pointer}
-  .button:disabled{opacity:.65;cursor:not-allowed}
-  .button.gray{background:#e5e7eb;color:#111}
-  .button.secondary{background:#fff;color:#ff6b00;border:2px solid #ff6b00}
-  .button.reject{background:#fff;color:#dc2626;border:2px solid #dc2626}
-  .mode-switch{display:flex;gap:10px;margin-top:12px;margin-bottom:14px}
-  .mode-btn{flex:1;padding:11px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
-  .active{background:#ff6b00;color:#fff}
-  .inactive{background:#eee;color:#111}
-  .map{height:160px;background:#ddd;border-radius:16px;margin-top:14px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#374151}
-  .section{margin-top:18px;padding-top:16px;border-top:1px solid #eee}
-  .section h3{margin:0 0 10px;font-size:20px}
-  .item{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px;background:#fff}
-  .item.highlight{border:2px solid var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.08);background:#f8fbff}
-  .small{font-size:13px;color:#666;line-height:1.45}
-  .badge{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;margin-top:8px}
-  .green{background:var(--green);color:#fff}
-  .yellow{background:var(--yellow);color:#111}
-  .red{background:var(--red);color:#fff}
-  .blue{background:var(--blue);color:#fff}
-  .checks{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;font-size:14px}
-  .checks label{display:flex;gap:8px;align-items:flex-start}
-  .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;background:#f3f4f6;color:#111;margin-top:8px}
-  .top-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ladrame - Paseadores de Perros</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #fff7f1;
+        }
+        .custom-shadow {
+            box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.1), 0 8px 10px -6px rgba(255, 107, 0, 0.1);
+        }
+    </style>
 </head>
-<body>
-<div class="container">
-  <div id="loginScreen" class="card">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="loginMsg" class="msg">Ingresa con tu cuenta</div>
-    <input id="email" class="input" placeholder="Correo">
-    <input id="password" class="input" type="password" placeholder="Contraseña">
-    <button id="btnLogin" class="button" type="button">Entrar</button>
-  </div>
+<body class="antialiased text-slate-900">
 
-  <div id="homeScreen" class="card hidden">
-    <div class="title"><div class="logo">🐶</div><div>LADRAME</div></div>
-    <div id="homeMsg" class="msg">Sesión iniciada.</div>
-    <div id="userInfo"></div>
-    <div id="modeSwitch" class="mode-switch"></div>
-    <div id="content"></div>
-    <button id="btnLogout" class="button gray" type="button">Cerrar sesión</button>
-  </div>
-</div>
+    <div id="app" class="max-w-[430px] mx-auto min-h-screen p-6">
+        <!-- HEADER -->
+        <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-2">
+                <div class="bg-[#ff6b00] w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-orange-200">🐶</div>
+                <h1 class="font-black text-2xl tracking-tighter text-[#ff6b00]">LÁDRAME</h1>
+            </div>
+            <button id="logoutBtn" class="hidden text-slate-400 font-bold text-sm hover:text-red-500 transition-colors">Salir</button>
+        </header>
 
-<script>
-(() => {
-  const supabaseClient = window.supabase.createClient(
-    "https://dnxiaronekfbbwqzslon.supabase.co",
-    "sb_publishable_RLJMKIluzhQ-QaU8qLJv-Q_-mkellb0"
-  );
+        <!-- VISTA: LOGIN -->
+        <div id="view-login" class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-orange-100/50 border border-orange-50 mt-4">
+            <h2 class="text-3xl font-black mb-2 tracking-tight">¡Hola! 👋</h2>
+            <p class="text-slate-500 mb-8 text-sm font-medium">Ingresa para pasear o pedir un paseo.</p>
+            
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Email</label>
+                    <input type="email" id="login-email" placeholder="tu@email.com" 
+                        class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-[#ff6b00] focus:bg-white outline-none transition-all font-medium">
+                </div>
+                
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="••••••••" 
+                        class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-[#ff6b00] focus:bg-white outline-none transition-all font-medium">
+                </div>
 
-  let userData = null;
-  let currentMode = "owner";
-  let ownerDogs = [];
-  let ownerRequests = [];
-  let ownerOffers = [];
-  let walkerOpenRequests = [];
-  let walkerMyOffers = [];
-  let walkerCredits = 0;
-  let refreshTimer = null;
-
-  const $ = (id) => document.getElementById(id);
-
-  function setLoginMsg(text, kind="info"){
-    const el = $("loginMsg");
-    el.textContent = text;
-    el.className = "msg" + (kind==="error" ? " error" : kind==="ok" ? " ok" : "");
-  }
-
-  function setHomeMsg(text, kind="info"){
-    const el = $("homeMsg");
-    el.textContent = text;
-    el.className = "msg" + (kind==="error" ? " error" : kind==="ok" ? " ok" : "");
-  }
-
-  function showLogin(){ $("loginScreen").classList.remove("hidden"); $("homeScreen").classList.add("hidden"); }
-  function showHome(){ $("loginScreen").classList.add("hidden"); $("homeScreen").classList.remove("hidden"); }
-
-  function difficultyClass(color){
-    if(color === "rojo") return "red";
-    if(color === "amarillo") return "yellow";
-    return "green";
-  }
-
-  function money(n){
-    const num = Number(n || 0);
-    return Number.isInteger(num) ? String(num) : num.toFixed(2);
-  }
-
-  function formatRemaining(expiresAt){
-    if(!expiresAt) return "sin tiempo";
-    const diff = new Date(expiresAt).getTime() - Date.now();
-    if(diff <= 0) return "vencida";
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    return `${mins}m ${secs}s`;
-  }
-
-  function getActiveOwnerRequest(){
-    return ownerRequests.find(r => ["open","matched","active"].includes(r.status)) || null;
-  }
-
-  async function expireNow(){ try{ await supabaseClient.rpc("expire_walk_requests"); }catch(e){} }
-
-  async function init(){
-    $("btnLogin").onclick = login;
-    $("btnLogout").onclick = logout;
-
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      if(event === "SIGNED_OUT"){
-        clearRefreshTimer();
-        userData = null;
-        showLogin();
-        setLoginMsg("Ingresa con tu cuenta");
-      }
-      if(session?.user && !userData){
-        await loadUser(session.user.id, true);
-      }
-    });
-
-    const { data:{ session } } = await supabaseClient.auth.getSession();
-    if(session?.user){
-      await loadUser(session.user.id, true);
-    }else{
-      showLogin();
-    }
-  }
-
-  function clearRefreshTimer(){
-    if(refreshTimer){
-      clearInterval(refreshTimer);
-      refreshTimer = null;
-    }
-  }
-
-  async function login(){
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
-
-    if(!email || !password){
-      setLoginMsg("Completa correo y contraseña.", "error");
-      return;
-    }
-
-    setLoginMsg("Entrando...");
-    $("btnLogin").disabled = true;
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    $("btnLogin").disabled = false;
-
-    if(error){
-      setLoginMsg("Error al entrar: " + error.message, "error");
-      return;
-    }
-
-    await loadUser(data.user.id, false);
-  }
-
-  async function loadUser(userId, restored){
-    const { data, error } = await supabaseClient.from("users").select("*").eq("id", userId).single();
-
-    if(error || !data){
-      setLoginMsg("No se pudo cargar el perfil: " + (error?.message || "sin perfil"), "error");
-      showLogin();
-      return;
-    }
-
-    userData = data;
-    currentMode = (!userData.owner_enabled && userData.walker_enabled) ? "walker" : "owner";
-
-    await refreshAll();
-    renderUser();
-    renderModes();
-    renderContent();
-    setHomeMsg(restored ? "Sesión restaurada." : "Sesión iniciada.", "ok");
-    showHome();
-
-    clearRefreshTimer();
-    refreshTimer = setInterval(async () => {
-      if(!userData) return;
-      await refreshAll();
-      renderContent();
-    }, 4000);
-  }
-
-  async function refreshAll(){
-    if(!userData) return;
-    await expireNow();
-    await Promise.all([loadDogs(), loadOwnerRequests(), loadOwnerOffers(), loadWalkerOpenRequests(), loadWalkerMyOffers(), loadWalkerCredits()]);
-  }
-
-  async function loadDogs(){
-    const { data } = await supabaseClient.from("dogs").select("*").eq("owner_id", userData.id).order("created_at", { ascending: false });
-    ownerDogs = data || [];
-  }
-
-  async function loadOwnerRequests(){
-    const { data } = await supabaseClient.from("walk_requests").select("*").eq("owner_id", userData.id).order("created_at", { ascending: false });
-    ownerRequests = data || [];
-  }
-
-  async function loadOwnerOffers(){
-    const activeRequest = getActiveOwnerRequest();
-    if(!activeRequest){ ownerOffers = []; return; }
-    const { data } = await supabaseClient.from("walk_offers").select("*").eq("request_id", activeRequest.id).order("created_at", { ascending: false });
-    ownerOffers = data || [];
-  }
-
-  async function loadWalkerOpenRequests(){
-    const { data } = await supabaseClient.from("walk_requests").select("*").eq("status", "open").neq("owner_id", userData.id).order("created_at", { ascending: false });
-    const openList = (data || []).filter(r => !r.expires_at || new Date(r.expires_at).getTime() > Date.now());
-
-    const { data: targets } = await supabaseClient.from("walk_request_targets").select("request_id,status").eq("walker_id", userData.id);
-    const targetMap = new Map((targets || []).map(t => [t.request_id, t.status]));
-
-    walkerOpenRequests = openList
-      .filter(r => {
-        const st = targetMap.get(r.id);
-        return !st || st === "pending" || st === "offered";
-      })
-      .map(r => ({ ...r, target_status: targetMap.get(r.id) || null }));
-  }
-
-  async function loadWalkerMyOffers(){
-    const { data } = await supabaseClient.from("walk_offers").select("*").eq("walker_id", userData.id).order("created_at", { ascending: false });
-    walkerMyOffers = data || [];
-  }
-
-  async function loadWalkerCredits(){
-    const { data } = await supabaseClient.from("provider_wallets").select("balance").eq("user_id", userData.id).eq("provider_type", "walker").maybeSingle();
-    walkerCredits = Number(data?.balance || 0);
-  }
-
-  function renderUser(){
-    $("userInfo").innerHTML = `
-      <p><b>${userData.name || "Usuario"}</b></p>
-      <p>${userData.email || ""}</p>
-      <p>DNI: ${userData.dni || "-"}</p>
-      <p>Créditos paseo: <b>${money(walkerCredits)}</b></p>
-    `;
-  }
-
-  function renderModes(){
-    let html = "";
-    if(userData.owner_enabled){
-      html += `<button class="mode-btn ${currentMode==="owner"?"active":"inactive"}" onclick="window.__changeMode('owner')">Dueño</button>`;
-    }
-    if(userData.walker_enabled){
-      html += `<button class="mode-btn ${currentMode==="walker"?"active":"inactive"}" onclick="window.__changeMode('walker')">Paseador</button>`;
-    }
-    $("modeSwitch").innerHTML = html;
-  }
-
-  function renderDogsList(){
-    if(!ownerDogs.length) return `<div class="item">Todavía no has registrado perros.</div>`;
-    return ownerDogs.map(dog => `
-      <div class="item">
-        <b>${dog.name}</b><br>
-        <span class="badge ${difficultyClass(dog.dificultad)}">${(dog.dificultad || "verde").toUpperCase()}</span>
-        <div class="small" style="margin-top:8px;">
-          Tamaño: ${dog.size || "-"}<br>
-          Energía: ${dog.energy || "-"}<br>
-          Controlable: ${dog.controllable || "-"}<br>
-          Sociable: ${dog.sociable || "-"}<br>
-          Agresivo: ${dog.agresivo ? "Sí" : "No"}<br>
-          Responde a su nombre: ${dog.responds_to_name || (dog.responde ? "Sí" : "No")}<br>
-          Tira de la correa: ${dog.tira_correa ? "Sí" : "No"}<br>
-          Se asusta fácil: ${dog.se_asusta ? "Sí" : "No"}<br>
-          Se asusta con perros: ${dog.asusta_perros ? "Sí" : "No"}<br>
-          Recomendaciones: ${dog.notes || dog.recommendations || "-"}
+                <button id="loginBtn" 
+                    class="w-full bg-[#ff6b00] hover:bg-[#e66000] text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-orange-200 transition-all active:scale-[0.98] mt-4">
+                    Entrar a Ladrame
+                </button>
+                
+                <p id="login-error" class="text-red-500 text-xs text-center font-bold hidden bg-red-50 p-3 rounded-xl"></p>
+            </div>
         </div>
-      </div>
-    `).join("");
-  }
 
-  function renderOwnerRequestsList(){
-    if(!ownerRequests.length) return `<div class="item">No tienes solicitudes aún.</div>`;
-    return ownerRequests.map(req => `
-      <div class="item ${["open","matched","active"].includes(req.status) ? "highlight" : ""}">
-        <b>Solicitud</b><br>
-        Tarifa del dueño: S/${money(req.tariff)}<br>
-        Tarifa del paseador: ${req.tariff_paseador ? "S/" + money(req.tariff_paseador) : "-"}<br>
-        Tiempo: ${req.time || 0} min<br>
-        Estado: ${req.status || "-"}<br>
-        Ubicación: ${req.location || "-"}<br>
-        Expira en: ${formatRemaining(req.expires_at)}<br>
-        <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
-        ${(req.status === "open" || req.status === "matched") ? `<button class="button gray" onclick="window.__cancelWalkRequest('${req.id}')">Cancelar solicitud</button>` : ``}
-      </div>
-    `).join("");
-  }
+        <!-- VISTA: DASHBOARD -->
+        <div id="view-dashboard" class="hidden space-y-6">
+            <!-- Selector de Modo -->
+            <div class="flex gap-2 p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl">
+                <button onclick="setMode('owner')" id="tab-owner" 
+                    class="flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm">DUEÑO</button>
+                <button onclick="setMode('walker')" id="tab-walker" 
+                    class="flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700">PASEADOR</button>
+            </div>
 
-  function renderOwnerOffersList(){
-    const activeRequest = getActiveOwnerRequest();
-    if(!activeRequest) return `<div class="item">No tienes solicitud activa ahora.</div>`;
-    if(!ownerOffers.length) return `<div class="item">Todavía no recibes ofertas para esta solicitud.</div>`;
-    return ownerOffers.map(offer => `
-      <div class="item">
-        <b>Oferta recibida</b><br>
-        Tarifa del dueño: S/${money(activeRequest.tariff)}<br>
-        Tarifa del paseador: <b>S/${money(offer.price)}</b><br>
-        Estado: ${offer.status}<br>
-        <div class="small" style="margin-top:8px;">Créditos que se descontarán al aceptar: ${money(Number(offer.price || 0) / 10)}</div>
-        ${offer.status === "pending" ? `<div class="row2"><button class="button" onclick="window.__acceptOffer('${offer.id}')">Aceptar</button><button class="button reject" onclick="window.__rejectOffer('${offer.id}')">Rechazar</button></div>` : ""}
-      </div>
-    `).join("");
-  }
+            <!-- Contenido Dueño -->
+            <div id="content-owner" class="space-y-4">
+                <div class="bg-[#ff6b00] p-6 rounded-[2rem] text-white shadow-xl shadow-orange-200 border-none relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h3 class="font-black text-xl mb-1">¿Necesitas un paseo?</h3>
+                        <p class="text-orange-100 text-xs mb-4 font-medium">Publica tu oferta y espera paseadores.</p>
+                        <div class="flex gap-2">
+                            <input type="number" id="request-price" placeholder="S/ Precio" 
+                                class="flex-1 p-3 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 ring-white/50">
+                            <button onclick="createRequest()" 
+                                class="bg-white text-[#ff6b00] font-black px-6 py-3 rounded-xl hover:bg-orange-50 transition-colors">Publicar</button>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12">🐶</div>
+                </div>
+                
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 mt-6">Tus solicitudes activas</h4>
+                <div id="owner-requests-list" class="space-y-3"></div>
+            </div>
 
-  function renderWalkerRequestsList(){
-    if(!walkerOpenRequests.length) return `<div class="item">No hay solicitudes abiertas por ahora.</div>`;
-    const maxOffer = walkerCredits * 10;
-    return walkerOpenRequests.map((req, index) => `
-      <div class="item ${index === 0 ? "highlight" : ""}">
-        <b>${index === 0 ? "Nueva solicitud" : "Solicitud disponible"}</b><br>
-        <span class="badge blue">Dueño ofrece: S/${money(req.tariff || 0)}</span><br>
-        <span class="pill">Tus créditos: ${money(walkerCredits)} · Máximo: S/${money(maxOffer)}</span><br>
-        Tiempo: ${req.time || 0} min<br>
-        Ubicación: ${req.location || "-"}<br>
-        Expira en: ${formatRemaining(req.expires_at)}<br>
-        <div class="small" style="margin-top:8px;">${req.comments || "-"}</div>
-        <input id="offerPrice_${req.id}" class="input" type="number" step="0.01" placeholder="Tu tarifa en soles">
-        <button class="button" onclick="window.__sendOffer('${req.id}', '${req.owner_id}')">Enviar oferta</button>
-        <button class="button gray" onclick="window.__dismissTarget('${req.id}')">No me interesa</button>
-      </div>
-    `).join("");
-  }
+            <!-- Contenido Paseador -->
+            <div id="content-walker" class="hidden space-y-4">
+                <div class="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl shadow-slate-200 border-none flex justify-between items-center relative overflow-hidden">
+                    <div class="relative z-10">
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Tus Créditos</p>
+                        <h2 id="walker-credits" class="text-4xl font-black tracking-tighter">0</h2>
+                        <p class="text-[10px] text-slate-500 mt-1 font-bold">1 crédito = S/ 10 de oferta</p>
+                    </div>
+                    <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl relative z-10">💰</div>
+                    <div class="absolute -right-4 -bottom-4 text-8xl opacity-5 rotate-12">🦴</div>
+                </div>
 
-  function renderWalkerOffersList(){
-    if(!walkerMyOffers.length) return `<div class="item">No has enviado ofertas aún.</div>`;
-    return walkerMyOffers.map(offer => `<div class="item"><b>Mi oferta</b><br>Precio: S/${money(offer.price)}<br>Estado: ${offer.status}</div>`).join("");
-  }
-
-  function calculateDifficulty(){
-    const size = $("dogSize")?.value || "";
-    const energy = $("dogEnergy")?.value || "";
-    const controllable = $("dogControllable")?.checked || false;
-    const sociable = $("dogSociable")?.checked || false;
-    const agresivo = $("dogAgresivo")?.checked || false;
-    const responds = $("dogResponds")?.checked || false;
-    const leash = $("dogLeash")?.checked || false;
-    const scared = $("dogScared")?.checked || false;
-    const scaredDogs = $("dogScaredDogs")?.checked || false;
-
-    if(agresivo || !controllable || (size === "grande" && leash) || (energy === "hiperactivo" && !responds) || (scared && !sociable)) return "rojo";
-    if(leash || scared || scaredDogs || energy === "nervioso" || energy === "hiperactivo" || size === "grande") return "amarillo";
-    return "verde";
-  }
-
-  function updateDifficultyPreview(){
-    const box = $("dogDifficultyPreview");
-    if(!box) return;
-    const diff = calculateDifficulty();
-    const cls = difficultyClass(diff);
-    box.innerHTML = `Dificultad automática: <span class="badge ${cls}" style="margin-left:8px;">${diff.toUpperCase()}</span>`;
-  }
-
-  function bindDogForm(){
-    ["dogSize","dogEnergy","dogControllable","dogSociable","dogAgresivo","dogResponds","dogLeash","dogScared","dogScaredDogs"].forEach(id => {
-      const el = $(id);
-      if(el) el.addEventListener("change", updateDifficultyPreview);
-    });
-    const saveBtn = $("btnSaveDog");
-    if(saveBtn) saveBtn.onclick = saveDog;
-    updateDifficultyPreview();
-  }
-
-  async function saveDog(){
-    const name = $("dogName").value.trim();
-    const size = $("dogSize").value;
-    const energy = $("dogEnergy").value;
-    const notes = $("dogNotes").value.trim();
-    const dificultad = calculateDifficulty();
-
-    if(!name || !size || !energy){ alert("Completa nombre, tamaño y energía del perro."); return; }
-
-    const { error } = await supabaseClient.from("dogs").insert({
-      owner_id: userData.id,
-      name, size, energy,
-      controllable: $("dogControllable").checked ? "Sí" : "No",
-      sociable: $("dogSociable").checked ? "Sí" : "No",
-      agresivo: $("dogAgresivo").checked,
-      responds_to_name: $("dogResponds").checked ? "Sí" : "No",
-      responde: $("dogResponds").checked,
-      tira_correa: $("dogLeash").checked,
-      se_asusta: $("dogScared").checked,
-      asusta_perros: $("dogScaredDogs").checked,
-      dificultad,
-      notes,
-      recommendations: notes
-    });
-
-    if(error){ alert("Error guardando perro: " + error.message); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Perro guardado correctamente.", "ok");
-  }
-
-  async function createWalkRequest(){
-    const activeRequest = getActiveOwnerRequest();
-    if(activeRequest){ alert("Ya tienes una solicitud activa. Finalízala o cancélala."); return; }
-
-    const dogId = $("requestDogId")?.value || "";
-    const tariff = Number($("requestTariff")?.value || 0);
-    const time = Number($("requestTime")?.value || 0);
-    const location = $("requestLocation")?.value?.trim() || "";
-    const comments = $("requestComments")?.value?.trim() || "";
-    const lat = Number($("requestLat")?.value || 0);
-    const lng = Number($("requestLng")?.value || 0);
-
-    if(!dogId){ alert("Selecciona un perro."); return; }
-    if(!tariff || tariff <= 0){ alert("Pon una tarifa válida."); return; }
-    if(!time || time <= 0){ alert("Pon un tiempo válido."); return; }
-
-    const { data, error } = await supabaseClient.rpc("create_walk_request", {
-      p_owner_id: userData.id, p_dog_id: dogId, p_tariff: tariff, p_time: time, p_location: location, p_comments: comments, p_lat: lat, p_lng: lng
-    });
-
-    if(error){ alert("Error creando solicitud: " + error.message); return; }
-    if(!data?.success){ alert(data?.error || "No se pudo crear la solicitud."); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Solicitud creada correctamente.", "ok");
-  }
-
-  async function sendOffer(requestId, ownerId){
-    const price = Number($("offerPrice_" + requestId)?.value || 0);
-    const max = walkerCredits * 10;
-    if(!price || price <= 0){ alert("Pon una tarifa válida."); return; }
-    if(price > max){ alert("No puedes ofertar más de S/" + money(max) + " con tus créditos actuales."); return; }
-
-    const { data, error } = await supabaseClient.rpc("send_walk_offer", {
-      p_request_id: requestId, p_owner_id: ownerId, p_price: price
-    });
-
-    if(error){ alert("Error enviando oferta: " + error.message); return; }
-    if(!data?.success){ alert(data?.error || "No se pudo enviar la oferta"); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Oferta enviada correctamente.", "ok");
-  }
-
-  async function acceptOffer(offerId){
-    const { data, error } = await supabaseClient.rpc("accept_walk_offer", { p_offer_id: offerId });
-    if(error){ alert("Error aceptando oferta: " + error.message); return; }
-    if(!data?.success){ alert(data?.error || "No se pudo aceptar la oferta"); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Oferta aceptada. Créditos descontados: " + money(data.credits_used || 0), "ok");
-  }
-
-  async function rejectOffer(offerId){
-    const { data, error } = await supabaseClient.rpc("reject_walk_offer", { p_offer_id: offerId });
-    if(error){ alert("Error rechazando oferta: " + error.message); return; }
-    if(!data?.success){ alert(data?.error || "No se pudo rechazar la oferta"); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Oferta rechazada.", "ok");
-  }
-
-  async function cancelWalkRequest(requestId){
-    const ok = confirm("¿Cancelar esta solicitud?");
-    if(!ok) return;
-    const { data, error } = await supabaseClient.rpc("cancel_walk_request", { p_request_id: requestId });
-    if(error){ alert("Error cancelando solicitud: " + error.message); return; }
-    if(!data?.success){ alert(data?.error || "No se pudo cancelar"); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Solicitud cancelada.", "ok");
-  }
-
-  async function dismissTarget(requestId){
-    const { error } = await supabaseClient.rpc("dismiss_walk_request", { p_request_id: requestId });
-    if(error){ alert("Error descartando solicitud: " + error.message); return; }
-
-    await refreshAll();
-    renderContent();
-    setHomeMsg("Solicitud descartada para este paseador.", "ok");
-  }
-
-  function renderOwnerContent(){
-    const activeRequest = getActiveOwnerRequest();
-    $("content").innerHTML = `
-      <h3>Modo Dueño</h3>
-      <div class="map">Mapa dueño</div>
-
-      <div class="section">
-        <div class="top-actions">
-          <button class="button secondary" onclick="window.__toggleDogForm()">Registrar perro</button>
-          <button class="button secondary" onclick="window.__toggleRequestForm()">Pedir paseo</button>
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 mt-6">Pedidos cerca de ti</h4>
+                <div id="available-requests-list" class="space-y-3"></div>
+            </div>
         </div>
-      </div>
+    </div>
 
-      <div id="dogFormWrap" class="section hidden">
-        <h3>Registrar perro</h3>
-        <input id="dogName" class="input" placeholder="Nombre del perro">
-        <select id="dogSize" class="select">
-          <option value="">Tamaño</option>
-          <option value="pequeño">Pequeño</option>
-          <option value="mediano">Mediano</option>
-          <option value="grande">Grande</option>
-        </select>
-        <select id="dogEnergy" class="select">
-          <option value="">Nivel de energía</option>
-          <option value="tranquilo">Tranquilo</option>
-          <option value="nervioso">Nervioso</option>
-          <option value="hiperactivo">Hiperactivo</option>
-        </select>
-        <div class="checks">
-          <label><input type="checkbox" id="dogControllable"> Es controlable</label>
-          <label><input type="checkbox" id="dogSociable"> Es sociable</label>
-          <label><input type="checkbox" id="dogAgresivo"> Es agresivo</label>
-          <label><input type="checkbox" id="dogResponds"> Responde a su nombre</label>
-          <label><input type="checkbox" id="dogLeash"> Tira de la correa</label>
-          <label><input type="checkbox" id="dogScared"> Se asusta fácil</label>
-          <label><input type="checkbox" id="dogScaredDogs"> Se asusta con perros</label>
-        </div>
-        <textarea id="dogNotes" class="textarea" placeholder="Recomendaciones para el paseador"></textarea>
-        <div id="dogDifficultyPreview" class="item" style="margin-top:12px;">Dificultad automática:</div>
-        <button id="btnSaveDog" class="button" type="button">Guardar perro</button>
-      </div>
+    <script>
+        // CONFIGURACIÓN SUPABASE
+        const SUPABASE_URL = 'TU_URL_DE_SUPABASE';
+        const SUPABASE_KEY = 'TU_ANON_KEY_DE_SUPABASE';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      <div class="section">
-        <h3>Mis perros</h3>
-        ${renderDogsList()}
-      </div>
+        let currentUser = null;
+        let currentMode = 'owner';
 
-      <div id="requestFormWrap" class="section ${activeRequest ? "hidden" : ""}">
-        <h3>Pedir paseo</h3>
-        ${ownerDogs.length ? `<select id="requestDogId" class="select"><option value="">Selecciona un perro</option>${ownerDogs.map(dog => `<option value="${dog.id}">${dog.name} - ${dog.size || "-"} - ${dog.dificultad || "verde"}</option>`).join("")}</select>` : `<div class="item">Primero registra al menos un perro.</div>`}
-        <input id="requestTariff" class="input" type="number" step="0.01" placeholder="Tu tarifa en soles">
-        <input id="requestTime" class="input" type="number" placeholder="Tiempo en minutos">
-        <input id="requestLocation" class="input" placeholder="Ubicación">
-        <input id="requestLat" class="input" type="number" step="0.000001" placeholder="Latitud (opcional)">
-        <input id="requestLng" class="input" type="number" step="0.000001" placeholder="Longitud (opcional)">
-        <textarea id="requestComments" class="textarea" placeholder="Notas para el paseador"></textarea>
-        <button class="button" onclick="window.__createWalkRequest()">Crear solicitud</button>
-      </div>
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loginError = document.getElementById('login-error');
 
-      ${activeRequest ? `<div class="section"><div class="item highlight">Ya tienes una solicitud activa. No puedes crear otra hasta terminarla, cancelarla o que venza.</div></div>` : ``}
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if(!email || !password) return;
 
-      <div class="section">
-        <h3>Mis solicitudes</h3>
-        ${renderOwnerRequestsList()}
-      </div>
+            loginBtn.innerText = "Entrando...";
+            loginBtn.disabled = true;
+            loginError.classList.add('hidden');
 
-      <div class="section">
-        <h3>Ofertas recibidas</h3>
-        ${renderOwnerOffersList()}
-      </div>
-    `;
-    bindDogForm();
-  }
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+            } catch (err) {
+                loginError.innerText = "Error: " + err.message;
+                loginError.classList.remove('hidden');
+                loginBtn.innerText = "Entrar a Ladrame";
+                loginBtn.disabled = false;
+            }
+        }
 
-  function renderWalkerContent(){
-    $("content").innerHTML = `
-      <h3>Modo Paseador</h3>
-      <div class="map">Mapa paseador</div>
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                currentUser = session.user;
+                showView('dashboard');
+                loadUserData();
+                initRealtime();
+            } else {
+                currentUser = null;
+                showView('login');
+            }
+        });
 
-      <div class="section">
-        <div class="item highlight">
-          Créditos disponibles: <b>${money(walkerCredits)}</b><br>
-          Máximo que puedes ofertar: <b>S/${money(walkerCredits * 10)}</b>
-        </div>
-      </div>
+        async function loadUserData() {
+            if (currentMode === 'walker') {
+                const { data } = await supabaseClient.from('provider_wallets').select('balance').eq('user_id', currentUser.id).maybeSingle();
+                document.getElementById('walker-credits').innerText = data?.balance || 0;
+                loadAvailableRequests();
+            } else {
+                loadOwnerRequests();
+            }
+        }
 
-      <div class="section">
-        <h3>Solicitudes disponibles</h3>
-        ${renderWalkerRequestsList()}
-      </div>
+        async function createRequest() {
+            const price = document.getElementById('request-price').value;
+            if (!price) return alert("Ingresa un precio");
 
-      <div class="section">
-        <h3>Mis ofertas</h3>
-        ${renderWalkerOffersList()}
-      </div>
-    `;
-  }
+            const { error } = await supabaseClient.rpc('create_walk_request', { 
+                p_owner_id: currentUser.id,
+                p_tariff: parseFloat(price),
+                p_time: 30,
+                p_location: 'Mi ubicación',
+                p_dog_id: null // Simplificado para este ejemplo
+            });
 
-  function renderContent(){ if(currentMode === "owner") renderOwnerContent(); else renderWalkerContent(); }
-  function toggleDogForm(){ const el = $("dogFormWrap"); if(el) el.classList.toggle("hidden"); }
-  function toggleRequestForm(){ const el = $("requestFormWrap"); if(el) el.classList.toggle("hidden"); }
+            if (error) alert(error.message);
+            else {
+                document.getElementById('request-price').value = '';
+                loadOwnerRequests();
+            }
+        }
 
-  async function logout(){
-    clearRefreshTimer();
-    await supabaseClient.auth.signOut();
-    location.reload();
-  }
+        async function loadOwnerRequests() {
+            const { data } = await supabaseClient.from('walk_requests')
+                .select('*, walk_offers(*)')
+                .eq('owner_id', currentUser.id)
+                .order('created_at', { ascending: false });
+            
+            const list = document.getElementById('owner-requests-list');
+            if(!data || data.length === 0) {
+                list.innerHTML = '<p class="text-center text-slate-400 text-xs py-8 italic">No tienes pedidos activos</p>';
+                return;
+            }
 
-  window.__changeMode = (mode) => { currentMode = mode; renderModes(); renderContent(); };
-  window.__createWalkRequest = createWalkRequest;
-  window.__sendOffer = sendOffer;
-  window.__acceptOffer = acceptOffer;
-  window.__rejectOffer = rejectOffer;
-  window.__toggleDogForm = toggleDogForm;
-  window.__toggleRequestForm = toggleRequestForm;
-  window.__cancelWalkRequest = cancelWalkRequest;
-  window.__dismissTarget = dismissTarget;
+            list.innerHTML = data.map(req => `
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tu oferta</p>
+                            <span class="font-black text-2xl text-[#ff6b00]">S/ ${req.tariff}</span>
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-3 py-1.5 ${req.status === 'open' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'} rounded-full tracking-widest">${req.status}</span>
+                    </div>
+                    <div class="space-y-2">
+                        ${req.walk_offers.filter(o => o.status === 'pending').map(off => `
+                            <div class="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <div>
+                                    <p class="text-[9px] font-black text-slate-400 uppercase">Contraoferta</p>
+                                    <span class="font-black text-slate-700">S/ ${off.price}</span>
+                                </div>
+                                <button onclick="acceptOffer('${off.id}')" class="bg-[#ff6b00] text-white text-[10px] px-4 py-2 rounded-xl font-black shadow-md shadow-orange-100">ACEPTAR</button>
+                            </div>
+                        `).join('')}
+                        ${req.walk_offers.length === 0 ? '<p class="text-[10px] text-slate-400 italic text-center py-2">Esperando paseadores...</p>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
 
-  init();
-})();
-</script>
+        async function loadAvailableRequests() {
+            const { data } = await supabaseClient.from('walk_requests').select('*').eq('status', 'open').order('created_at', { ascending: false });
+            const list = document.getElementById('available-requests-list');
+            
+            if(!data || data.length === 0) {
+                list.innerHTML = '<p class="text-center text-slate-400 text-xs py-8 italic">No hay pedidos cerca</p>';
+                return;
+            }
+
+            list.innerHTML = data.map(req => `
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Precio sugerido</p>
+                            <h3 class="text-2xl font-black text-slate-800">S/ ${req.tariff}</h3>
+                        </div>
+                        <div class="bg-blue-50 text-blue-600 p-2 rounded-xl text-xs font-black">30 min</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="number" id="offer-${req.id}" placeholder="Tu precio" 
+                            class="flex-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-orange-100 font-bold text-sm">
+                        <button onclick="sendOffer('${req.id}', '${req.owner_id}')" 
+                            class="bg-slate-900 text-white px-5 rounded-xl font-black text-xs shadow-lg shadow-slate-200 active:scale-95 transition-all">OFERTAR</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function sendOffer(requestId, ownerId) {
+            const price = document.getElementById(`offer-${requestId}`).value;
+            if(!price) return alert("Ingresa tu precio");
+            
+            const { error } = await supabaseClient.rpc('send_walk_offer', { 
+                p_request_id: requestId, 
+                p_owner_id: ownerId,
+                p_price: parseFloat(price) 
+            });
+            if (error) alert(error.message);
+            else {
+                alert("¡Oferta enviada!");
+                loadAvailableRequests();
+            }
+        }
+
+        async function acceptOffer(offerId) {
+            const { error } = await supabaseClient.rpc('accept_walk_offer', { p_offer_id: offerId });
+            if (error) alert(error.message);
+            else loadOwnerRequests();
+        }
+
+        function showView(view) {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            if (view === 'dashboard') logoutBtn.classList.remove('hidden');
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('content-owner').classList.toggle('hidden', mode !== 'owner');
+            document.getElementById('content-walker').classList.toggle('hidden', mode !== 'walker');
+            
+            const tabOwner = document.getElementById('tab-owner');
+            const tabWalker = document.getElementById('tab-walker');
+            
+            if(mode === 'owner') {
+                tabOwner.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm";
+                tabWalker.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700";
+            } else {
+                tabWalker.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm";
+                tabOwner.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700";
+            }
+            loadUserData();
+        }
+
+        function initRealtime() {
+            supabaseClient.channel('changes').on('postgres_changes', { event: '*', schema: 'public' }, () => loadUserData()).subscribe();
+        }
+
+        loginBtn.addEventListener('click', handleLogin);
+        logoutBtn.addEventListener('click', () => supabaseClient.auth.signOut());
+
+    </script>
 </body>
 </html>
