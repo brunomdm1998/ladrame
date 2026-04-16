@@ -1,305 +1,61 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ladrame - Paseadores de Perros</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ff6b00" />
+    
+    <title>Ladrame - Tu App de Paseos de Confianza</title>
+    <meta name="description" content="Conecta con los mejores paseadores de perros en tu zona de forma rápida y segura." />
+    
+    <!-- Fuentes de Google para un diseño premium -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #fff7f1;
-        }
-        .custom-shadow {
-            box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.1), 0 8px 10px -6px rgba(255, 107, 0, 0.1);
-        }
+      /* Estilos básicos para que la pantalla no se vea blanca mientras carga React */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #fff7f1;
+        font-family: 'Inter', sans-serif;
+        overflow-x: hidden;
+      }
+      #root-loader {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #ff6b00;
+        gap: 1rem;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #ff6b0022;
+        border-top: 4px solid #ff6b00;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
     </style>
-</head>
-<body class="antialiased text-slate-900">
-
-    <div id="app" class="max-w-[430px] mx-auto min-h-screen p-6">
-        <!-- HEADER -->
-        <header class="flex justify-between items-center mb-8">
-            <div class="flex items-center gap-2">
-                <div class="bg-[#ff6b00] w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-orange-200">🐶</div>
-                <h1 class="font-black text-2xl tracking-tighter text-[#ff6b00]">LÁDRAME</h1>
-            </div>
-            <button id="logoutBtn" class="hidden text-slate-400 font-bold text-sm hover:text-red-500 transition-colors">Salir</button>
-        </header>
-
-        <!-- VISTA: LOGIN -->
-        <div id="view-login" class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-orange-100/50 border border-orange-50 mt-4">
-            <h2 class="text-3xl font-black mb-2 tracking-tight">¡Hola! 👋</h2>
-            <p class="text-slate-500 mb-8 text-sm font-medium">Ingresa para pasear o pedir un paseo.</p>
-            
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Email</label>
-                    <input type="email" id="login-email" placeholder="tu@email.com" 
-                        class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-[#ff6b00] focus:bg-white outline-none transition-all font-medium">
-                </div>
-                
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Contraseña</label>
-                    <input type="password" id="login-password" placeholder="••••••••" 
-                        class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-[#ff6b00] focus:bg-white outline-none transition-all font-medium">
-                </div>
-
-                <button id="loginBtn" 
-                    class="w-full bg-[#ff6b00] hover:bg-[#e66000] text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-orange-200 transition-all active:scale-[0.98] mt-4">
-                    Entrar a Ladrame
-                </button>
-                
-                <p id="login-error" class="text-red-500 text-xs text-center font-bold hidden bg-red-50 p-3 rounded-xl"></p>
-            </div>
-        </div>
-
-        <!-- VISTA: DASHBOARD -->
-        <div id="view-dashboard" class="hidden space-y-6">
-            <!-- Selector de Modo -->
-            <div class="flex gap-2 p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl">
-                <button onclick="setMode('owner')" id="tab-owner" 
-                    class="flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm">DUEÑO</button>
-                <button onclick="setMode('walker')" id="tab-walker" 
-                    class="flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700">PASEADOR</button>
-            </div>
-
-            <!-- Contenido Dueño -->
-            <div id="content-owner" class="space-y-4">
-                <div class="bg-[#ff6b00] p-6 rounded-[2rem] text-white shadow-xl shadow-orange-200 border-none relative overflow-hidden">
-                    <div class="relative z-10">
-                        <h3 class="font-black text-xl mb-1">¿Necesitas un paseo?</h3>
-                        <p class="text-orange-100 text-xs mb-4 font-medium">Publica tu oferta y espera paseadores.</p>
-                        <div class="flex gap-2">
-                            <input type="number" id="request-price" placeholder="S/ Precio" 
-                                class="flex-1 p-3 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 ring-white/50">
-                            <button onclick="createRequest()" 
-                                class="bg-white text-[#ff6b00] font-black px-6 py-3 rounded-xl hover:bg-orange-50 transition-colors">Publicar</button>
-                        </div>
-                    </div>
-                    <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12">🐶</div>
-                </div>
-                
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 mt-6">Tus solicitudes activas</h4>
-                <div id="owner-requests-list" class="space-y-3"></div>
-            </div>
-
-            <!-- Contenido Paseador -->
-            <div id="content-walker" class="hidden space-y-4">
-                <div class="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl shadow-slate-200 border-none flex justify-between items-center relative overflow-hidden">
-                    <div class="relative z-10">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Tus Créditos</p>
-                        <h2 id="walker-credits" class="text-4xl font-black tracking-tighter">0</h2>
-                        <p class="text-[10px] text-slate-500 mt-1 font-bold">1 crédito = S/ 10 de oferta</p>
-                    </div>
-                    <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl relative z-10">💰</div>
-                    <div class="absolute -right-4 -bottom-4 text-8xl opacity-5 rotate-12">🦴</div>
-                </div>
-
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 mt-6">Pedidos cerca de ti</h4>
-                <div id="available-requests-list" class="space-y-3"></div>
-            </div>
-        </div>
+  </head>
+  <body>
+    <!-- React reemplazará todo el contenido de este div una vez que cargue -->
+    <div id="root">
+      <div id="root-loader">
+        <div class="spinner"></div>
+        <div style="font-weight: 900; letter-spacing: -1px;">LÁDRAME</div>
+      </div>
     </div>
-
-    <script>
-        // CONFIGURACIÓN SUPABASE
-        const SUPABASE_URL = 'TU_URL_DE_SUPABASE';
-        const SUPABASE_KEY = 'TU_ANON_KEY_DE_SUPABASE';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        let currentUser = null;
-        let currentMode = 'owner';
-
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const loginError = document.getElementById('login-error');
-
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            if(!email || !password) return;
-
-            loginBtn.innerText = "Entrando...";
-            loginBtn.disabled = true;
-            loginError.classList.add('hidden');
-
-            try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-            } catch (err) {
-                loginError.innerText = "Error: " + err.message;
-                loginError.classList.remove('hidden');
-                loginBtn.innerText = "Entrar a Ladrame";
-                loginBtn.disabled = false;
-            }
-        }
-
-        supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (session) {
-                currentUser = session.user;
-                showView('dashboard');
-                loadUserData();
-                initRealtime();
-            } else {
-                currentUser = null;
-                showView('login');
-            }
-        });
-
-        async function loadUserData() {
-            if (currentMode === 'walker') {
-                const { data } = await supabaseClient.from('provider_wallets').select('balance').eq('user_id', currentUser.id).maybeSingle();
-                document.getElementById('walker-credits').innerText = data?.balance || 0;
-                loadAvailableRequests();
-            } else {
-                loadOwnerRequests();
-            }
-        }
-
-        async function createRequest() {
-            const price = document.getElementById('request-price').value;
-            if (!price) return alert("Ingresa un precio");
-
-            const { error } = await supabaseClient.rpc('create_walk_request', { 
-                p_owner_id: currentUser.id,
-                p_tariff: parseFloat(price),
-                p_time: 30,
-                p_location: 'Mi ubicación',
-                p_dog_id: null // Simplificado para este ejemplo
-            });
-
-            if (error) alert(error.message);
-            else {
-                document.getElementById('request-price').value = '';
-                loadOwnerRequests();
-            }
-        }
-
-        async function loadOwnerRequests() {
-            const { data } = await supabaseClient.from('walk_requests')
-                .select('*, walk_offers(*)')
-                .eq('owner_id', currentUser.id)
-                .order('created_at', { ascending: false });
-            
-            const list = document.getElementById('owner-requests-list');
-            if(!data || data.length === 0) {
-                list.innerHTML = '<p class="text-center text-slate-400 text-xs py-8 italic">No tienes pedidos activos</p>';
-                return;
-            }
-
-            list.innerHTML = data.map(req => `
-                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <div>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tu oferta</p>
-                            <span class="font-black text-2xl text-[#ff6b00]">S/ ${req.tariff}</span>
-                        </div>
-                        <span class="text-[10px] font-black uppercase px-3 py-1.5 ${req.status === 'open' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'} rounded-full tracking-widest">${req.status}</span>
-                    </div>
-                    <div class="space-y-2">
-                        ${req.walk_offers.filter(o => o.status === 'pending').map(off => `
-                            <div class="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                <div>
-                                    <p class="text-[9px] font-black text-slate-400 uppercase">Contraoferta</p>
-                                    <span class="font-black text-slate-700">S/ ${off.price}</span>
-                                </div>
-                                <button onclick="acceptOffer('${off.id}')" class="bg-[#ff6b00] text-white text-[10px] px-4 py-2 rounded-xl font-black shadow-md shadow-orange-100">ACEPTAR</button>
-                            </div>
-                        `).join('')}
-                        ${req.walk_offers.length === 0 ? '<p class="text-[10px] text-slate-400 italic text-center py-2">Esperando paseadores...</p>' : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function loadAvailableRequests() {
-            const { data } = await supabaseClient.from('walk_requests').select('*').eq('status', 'open').order('created_at', { ascending: false });
-            const list = document.getElementById('available-requests-list');
-            
-            if(!data || data.length === 0) {
-                list.innerHTML = '<p class="text-center text-slate-400 text-xs py-8 italic">No hay pedidos cerca</p>';
-                return;
-            }
-
-            list.innerHTML = data.map(req => `
-                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Precio sugerido</p>
-                            <h3 class="text-2xl font-black text-slate-800">S/ ${req.tariff}</h3>
-                        </div>
-                        <div class="bg-blue-50 text-blue-600 p-2 rounded-xl text-xs font-black">30 min</div>
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="number" id="offer-${req.id}" placeholder="Tu precio" 
-                            class="flex-1 p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-orange-100 font-bold text-sm">
-                        <button onclick="sendOffer('${req.id}', '${req.owner_id}')" 
-                            class="bg-slate-900 text-white px-5 rounded-xl font-black text-xs shadow-lg shadow-slate-200 active:scale-95 transition-all">OFERTAR</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function sendOffer(requestId, ownerId) {
-            const price = document.getElementById(`offer-${requestId}`).value;
-            if(!price) return alert("Ingresa tu precio");
-            
-            const { error } = await supabaseClient.rpc('send_walk_offer', { 
-                p_request_id: requestId, 
-                p_owner_id: ownerId,
-                p_price: parseFloat(price) 
-            });
-            if (error) alert(error.message);
-            else {
-                alert("¡Oferta enviada!");
-                loadAvailableRequests();
-            }
-        }
-
-        async function acceptOffer(offerId) {
-            const { error } = await supabaseClient.rpc('accept_walk_offer', { p_offer_id: offerId });
-            if (error) alert(error.message);
-            else loadOwnerRequests();
-        }
-
-        function showView(view) {
-            document.getElementById('view-login').classList.add('hidden');
-            document.getElementById('view-dashboard').classList.add('hidden');
-            document.getElementById('logoutBtn').classList.add('hidden');
-            
-            document.getElementById(`view-${view}`).classList.remove('hidden');
-            if (view === 'dashboard') logoutBtn.classList.remove('hidden');
-        }
-
-        function setMode(mode) {
-            currentMode = mode;
-            document.getElementById('content-owner').classList.toggle('hidden', mode !== 'owner');
-            document.getElementById('content-walker').classList.toggle('hidden', mode !== 'walker');
-            
-            const tabOwner = document.getElementById('tab-owner');
-            const tabWalker = document.getElementById('tab-walker');
-            
-            if(mode === 'owner') {
-                tabOwner.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm";
-                tabWalker.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700";
-            } else {
-                tabWalker.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all bg-white text-[#ff6b00] shadow-sm";
-                tabOwner.className = "flex-1 py-3 rounded-xl font-black text-xs tracking-widest transition-all text-slate-500 hover:text-slate-700";
-            }
-            loadUserData();
-        }
-
-        function initRealtime() {
-            supabaseClient.channel('changes').on('postgres_changes', { event: '*', schema: 'public' }, () => loadUserData()).subscribe();
-        }
-
-        loginBtn.addEventListener('click', handleLogin);
-        logoutBtn.addEventListener('click', () => supabaseClient.auth.signOut());
-
-    </script>
-</body>
+    
+    <!-- Este es el motor que arranca toda tu aplicación -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
