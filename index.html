@@ -1,148 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Auth } from '@/components/Auth';
-import { OwnerDashboard } from '@/components/OwnerDashboard';
-import { WalkerDashboard } from '@/components/WalkerDashboard';
-import { LogOut, Dog, AlertCircle } from 'lucide-react';
-
-const Index = () => {
-  const [session, setSession] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentMode, setCurrentMode] = useState<'owner' | 'walker'>('owner');
-
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        
-        setSession(session);
-        if (session) {
-          await fetchProfile(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (err: any) {
-        console.error("Error inicializando sesión:", err);
-        setError(err.message);
-        setLoading(false);
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ff6b00" />
+    
+    <title>Ladrame - Tu App de Paseos de Confianza</title>
+    <meta name="description" content="Conecta con los mejores paseadores de perros en tu zona de forma rápida y segura." />
+    
+    <!-- Fuentes de Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #fff7f1;
+        font-family: 'Inter', sans-serif;
       }
-    };
-
-    initSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setLoading(false);
+      #root-loader {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #ff6b00;
       }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (profileError) throw profileError;
-      
-      if (data) {
-        setProfile(data);
-        if (!data.owner_enabled && data.walker_enabled) {
-          setCurrentMode('walker');
-        }
-      } else {
-        console.warn("No se encontró perfil para el usuario:", userId);
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #ff6b0022;
+        border-top: 4px solid #ff6b00;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
       }
-    } catch (err: any) {
-      console.error("Error cargando perfil:", err);
-      // No bloqueamos la app si falla el perfil, solo lo registramos
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#fff7f1]">
-      <div className="animate-bounce text-[#ff6b00] font-black text-3xl flex items-center gap-2 mb-4">
-        <Dog size={40} /> LÁDRAME...
-      </div>
-      <div className="w-48 h-1.5 bg-orange-100 rounded-full overflow-hidden">
-        <div className="h-full bg-[#ff6b00] animate-progress-loading"></div>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Pantalla de carga inicial -->
+      <div id="root-loader">
+        <div class="spinner"></div>
+        <div style="margin-top: 1rem; font-weight: 900;">LÁDRAME</div>
       </div>
     </div>
-  );
-
-  if (!session) return <Auth />;
-
-  return (
-    <div className="container max-w-[430px] mx-auto p-4 min-h-screen">
-      {/* Header Principal */}
-      <div className="ladrame-card mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3 text-[28px] font-black text-[#ff6b00]">
-            <div className="w-[50px] h-[50px] rounded-2xl bg-gradient-to-br from-[#ff6b00] to-[#ff944d] text-white grid place-items-center text-2xl shadow-lg">
-              🐶
-            </div>
-            <div className="tracking-tighter">LÁDRAME</div>
-          </div>
-          {error && <AlertCircle className="text-red-500" size={20} title={error} />}
-        </div>
-        
-        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-4">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Usuario Activo</p>
-          <p className="text-sm font-black text-slate-700">{profile?.name || session.user.email}</p>
-        </div>
-
-        {/* Selector de Modo */}
-        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl mb-4">
-          <button 
-            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${currentMode === 'owner' ? 'bg-white text-[#ff6b00] shadow-sm' : 'text-slate-500'}`}
-            onClick={() => setCurrentMode('owner')}
-          >
-            DUEÑO
-          </button>
-          <button 
-            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${currentMode === 'walker' ? 'bg-white text-[#ff6b00] shadow-sm' : 'text-slate-500'}`}
-            onClick={() => setCurrentMode('walker')}
-          >
-            PASEADOR
-          </button>
-        </div>
-
-        {/* Contenido Dinámico */}
-        <div className="min-h-[400px]">
-          {currentMode === 'owner' ? (
-            <OwnerDashboard user={session.user} />
-          ) : (
-            <WalkerDashboard user={session.user} />
-          )}
-        </div>
-
-        {/* Botón Salir */}
-        <button 
-          onClick={() => supabase.auth.signOut()}
-          className="w-full p-4 rounded-2xl bg-slate-100 text-slate-500 font-bold mt-6 flex items-center justify-center gap-2 hover:bg-red-50 hover:text-red-500 transition-colors"
-        >
-          <LogOut size={18} /> Cerrar sesión
-        </button>
-      </div>
-      
-      <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-4">
-        Ladrame App v2.0 • 2024
-      </p>
-    </div>
-  );
-};
-
-export default Index;
+    
+    <!-- IMPORTANTE: Esta línea conecta el HTML con el código de React -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
