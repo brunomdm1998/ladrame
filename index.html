@@ -1,61 +1,135 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#ff6b00" />
+import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { showError, showSuccess } from '@/utils/toast';
+
+export const Auth = () => {
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [isRegister, setIsRegister] = useState(false);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     
-    <title>Ladrame - Tu App de Paseos de Confianza</title>
-    <meta name="description" content="Conecta con los mejores paseadores de perros en tu zona de forma rápida y segura." />
-    
-    <!-- Fuentes de Google para un diseño premium -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <style>
-      /* Estilos básicos para que la pantalla no se vea blanca mientras carga React */
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #fff7f1;
-        font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
+    try {
+      if (isRegister) {
+        // 1. Crear el usuario en Supabase Auth
+        const { data, error: signUpError } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: { full_name: name }
+          }
+        });
+        
+        if (signUpError) throw signUpError;
+        
+        if (data.user) {
+          // 2. Crear el perfil en la tabla 'users'
+          const { error: profileError } = await supabase.from('users').insert({ 
+            id: data.user.id, 
+            email: email, 
+            name: name || email.split('@')[0],
+            role: 'owner',
+            owner_enabled: true,
+            walker_enabled: false
+          });
+          
+          if (profileError) {
+            console.error("Error perfil:", profileError);
+          }
+
+          showSuccess('¡Cuenta creada con éxito!');
+          setIsRegister(false);
+        }
+      } else {
+        // CORRECCIÓN: Se agregó .auth antes de signInWithPassword
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        showSuccess('¡Bienvenido de nuevo!');
       }
-      #root-loader {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        color: #ff6b00;
-        gap: 1rem;
-      }
-      .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #ff6b0022;
-        border-top: 4px solid #ff6b00;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- React reemplazará todo el contenido de este div una vez que cargue -->
-    <div id="root">
-      <div id="root-loader">
-        <div class="spinner"></div>
-        <div style="font-weight: 900; letter-spacing: -1px;">LÁDRAME</div>
-      </div>
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      showError(error.message || 'Error en el proceso');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#fff7f1] p-4">
+      <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
+        <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff944d] p-10 text-center text-white">
+          <div className="w-20 h-20 bg-white/20 rounded-3xl mx-auto mb-4 flex items-center justify-center text-4xl shadow-inner">
+            🐶
+          </div>
+          <CardTitle className="text-4xl font-black tracking-tighter mb-1">LÁDRAME</CardTitle>
+          <p className="text-sm font-bold opacity-90 uppercase tracking-widest">Paseos de confianza</p>
+        </div>
+        <CardContent className="p-8 pt-10 space-y-6">
+          <form onSubmit={handleAuth} className="space-y-4">
+            {isRegister && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Nombre Completo</label>
+                <Input
+                  type="text"
+                  placeholder="Ej: Juan Pérez"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="ladrame-input !mt-0 h-14 text-base"
+                  required
+                />
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Correo Electrónico</label>
+              <Input
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="ladrame-input !mt-0 h-14 text-base"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Contraseña</label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="ladrame-input !mt-0 h-14 text-base"
+                required
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="ladrame-button h-14 text-lg shadow-lg shadow-orange-200 active:scale-95 transition-transform" 
+              disabled={loading}
+            >
+              {loading ? 'Procesando...' : isRegister ? 'CREAR CUENTA' : 'ENTRAR'}
+            </button>
+          </form>
+          
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100"></span></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-300 font-bold">o también</span></div>
+          </div>
+
+          <button 
+            onClick={() => setIsRegister(!isRegister)}
+            className="w-full text-center text-sm text-slate-500 font-bold hover:text-[#ff6b00] transition-colors"
+          >
+            {isRegister ? '¿YA TIENES CUENTA? INICIA SESIÓN' : '¿ERES NUEVO? REGÍSTRATE AQUÍ'}
+          </button>
+        </CardContent>
+      </Card>
     </div>
-    
-    <!-- Este es el motor que arranca toda tu aplicación -->
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+  );
+};
